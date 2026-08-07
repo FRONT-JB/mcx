@@ -135,6 +135,18 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       ([SEED_UPSTREAM_FINDINGS §12.3](./SEED_UPSTREAM_FINDINGS.md)).
       [ADR-0004](../adr/0004-stage-scoped-minimum-capability.md)는 worker가
       위로 탈출하는 것만 막고 이 방향을 덮지 않는다.
+- [ ] **upstream이 CLI를 얇게 둔 이유를 조사한다 (Phase 6 시작 전).**
+      `ooo seed` CLI는 QA·승인 없이 생성·저장만 한다 — 이것이 의도(스크립트
+      가능성, LLM 비용 회피)인지 우연(skill 계층이 먼저 진화)인지에 따라
+      `mcx blueprint`가 그 use case를 부수는지가 갈린다. Principle 10 —
+      이유를 모른 채 다르게 가지 않는다.
+- [ ] **`mcx` CLI의 대화형 지점을 결정한다.** QA EXHAUSTED에서의 사용자
+      선택, 수정 후보 채택, HOLD의 exit code, 비대화형 모드 지원 여부.
+      upstream skill 계층은 대화 안에 있어 이 질문들이 없었으므로 **대조
+      불가능한 신규 영역**이다 — 여기서의 작은 판단들이 누적 divergence가
+      되지 않도록 결정을 ADR로 묶는다. 단, QA 우회 플래그(`--skip-qa` 류)는
+      선택지가 아니다 — [ADR-0019](../adr/0019-blueprint-qa-loop.md) §1이
+      죽인 surface 간 비대칭을 재생산한다.
 
 ## 9. Persistence and Telemetry decisions
 
