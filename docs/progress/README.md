@@ -218,6 +218,27 @@ revision을 요구한다. QA/refinement 루프와 재시도 정책은 그 다음
 (`record_candidate` / `resolve_candidate`)도 함께 생겨, 승인 외 Gate 차단 사유가
 실제 사용 경로에서 도달 가능해졌다.
 
+### Blueprint의 알려진 한계
+
+- **AC가 결과인지 수단인지 판정하지 않는다.** upstream은 이를 "missing
+  requirement와 같은 심각도의 결함"으로 규정한다
+  ([SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md) §3.3).
+  `check_scope`는 AC의 존재 여부만 본다. Phase 2의 "AC quality validation"이
+  이 항목이다.
+- **AC의 출처를 추적하지 않는다.** 성공 조건과 무관한 AC를 만들어도 범위 검사를
+  통과한다 ([ADR-0018](../adr/0018-blueprint-generation-contract.md) Cost).
+- **종료코드 검사 개념이 없다.** upstream은 `verify_command`가 있으면 runner가
+  종료코드 0을 자동 확인하므로 명령 자체가 완결된 계약이다(§3.2). Mission
+  Control의 `is_mechanically_verifiable`은 "확인 수단이 적혀 있다"까지만 뜻하며,
+  실제 실행은 Verify(Phase 4)가 도입한다.
+- **`context`를 채우는 장치가 없다.** 생성기가 확인 명령을 만들려면 "이 프로젝트는
+  pytest를 쓴다" 같은 사실이 필요한데, 그것을 조사하는 Fact Resolver가 미구현이다
+  (B-004). 현재는 사용자가 직접 `context` 후보로 기록해야 한다.
+- **생성기가 제약·Non-goal 문자열을 그대로 옮겨야 한다.** 표현을 다듬으면 범위
+  위반으로 거부된다. 생성 프롬프트가 원문 보존을 지시해야 한다.
+- **재시도 정책이 없다.** upstream은 파싱 실패 시 한 번 재시도한다
+  ([ADR-0018](../adr/0018-blueprint-generation-contract.md) §6).
+
 ### 현재 구현의 알려진 한계
 
 계약 위반은 아니지만 이후 확장이 필요한 지점이다.

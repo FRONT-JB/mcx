@@ -132,6 +132,61 @@ replaced criterion gets a new key when materialized from its changed contract."
 완결된 계약**이다. `output_assertion`은 그 위에 얹는 선택적 추가 검사이고, 억지로
 채우면 오히려 취약해진다(테스트 하나 추가하면 `3 passed`가 `4 passed`가 된다).
 
+## 3.3 Granularity contract — 결과인가 수단인가
+
+`agents/seed-architect.md:79-85`. 프롬프트가 스스로 "read carefully"라고 표시한
+섹션이며, 문구가 아니라 **AC 품질의 판정 규칙**이다.
+
+> An acceptance criterion names a **state of the finished work** that a user can
+> see is true. An implementation step names a **means of reaching that state**.
+> These are different categories, and only the first belongs here — deciding
+> means is the execution engine's work at runtime, and it decides them better
+> with the outcome in hand than with your guess at the path.
+
+판정 방법도 제시한다 — 형제 항목들과 나란히 놓고 읽는다. **스스로 사용자가
+가치를 느끼는 것으로 성립하면 결과**이고, **형제 항목으로 가는 이동으로만
+이해되면 수단**이며 그 형제에 병합되어야 한다.
+
+> Leaving a means in the criteria list is a **defect equal in severity to a
+> missing requirement** — it commits the seed to a path before anyone has
+> verified the path is the right one.
+
+그리고 개수를 정하지 않는다 — "How many criteria a goal has is a property of
+that goal, discovered by making this judgment."
+
+예를 들면 이렇다.
+
+| 문장 | 종류 |
+|---|---|
+| "댓글 작성 후 목록 맨 위에 나타난다" | 결과 — 사용자가 볼 수 있는 완성 상태 |
+| "Comment 모델에 created_at 인덱스를 추가한다" | 수단 — 위 결과로 가는 경로 |
+
+수단을 AC에 남기면 **아무도 그 경로가 옳은지 검증하기 전에 명세가 경로를
+확정한다.** Execute가 결과를 손에 쥐고 판단할 여지가 사라진다.
+
+Mission Control은 이 판정을 아직 구현하지 않았다. `check_scope`는 AC의 **존재
+여부**만 보고 종류를 보지 않는다. Phase 2의 "AC quality validation" 항목이 이것에
+해당한다.
+
+## 3.4 생성기가 대화 원문을 읽을 때 필요한 규칙
+
+`agents/seed-architect.md:16-37`. upstream의 seed architect는 **대화 원문을**
+읽으므로 provenance를 직접 해석해야 한다.
+
+- `[from-user]`(또는 표기 없음)는 결정, `[from-code]`/`[from-repo]`/
+  `[from-research]`는 채택된 사실이며 "a fact is not a decision. Only a decision
+  can become a requirement."
+- 보류된 관찰 자리에 나타나는 note에 대해 — "That is deliberate, not a truncation
+  or an error. Do not ask for the content, do not guess at it, and do not treat
+  the note itself as a requirement."
+- 질문은 전문이 보이며 — "nothing in a question line becomes a requirement on
+  its own."
+
+Mission Control은 생성기에 대화를 넘기지 않고 이미 칸이 나뉜 handoff만 넘기므로
+([ADR-0018](../adr/0018-blueprint-generation-contract.md) §2) 이 규칙들이 프롬프트
+지시가 아니라 **입력 형태로 해소된다.** 다만 upstream이 이 세 문장을 명시적으로
+쓴 이유가 실제 결함(#1755 계열)이라는 점은 우리 선택의 근거를 강화한다.
+
 ## 4. 조사했으나 v1에서 다루지 않기로 한 것
 
 `core/seed.py`에는 산출물 경로 검증 장치가 상당량 있다 (`:41-253`).
@@ -175,11 +230,19 @@ Mission Control은 handoff가 이미 칸별로 나뉘어 있으므로(§2, ADR-0
 
 ## 5. 아직 조사하지 않은 것
 
-- Seed 생성 프롬프트의 추출 계약과 QA/refinement 루프
-- `InvestmentSpec`의 용도
-- `SeedMetadata`가 보존하는 항목 전체
+추출 프롬프트(`agents/seed-architect.md`)는 2026-08-07에 전문을 읽었다(§3.2·§3.3·
+§3.4). 남은 항목은 다음과 같다.
+
+- **QA/refinement 루프** — 생성된 Seed를 다시 검토·수정하는 경로. Phase 2
+  checklist의 "AC quality validation"과 직결된다
+- **Seed 승인 흐름** — upstream이 Seed 승인을 어떻게 기록하는지. Brief에서는
+  별도 approval 객체가 없었다(ADR-0011 Divergence 2). Seed도 같은지 확인 필요
 - Seed revision lineage와 `parent_seed`의 의미
+- `SeedMetadata`가 보존하는 항목 전체
+- `InvestmentSpec`의 용도
+- 2,637줄 파싱 계층이 방어하는 실패 목록 (구조화 출력을 쓰는 우리에게 어디까지
+  해당하는지)
 - `ooo seed` 진입이 interview score를 다시 강제하는지
   ([Brief Guide](../05_BRIEF.md) §3의 미조사 항목)
 
-위 항목은 Blueprint 생성 계약을 설계하기 직전에 조사한다.
+위 항목은 Blueprint use case와 QA 루프를 설계하기 직전에 조사한다.
