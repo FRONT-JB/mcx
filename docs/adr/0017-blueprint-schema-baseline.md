@@ -148,6 +148,13 @@ upstream `orchestrator/shadow_replay.py:622`는
 - `extra="forbid"`는 upstream 확장을 그대로 실을 수 없게 한다.
 - `expected_artifacts` 순서가 계약이므로 같은 산출물 집합을 다르게 적은 AC가
   다른 identity를 갖는다.
+- **upstream의 `verify_command` 한 줄 검사가 없다**
+  ([SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md) §3.1 —
+  여러 줄·heredoc 거부, `python -c`/`pytest` 안내). 여러 줄 명령은 runner의
+  종료코드 판정을 흐리므로 upstream은 생성 시점에 거부한다. 명령이 실제로
+  실행되는 것은 Verify(Phase 3~4)이므로 그 설계와 함께 도입한다 — 이 검사가
+  schema 검증인지 QA issue인지도 그때 정한다. (2026-08-08까지 보류가 기록되지
+  않은 상태였다.)
 
 ## Rejected alternatives
 
