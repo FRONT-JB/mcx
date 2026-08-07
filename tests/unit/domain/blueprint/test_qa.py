@@ -8,6 +8,7 @@ import pytest
 from mission_control.domain.blueprint.qa import (
     LoopAction,
     QaAssessment,
+    QaDimension,
     QaLoopState,
     QaPolicy,
     QaVerdict,
@@ -23,6 +24,10 @@ def _state(*scores: float) -> QaLoopState:
     return state
 
 
+def _dims(*scores: float) -> tuple[tuple[QaDimension, float], ...]:
+    return tuple(zip(tuple(QaDimension)[: len(scores)], scores, strict=True))
+
+
 class TestPolicyDefaults:
     def test_blueprint_bar_is_stricter_than_the_generic_one(self) -> None:
         """Blueprint는 구조적 명세라 이후 모든 Stage가 이것을 근거로 판단한다."""
@@ -33,6 +38,16 @@ class TestPolicyDefaults:
         """수단을 수용 기준에 남기는 것을 잡는 문장이 기준에 들어 있어야 한다."""
         assert "수단" in POLICY.quality_bar
         assert "형제" in POLICY.quality_bar
+
+    def test_every_upstream_scoring_axis_is_present(self) -> None:
+        """축을 줄이면 채점자가 무엇을 보는지가 우리 쪽에서 달라진다."""
+        assert set(QaDimension) == {
+            QaDimension.CORRECTNESS,
+            QaDimension.COMPLETENESS,
+            QaDimension.QUALITY,
+            QaDimension.INTENT_ALIGNMENT,
+            QaDimension.DOMAIN_SPECIFIC,
+        }
 
 
 class TestVerdictBands:
@@ -63,9 +78,32 @@ class TestBestAttempt:
         assert best.iteration == 3
         assert best.assessment.score == 0.88
 
-    def test_ties_keep_the_earlier_attempt(self) -> None:
-        """같은 점수라면 덜 고친 쪽이 낫다."""
+    def test_ties_are_broken_by_dimension_scores(self) -> None:
+        """총점은 같아도 축 점수는 다를 수 있다.
+
+        upstream 실사용 관측 — 3회차와 5회차가 모두 0.88이었고, 축 점수가 나은
+        5회차가 채택됐다 (`SEED_UPSTREAM_FINDINGS` §12).
+        """
+        state = QaLoopState(policy=POLICY)
+        state = state.record(QaAssessment(score=0.88, dimension_scores=_dims(0.85, 0.87)))
+        state = state.record(QaAssessment(score=0.88, dimension_scores=_dims(0.90, 0.92)))
+
+        best = state.best
+        assert best is not None
+        assert best.iteration == 2
+
+    def test_ties_without_dimension_scores_keep_the_earlier_attempt(self) -> None:
+        """구별할 정보가 없으면 덜 고친 쪽이 낫다."""
         state = _state(0.85, 0.85)
+
+        best = state.best
+        assert best is not None
+        assert best.iteration == 1
+
+    def test_ties_with_equal_dimensions_keep_the_earlier_attempt(self) -> None:
+        state = QaLoopState(policy=POLICY)
+        state = state.record(QaAssessment(score=0.88, dimension_scores=_dims(0.88, 0.88)))
+        state = state.record(QaAssessment(score=0.88, dimension_scores=_dims(0.88, 0.88)))
 
         best = state.best
         assert best is not None

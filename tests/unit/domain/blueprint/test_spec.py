@@ -6,7 +6,11 @@
 from pydantic import ValidationError
 import pytest
 
-from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
+from mission_control.domain.blueprint.spec import (
+    AcceptanceCriterion,
+    Blueprint,
+    BlueprintApproval,
+)
 
 
 def _criterion(
@@ -150,3 +154,65 @@ class TestImmutabilityAndShape:
         blueprint = _blueprint(non_goals=("수정·삭제는 이번 범위가 아니다",))
 
         assert blueprint.non_goals == ("수정·삭제는 이번 범위가 아니다",)
+
+
+def _approval(**overrides: object) -> BlueprintApproval:
+    defaults: dict[str, object] = {
+        "revision": 1,
+        "statement": "이 명세로 진행한다",
+        "qa_policy_version": "blueprint-qa-v1",
+        "qa_threshold": 0.90,
+        "qa_best_score": 0.93,
+        "qa_iterations": 2,
+    }
+    defaults.update(overrides)
+    return BlueprintApproval(**defaults)  # type: ignore[arg-type]
+
+
+class TestApprovalRecord:
+    """QA 결과는 Blueprint가 아니라 승인 기록이 들고 있다 (ADR-0019 §8)."""
+
+    def test_blueprint_itself_carries_no_qa_result(self) -> None:
+        """점수를 방향에 넣으면 채점만으로 revision이 올라간다."""
+        with pytest.raises(ValidationError):
+            _blueprint(qa_best_score=0.88)
+
+    def test_a_passing_approval_records_the_score_and_policy(self) -> None:
+        approval = _approval()
+
+        assert approval.qa_best_score == 0.93
+        assert approval.qa_policy_version == "blueprint-qa-v1"
+        assert approval.accepted_below_threshold is False
+
+    def test_below_threshold_acceptance_is_recorded(self) -> None:
+        """미달 수락이 남지 않으면 완료 선언의 근거가 빈다."""
+        approval = _approval(qa_best_score=0.88, qa_iterations=5, accepted_below_threshold=True)
+
+        assert approval.accepted_below_threshold is True
+        assert approval.qa_iterations == 5
+
+    def test_below_threshold_score_without_the_flag_is_rejected(self) -> None:
+        """통과하지 못한 명세가 통과한 것으로 기록되면 안 된다."""
+        with pytest.raises(ValidationError):
+            _approval(qa_best_score=0.88)
+
+    def test_passing_score_with_the_flag_is_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            _approval(qa_best_score=0.93, accepted_below_threshold=True)
+
+    def test_approval_points_at_one_revision(self) -> None:
+        """오래된 revision 승인을 최신 revision에 재사용하지 않는다."""
+        approval = _approval(revision=3)
+
+        assert approval.revision == 3
+
+    def test_approval_is_frozen(self) -> None:
+        approval = _approval()
+
+        with pytest.raises(ValidationError):
+            approval.qa_best_score = 0.99
+
+    def test_zero_iterations_are_rejected(self) -> None:
+        """승인 대상은 반드시 한 번은 채점된 것이다."""
+        with pytest.raises(ValidationError):
+            _approval(qa_iterations=0)

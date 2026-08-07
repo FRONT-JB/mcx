@@ -7,10 +7,10 @@
 | Project phase | Phase 2 — Blueprint vertical slice 진행 중 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 진행 중 |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, gate, handoff), `domain/stage.py`, `domain/errors.py`, `application/`, `adapters/persistence/` |
-| Automated tests | 230 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, gate, handoff), `domain/blueprint/` (spec, assembly, qa), `domain/stage.py`, `domain/errors.py`, `application/`, `adapters/persistence/` |
+| Automated tests | 241 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
-| Updated | 2026-08-07 |
+| Updated | 2026-08-08 |
 
 ## Current facts
 
@@ -106,9 +106,26 @@ Gate와 evidence는 [progress 0001](./0001_BRIEF_VERTICAL_SLICE.md)에 있다.
   - [x] QA 루프 정책과 반복 상한, 최선 시도 추적 (ADR-0019)
   - [ ] 수정 후보 제시와 사용자 채택 절차 (CLI/MCP surface)
 - [ ] AC quality validation
-- [ ] explicit user approval and revision lineage
+- [-] explicit user approval and revision lineage
+  - [x] `BlueprintApproval` — QA 결과와 임계 미달 수락을 승인 기록에 고정
+    (ADR-0019 §8)
+  - [ ] `BlueprintService` — handoff 조회 → 생성 → 조립 → QA 반복 → 승인 → 저장
 - [ ] approved Seed revision binding
 - [ ] Execute entry Gate
+
+**upstream 런타임 관측 반영 (2026-08-08).** v0.50.8 도그푸딩 세션 전사를 대조해
+세 항목을 고쳤다 —
+[SEED_UPSTREAM_FINDINGS §12](../research/SEED_UPSTREAM_FINDINGS.md).
+
+| 항목 | 조치 |
+|---|---|
+| `QaDimension`에 `DOMAIN_SPECIFIC` 누락 (research §8은 다섯 축으로 기록) | 축 추가, 일치 테스트 고정 |
+| 동점 규칙이 관측과 반대 (`먼저 나온 것`) | 축별 평균으로 판정, ADR-0019 §5 개정 |
+| QA 결과를 담을 자리 없음 | `BlueprintApproval` 신설, ADR-0019 §8 추가 |
+
+관측이 확인해 준 것: 인터뷰에는 QA가 붙지 않고 Seed에만 붙는다(research §8 유지),
+`generate_seed`가 저장된 session을 요구한다(ADR-0016 방향 일치), skill 계층 QA의
+개정본이 store로 돌아가지 않는다(ADR-0019 §1 근거 강화).
 
 ### Phase 3 — Execute with deterministic Runtime
 

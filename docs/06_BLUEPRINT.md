@@ -350,6 +350,17 @@ QA 통과와 사용자 승인은 별도다.
 approval에는 actor/provenance, Seed revision, decision time을 연결한다. approval 뒤
 내용이 바뀌면 approval은 stale하다.
 
+**QA 결과는 approval이 들고 있다** (`upstream 관측`,
+[ADR-0019](./adr/0019-blueprint-qa-loop.md) §8). 정책 버전, 임계값, 최선 점수,
+반복 횟수, 그리고 **임계 미달 수락 여부**가 승인 기록에 남는다. Blueprint 본문에
+넣지 않는 이유는 그것이 방향이고 승인 후 불변이기 때문이다 — 채점 결과를 적는
+것만으로 revision이 올라가면 방향이 바뀌지 않았는데 재승인이 필요해진다.
+
+임계 미달 수락이 상태로 남지 않으면 나중에 "이 명세가 기준을 통과한 것인가,
+사용자가 미달을 수락한 것인가"를 물을 수 없다. 미달 명세에서 출발한 미션이
+`MISSION COMPLETE`에 도달했을 때 그 사실이 어디에도 없으면 완료 선언의 근거가
+비어 있다.
+
 ---
 
 ## 8. Normal sequence
@@ -563,6 +574,13 @@ Next action:
 
 ## 14. Test matrix
 
+> **upstream 근거 표시.** 이 표의 원본은 Blueprint upstream 조사
+> ([SEED_UPSTREAM_FINDINGS](./research/SEED_UPSTREAM_FINDINGS.md)) **이전에**
+> 작성됐다. 따라서 **표시가 없는 행은 upstream과 개별 대조되지 않았다.** 검증된
+> 계약으로 읽지 말 것. 새 행을 추가할 때는 근거를 시나리오 칸에 함께 적는다 —
+> 대응물이 없으면 `upstream 대응물 없음`과 등록 ADR을, 소스가 아니라 실행
+> 관측이면 `upstream 관측`을, 확인하지 못했으면 `upstream 미확인`을 남긴다.
+
 | 영역 | 시나리오 | 기대 결과 |
 |---|---|---|
 | Entry | Brief CLEAR 없음 | generation 없이 HOLD |
@@ -577,7 +595,11 @@ Next action:
 | AC quality | 구현 방법만 지정 | 결과 조건으로 refinement |
 | Refinement | issue 해결 | 새 draft attempt, 재검증 |
 | Refinement | 동일 issue 반복 | bounded loop 종료와 HOLD |
+| QA loop | 총점 동점, 축 점수 다름 (`upstream 관측`, [ADR-0019](./adr/0019-blueprint-qa-loop.md) §5) | 축별 평균이 높은 시도가 best. 총점만 보면 더 나은 명세를 버린다 |
+| QA loop | 상한 도달, 마지막 채점이 통과 (`upstream 미확인`) | `DONE`. 횟수를 다 썼다는 이유로 합격을 취소하지 않는다 |
 | Approval | QA 통과, 승인 없음 | Execute 금지 |
+| Approval | 임계 미달을 사용자가 수락 (`upstream 관측`, [ADR-0019](./adr/0019-blueprint-qa-loop.md) §8) | 승인 기록에 점수·임계값·정책 버전·수락 사실이 남는다. Blueprint 본문은 바뀌지 않는다 |
+| Approval | 점수가 임계 미만인데 수락 표시 없음 (`upstream 대응물 없음`, [ADR-0019](./adr/0019-blueprint-qa-loop.md) §8) | 승인 거부. 통과하지 못한 명세가 통과한 것으로 기록되면 이후 모든 Gate의 전제가 거짓이 된다 |
 | Approval | exact revision 승인 | immutable revision 생성 |
 | Mutation | 승인 뒤 content 변경 | approval stale, 새 revision |
 | Persistence | Seed 저장 실패 | CLEAR 금지 |

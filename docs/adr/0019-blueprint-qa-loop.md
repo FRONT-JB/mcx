@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-07
 - Constitutional basis: Principle 3 (Evidence over reasoning), Principle 5 (User authority), §6.5 (surface 간 동일 state)
-- Upstream evidence: [SEED_UPSTREAM_FINDINGS.md](../research/SEED_UPSTREAM_FINDINGS.md) §8, §9, §10
+- Upstream evidence: [SEED_UPSTREAM_FINDINGS.md](../research/SEED_UPSTREAM_FINDINGS.md) §8, §9, §10, §12
 
 ## Context
 
@@ -30,6 +30,11 @@ Python core(`ooo seed` CLI)에는 이 루프가 없다. 이는 Brief에서 확�
 CLI/MCP/skill 3층 구조가 Seed에서 반복되는 것이며, 사람이 쓰는 경로의 가장 강한
 관문은 항상 skill 계층에 있다.
 
+**채점자는 이미 core에 있다.** 런타임 관측(§12)에서 QA는 MCP 도구
+`ouroboros_qa` 호출로 수행됐다. 즉 skill이 갖는 것은 **루프 제어**이고 채점
+자체는 core 계층이다. 따라서 아래 Decision 1이 옮기는 것은 루프이지 채점자가
+아니다.
+
 ## Decision
 
 ### 1. QA 루프를 Core에 둔다
@@ -43,6 +48,10 @@ Constitution §6.5는 어느 창구로 들어오든 같은 canonical state를 �
 upstream의 비대칭을 따르면 `mcx blueprint`로 만든 명세와 MCP로 만든 명세의 품질
 기준이 달라진다. 이 비대칭은 Brief 종료 gate, Seed 진입 gate에 이어 **세 번째로**
 확인된 것이므로 개별 예외가 아니라 일관된 대응이 필요하다.
+
+이 근거는 원칙론이 아니다. 런타임 관측(§12)에서 skill이 QA로 고친 개정본이
+**store에 돌아가지 않았다** — MCP에는 생성 직후 초안이 남았고 실행 엔진은
+그것을 읽는다. 루프가 state를 소유하지 않는 계층에 있으면 실제로 이렇게 된다.
 
 ### 2. 정책 수치는 upstream 값을 그대로 쓴다
 
@@ -75,13 +84,28 @@ granularity를 결정적 코드로 판정하지 않는 이유는 판정 자체�
 
 ### 5. 최선의 시도를 따로 기억한다
 
-반복마다 점수가 오르내린다(upstream 실사용 기록: `0.81 → 0.87 → 0.88 → 0.87`).
-따라서 마지막 시도가 최선이 아닐 수 있다.
+반복마다 점수가 오르내린다(upstream 실사용 기록:
+`0.81 → 0.87 → 0.88 → 0.87 → 0.88`). 따라서 마지막 시도가 최선이 아닐 수 있다.
 
-- `best`는 최고 점수 시도이며 동점이면 **먼저 나온 것**을 유지한다. 같은 점수면
-  덜 고친 쪽이 낫다.
+- `best`는 최고 점수 시도다.
+- **동점이면 축별 평균이 높은 쪽**이다. 축 평균까지 같으면 먼저 나온 것을
+  유지한다.
 - 상한에 도달했을 때 사용자에게 제시하는 것은 마지막이 아니라 `best`다.
 - 점수 하락(`regressed`)을 상태로 노출한다. 사용자가 판단할 정보다.
+
+**동점 규칙을 2026-08-08에 바꿨다.** 처음에는 "동점이면 먼저 나온 것 — 같은
+점수면 덜 고친 쪽이 낫다"였다. 그 규칙은 upstream 근거 없이 우리가 만든 것이고,
+이후 확보한 유일한 관측이 반대였다 (§12). 관측된 실행은 3회차와 5회차가 모두
+0.88일 때 5회차를 채택하며 "차원별로는 이전 최고보다 낫다 — Correctness
+0.85 → 0.90"을 근거로 들었다.
+
+총점은 반올림 자리에서 같아지지만 축 점수는 다를 수 있고, 그때 총점만 보면
+**실제로 더 나은 명세를 버린다.** 근거 없는 우리 규칙을 유지하는 것보다 관측된
+동작을 따르는 편이 divergence를 줄인다.
+
+> ⚠️ `skills/seed/SKILL.md`가 동점을 규정하는지는 **미확인**이다. 관측은 1회
+> 실행의 판단일 수 있다. 확인 항목은
+> [SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md) §11에 있다.
 
 ### 6. 루프 종료 조건
 
@@ -106,6 +130,33 @@ upstream의 "No candidate is accepted by default"와 같다. 자동 적용하면
 
 이 ADR은 적용 절차의 **경계**만 정한다. 후보를 어떻게 제시하고 선택받을지는
 CLI/MCP surface(Phase 6·7)가 다룬다.
+
+### 8. QA 결과는 승인 기록이 들고 있다
+
+`BlueprintApproval`이 `qa_policy_version`, `qa_threshold`, `qa_best_score`,
+`qa_iterations`, `accepted_below_threshold`를 담는다. **Blueprint 자체는 QA
+결과를 담지 않는다.**
+
+Blueprint는 방향이고 승인 이후 불변이다
+([ADR-0002](./0002-approved-seed-is-immutable.md)). 점수를 Blueprint에 넣으면
+채점 결과를 적는 것만으로 revision이 올라가고 재승인이 필요해진다 — 방향은
+하나도 바뀌지 않았는데. 반면 승인 기록은 "누가 무엇을 보고 진행을 허락했는가"의
+자리이고, 그 판단의 근거인 QA 결과가 여기 있는 것이 맞다.
+
+`accepted_below_threshold`가 이 결정의 핵심이다. 임계 미달 수락(§6의
+`EXHAUSTED` 경로)이 상태로 남지 않으면, 나중에 **"이 명세가 기준을 통과한
+것인가, 사용자가 0.88에서 봐준 것인가"를 물을 방법이 없다.** 미달 명세에서
+출발한 미션이 `MISSION COMPLETE`에 도달했을 때 그 사실이 어디에도 없으면 완료
+선언의 근거가 비어 있다 ([ADR-0005](./0005-evidence-over-reasoning.md)).
+
+`qa_threshold`를 정책 버전과 **함께** 저장한다. 버전만 있으면 오래된 승인을
+읽을 때 정책 정의를 되짚어야 하고, 그 사이 정책 파일이 사라지면 기록이 해석
+불가능해진다. 임계값이 함께 있으면 `accepted_below_threshold`가 기록 자체로
+검증된다 — 실제로 model validator가 둘의 일관성을 강제한다.
+
+upstream이 seed metadata에 같은 성격의 값을 남기는 것을 관측했으나(§12), 그
+키들이 `SeedMetadata`에 선언된 것인지는 미확인이다. **산출물 형태가 아니라
+필요성**을 채택했고, 담는 위치는 우리 승인 모델을 따른다.
 
 ## Consequences
 
@@ -135,16 +186,25 @@ CLI/MCP surface(Phase 6·7)가 다룬다.
   granularity는 검사하지 않는다.
 - **마지막 시도를 결과로 사용**: upstream 실사용에서 점수 하락이 실제로
   발생한다.
+- **동점을 총점만으로 판정**: 축 점수가 더 나은 시도를 버린다 (§5).
 - **상한 도달 시 자동 수락**: 사용자가 기준 미달을 모르고 진행한다.
 - **상한 도달 시 자동 거부**: 0.89에서 멈춘 명세를 버리는 것은 사용자 권한을
   대신 행사하는 것이다.
+- **QA 결과를 Blueprint 필드로**: 채점 결과를 적는 것만으로 revision이 올라가고
+  방향이 바뀌지 않았는데 재승인이 필요해진다 (§8).
+- **`accepted_below_threshold`를 점수에서 매번 계산**: 정책 정의가 사라지면
+  기록을 해석할 수 없다. 승인 기록은 자기 자신만으로 읽혀야 한다.
 
 ## Verification
 
 - 통과·실패 경계값이 정확히 판정된다.
 - 최선의 시도가 마지막 시도와 다를 때 최선이 보고된다.
-- 동점이면 먼저 나온 시도가 유지된다.
+- 총점이 같으면 축별 평균이 높은 시도가 최선이다.
+- 축 평균까지 같으면 먼저 나온 시도가 유지된다.
 - 상한 도달 시 `EXHAUSTED`이며 최선의 시도를 함께 제공한다.
 - 상한의 마지막 채점이 통과면 `DONE`이다.
 - `QaAssessment`가 verdict를 담지 않는다.
+- 채점 축이 upstream의 다섯 개와 일치한다.
 - 품질 기준이 granularity 규칙을 포함한다.
+- `Blueprint`는 QA 결과 필드를 거부하고, `BlueprintApproval`이 그것을 담는다.
+- 점수가 임계 미만인데 `accepted_below_threshold`가 없는 승인은 거부된다.

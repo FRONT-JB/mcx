@@ -343,11 +343,90 @@ goal/criteria가 참조하는 모든 엔티티를 덮는 ontology_schema, 필드
 - Seed revision lineage와 `parent_seed`의 의미
 - `GradeGate`가 등급을 실제로 어떻게 소비하는지 (A만 통과인지, B도 조건부인지)
 - `SeedRepairer.converge`의 bounded stop 조건 (횟수인지 등급 정체인지)
-- `SeedMetadata`가 보존하는 항목 전체
+- `SeedMetadata`가 보존하는 항목 전체 — 특히 §12가 관측한 `qa_best_score`,
+  `qa_threshold`, `qa_iterations`, `qa_accepted_below_threshold`가 선언된
+  필드인지 `extra="allow"`로 붙은 것인지
 - `InvestmentSpec`의 용도
+- `agents/seed-closer.md` — §12가 관측한 Seed 직전 closure 감사의 여섯 축이
+  규정된 것인지, 그 blocking 판정이 무엇을 근거로 나오는지. Mission Control에
+  대응물이 없다
+- `skills/seed/SKILL.md`의 best attempt 추적 문구 전문 — 동점 규칙이 실제로
+  없는지 (§12가 관측한 동점 처리의 근거 확인)
 - 2,637줄 파싱 계층이 방어하는 실패 목록 (구조화 출력을 쓰는 우리에게 어디까지
   해당하는지)
 - `ooo seed` 진입이 interview score를 다시 강제하는지
   ([Brief Guide](../05_BRIEF.md) §3의 미조사 항목)
 
 위 항목은 Blueprint use case와 QA 루프를 설계하기 직전에 조사한다.
+
+## 12. 런타임 관측 — v0.50.8 도그푸딩 세션 1회
+
+> **Evidence level: Observed.** 소스가 아니라 실행 전사에서 읽은 것이다. 같은
+> baseline 버전(0.50.8)이지만 **skill이 LLM으로 구동되므로 관측된 동작이 곧
+> 규정은 아니다.** 규정 여부를 확인한 항목만 그렇게 표시한다.
+>
+> 출처: 사용자가 제공한 `ooo interview` → `ooo seed` 전체 세션 전사
+> (2026-08-07, 대상 프로젝트 `ratatouille`).
+
+### 12.1 기존 기록을 확인해 준 것
+
+| 관측 | 확인된 기록 |
+|---|---|
+| `ooo interview` 종료값은 `ambiguity 0.12`, QA 점수 없음. QA는 `generate_seed` **이후**에 시작 | §8 — QA는 Seed에 붙고 Brief에는 붙지 않는다 |
+| 생성된 seed YAML에 최상위 `non_goals` 키가 없고 "비목표: …"가 `constraints` 항목으로 들어감 | §2 — 방향으로 취급되나 스키마에 선언되지 않음 |
+| QA REVISE 뒤 `generate_seed`를 재호출하지 않고 YAML을 직접 편집 | §8 — "첫 생성은 정확히 한 번" |
+| 수정 후보를 사용자가 선택. `Balance: 4 expand / 2 sharpen / 1 remove / 1 correct` 형식으로 제시 | §9 — User Adoption Gate |
+| 채점 축 5개, `Domain Specific 0.74 → 0.90` | §8 — 다섯 축 |
+
+### 12.2 새로 확인한 것
+
+**`ouroboros_generate_seed`는 완결된 MCP interview session을 요구한다.** 파일
+경로로 부를 수 없다. 폴백 모드로 진행한 인터뷰는 DB에 남지 않아(`events = 0`)
+seed를 만들 수 없었고, 인터뷰를 MCP 모드로 다시 돌려야 했다. 즉 Seed 생성의
+입력은 **저장된 Brief 상태**이며 자유 입력이 아니다 —
+[ADR-0016](../adr/0016-brief-handoff-projection.md)의 handoff 강제와 같은 방향이다.
+
+**QA judge는 이미 core 계층(MCP 도구 `ouroboros_qa`)에 있고, skill이 갖는 것은
+루프 제어뿐이다.** §8이 "QA 루프가 skill 계층에 있다"고 한 것은 정확하지만,
+채점 자체는 core에 있다. 즉 Mission Control의
+`BlueprintQaJudge` port + `QaLoopState` 분리는 upstream의 분해선과 같고,
+[ADR-0019](../adr/0019-blueprint-qa-loop.md)의 divergence는 **루프만 옮기는
+것**이지 채점자를 옮기는 것이 아니다.
+
+**skill 계층 QA의 결과가 store로 돌아가지 않는다.** 관측된 세션은 QA를 5회 돌려
+seed를 v1.0.0 → v1.5.0으로 고쳤는데, MCP store에는 **v1.0.0(생성 직후 초안)이
+남았고** 개정본은 파일에만 존재했다. `ooo run`은 store를 읽으므로 실행하려면
+`seed_path`로 파일을 따로 지정해야 한다. 이것은 ADR-0019 §1이 QA를 Core에 두기로
+한 근거(Constitution §6.5)를 원칙이 아니라 **실측으로** 뒷받침한다 — surface마다
+state가 갈라지면 실행 엔진이 승인되지 않은 초안을 읽는다.
+
+**총점 동점은 축 점수로 갈렸다.** 궤적은 `0.81 → 0.87 → 0.88 → 0.87 → 0.88`이고
+3회차와 5회차가 동점이었다. 세션은 5회차를 채택하며 근거를 "차원별로는 이전
+최고보다 낫다 — Correctness 0.85 → 0.90"이라고 밝혔다.
+
+> ⚠️ `skills/seed/SKILL.md`는 "최고 점수를 best attempt로 추적한다"까지만 말하고
+> **동점 규칙을 규정하지 않는다** (§8 조사 범위에서 확인). 따라서 이 관측은
+> 규정이 아니라 1회 실행의 판단이다. Mission Control은 이 관측을 채택했다
+> ([ADR-0019](../adr/0019-blueprint-qa-loop.md) §5) — 반대 방향의 규칙을 근거
+> 없이 유지하는 것보다 관측된 동작을 따르는 편이 divergence를 줄이기 때문이다.
+
+**임계 미달 수락이 산출물에 기록된다.** 관측된 seed metadata:
+
+```yaml
+qa_best_score: 0.88
+qa_threshold: 0.9
+qa_iterations: 5
+qa_accepted_below_threshold: true
+```
+
+> ⚠️ **미확인.** `Seed.model_config`가 `extra="allow"`이므로(§2) 이 키들이
+> `SeedMetadata`에 선언된 것인지, 세션이 임의로 붙인 것인지 확인하지 못했다.
+> §11의 "`SeedMetadata`가 보존하는 항목 전체"가 이 항목이다. Mission Control은
+> **이 산출물 형태가 아니라 필요성**을 채택했다 — 어디에 담을지는
+> [ADR-0019](../adr/0019-blueprint-qa-loop.md) §8이 별도로 정한다.
+
+**Seed 생성 직전에 closure 감사가 있다.** 여섯 축(소유권/SSoT, lifecycle·복구,
+마이그레이션, cross-client, API 계약, 검증)을 점검하고 1건이 blocking으로 걸려
+질문이 한 번 더 나갔다. `agents/seed-closer.md`가 대응 위치로 보이나 소스를
+확인하지 않았다. §11에 조사 항목으로 추가한다.
+

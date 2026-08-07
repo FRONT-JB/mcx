@@ -133,3 +133,50 @@ class Blueprint(BaseModel):
         return tuple(
             item for item in self.acceptance_criteria if not item.is_mechanically_verifiable
         )
+
+
+class BlueprintApproval(BaseModel):
+    """사용자가 특정 Blueprint revision으로 Execute 진행을 승인한 기록.
+
+    **QA 결과를 Blueprint가 아니라 여기에 담는다.** Blueprint는 방향이고 승인
+    이후 불변이다 (``docs/adr/0002-approved-seed-is-immutable.md``). 점수를
+    Blueprint에 넣으면 채점 결과를 적는 것만으로 revision이 올라가고 재승인이
+    필요해진다 — 방향은 하나도 바뀌지 않았는데.
+
+    ``accepted_below_threshold``가 이 기록의 핵심이다. 이것이 남지 않으면
+    나중에 "이 명세가 기준을 통과한 것인가, 사용자가 미달을 수락한 것인가"를
+    물을 방법이 없다. 미달 명세에서 출발한 미션이 ``MISSION COMPLETE``에
+    도달했을 때 그 사실이 어디에도 없으면 완료 선언의 근거가 비어 있다
+    (``docs/adr/0005-evidence-over-reasoning.md``).
+
+    결정: ``docs/adr/0019-blueprint-qa-loop.md`` §8
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    #: 승인 대상 Blueprint revision. 오래된 revision에 대한 승인을 최신
+    #: revision에 재사용하지 않는다.
+    revision: int
+    statement: str
+
+    #: 채점에 쓰인 정책. 점수의 절대값은 정책과 채점자 구현에 의존하므로,
+    #: 버전 없이 남은 점수는 나중에 해석할 수 없다.
+    qa_policy_version: str
+    qa_threshold: float = Field(ge=0.0, le=1.0)
+    qa_best_score: float = Field(ge=0.0, le=1.0)
+    qa_iterations: int = Field(ge=1)
+    accepted_below_threshold: bool = False
+
+    @model_validator(mode="after")
+    def _acceptance_matches_the_score(self) -> BlueprintApproval:
+        """미달 수락 표시가 실제 점수와 어긋나지 않는지 확인한다.
+
+        이 검사가 없으면 통과하지 못한 명세가 통과한 것으로 기록될 수 있고,
+        그 기록이 이후 모든 Gate 판단의 전제가 된다.
+        """
+        below = self.qa_best_score < self.qa_threshold
+        if below and not self.accepted_below_threshold:
+            raise ValueError("qa_best_score below threshold requires accepted_below_threshold")
+        if not below and self.accepted_below_threshold:
+            raise ValueError("accepted_below_threshold set while qa_best_score passed")
+        return self

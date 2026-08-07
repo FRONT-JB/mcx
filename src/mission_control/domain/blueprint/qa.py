@@ -57,12 +57,19 @@ class QaVerdict(StrEnum):
 
 
 class QaDimension(StrEnum):
-    """채점 축."""
+    """채점 축.
+
+    다섯 축 모두 upstream ``skills/qa/SKILL.md:25``의 것이다. 축을 임의로 줄이면
+    채점자가 무엇을 보고 있는지가 우리 쪽에서 달라진다.
+    """
 
     CORRECTNESS = "correctness"
     COMPLETENESS = "completeness"
     QUALITY = "quality"
     INTENT_ALIGNMENT = "intent_alignment"
+    #: 대상 도메인에 특수한 판단. 총점이 같은 두 시도를 가르는 데 실제로
+    #: 기여한다 (`SEED_UPSTREAM_FINDINGS` §12의 관측: 0.74 → 0.90).
+    DOMAIN_SPECIFIC = "domain_specific"
 
 
 class QaFinding(BaseModel):
@@ -87,6 +94,18 @@ class QaAssessment(BaseModel):
     score: float = Field(ge=0.0, le=1.0)
     dimension_scores: tuple[tuple[QaDimension, float], ...] = ()
     findings: tuple[QaFinding, ...] = ()
+
+    @property
+    def dimension_average(self) -> float:
+        """축별 점수의 평균. 총점이 같은 두 시도를 가르는 데 쓴다.
+
+        축 점수가 없으면 ``0.0``이다. 한 루프의 채점은 같은 judge가 같은 요청
+        형식으로 만들므로 한쪽만 비어 있는 경우를 따로 다루지 않는다 — 둘 다
+        비면 값이 같아지고 판정은 다음 기준으로 넘어간다.
+        """
+        if not self.dimension_scores:
+            return 0.0
+        return sum(score for _, score in self.dimension_scores) / len(self.dimension_scores)
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,11 +189,22 @@ class QaLoopState:
 
         마지막 시도가 아니다. 고치다가 점수가 내려가는 일이 실제로 일어나므로,
         상한에 도달했을 때 사용자에게 보여 줄 것은 마지막이 아니라 최선이다.
-        동점이면 먼저 나온 것을 유지한다 — 같은 점수라면 덜 고친 쪽이 낫다.
+
+        총점이 같으면 **축별 평균이 높은 쪽**이다. 총점은 반올림 한 자리에서
+        같아지지만 축 점수는 다를 수 있고, 그때 총점만 보면 실제로 더 나은
+        명세를 버린다. 축 평균까지 같으면 먼저 나온 것을 유지한다 — 구별할
+        정보가 없을 때는 덜 고친 쪽이 낫다.
         """
         if not self.attempts:
             return None
-        return max(self.attempts, key=lambda item: (item.assessment.score, -item.iteration))
+        return max(
+            self.attempts,
+            key=lambda item: (
+                item.assessment.score,
+                item.assessment.dimension_average,
+                -item.iteration,
+            ),
+        )
 
     @property
     def score_history(self) -> tuple[float, ...]:
