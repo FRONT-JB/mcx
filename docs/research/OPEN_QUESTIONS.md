@@ -24,15 +24,20 @@
    - LICENSE와 copied code notice 재확인 (구현 직전)
 2. §2 Brief decisions 전체
 
+2026-08-07: 1번 항목의 근거 수집이 완료되어
+[INTERVIEW_UPSTREAM_FINDINGS.md](./INTERVIEW_UPSTREAM_FINDINGS.md)에
+기록했다 (LICENSE 재확인은 구현 직전 반복). 해당 §1 항목은 `[-]`로
+표시하며, §2 결정이 `05_BRIEF.md`/ADR에 반영되면 `[x]`로 닫는다.
+
 ---
 
 ## 1. Upstream baseline
 
-- [ ] baseline commit의 `pyproject.toml`과 package 경계를 기록한다.
-- [ ] `ooo interview` skill, MCP handler, CLI path의 실제 종료 Gate를 end-to-end로 추적한다.
-- [ ] architecture의 `ambiguity <= 0.2`와 current source의 user-controlled completion을 reconciliate한다.
-- [ ] completion candidate streak와 user approval의 실제 호출 경로를 확인한다.
-- [ ] answer provenance enum과 requirement authority 규칙을 확인한다.
+- [-] baseline commit의 `pyproject.toml`과 package 경계를 기록한다.
+- [-] `ooo interview` skill, MCP handler, CLI path의 실제 종료 Gate를 end-to-end로 추적한다.
+- [-] architecture의 `ambiguity <= 0.2`와 current source의 user-controlled completion을 reconciliate한다.
+- [-] completion candidate streak와 user approval의 실제 호출 경로를 확인한다.
+- [-] answer provenance enum과 requirement authority 규칙을 확인한다.
 - [ ] Seed 생성 → QA → repair → approval path를 실제 handler/test로 추적한다.
 - [ ] Seed field와 immutability/revision behavior를 source/test에서 확인한다.
 - [ ] Run이 AC를 atomic-first로 시도하고 분해하는 정확한 조건을 확인한다.

@@ -36,7 +36,7 @@
 | `02_MISSION_LIFECYCLE.md` | Draft | exact state/Recover open decisions 검토 |
 | `03_RUNTIME.md` | Draft | protocol examples로 contract tests 정의 |
 | `04_MCP.md` | Draft | tool schema와 transport 결정 전 Core boundary 유지 |
-| `05_BRIEF.md` | Draft | upstream Gate 조사와 첫 test cases 확정 |
+| `05_BRIEF.md` | Draft | upstream findings 반영과 첫 test cases 확정 |
 | `06_BLUEPRINT.md` | Draft | schema/QA/revision policy 확정 |
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
@@ -153,10 +153,14 @@
   ([Open Questions §0](../research/OPEN_QUESTIONS.md) 참조)
 - [x] 첫 test-first vertical slice가 `05_BRIEF.md`에 고정되었다.
 
-다음 검증 가능한 목표 한 개: **Brief 우선 조사 항목(Open Questions §0)을
-upstream 기준 commit에서 file:line evidence로 해소하고, 그 결과로 Phase 1의
-첫 test cases를 확정한다.** 조사 완료 전에는 threshold 같은 미확정 값을
-구현에서 고정하지 않는다.
+Brief 우선 조사(Open Questions §0)는 2026-08-07 완료되어
+[INTERVIEW_UPSTREAM_FINDINGS.md](../research/INTERVIEW_UPSTREAM_FINDINGS.md)에
+기록되었다 (LICENSE 재확인만 구현 직전 반복).
+
+다음 검증 가능한 목표 한 개: **findings §8의 Proposed 항목을 결정으로
+바꿔 `05_BRIEF.md`와 필요한 ADR에 반영하고, Phase 1의 첫 test cases를
+확정한다.** 결정 반영 전에는 threshold 같은 미확정 값을 구현에서 고정하지
+않는다.
 
 ## Update protocol
 

@@ -74,6 +74,13 @@ commit의 실제 handler/skill/test까지 추적해 다음을 분리해야 한�
 - 사용자가 Seed-ready를 승인하는 조건
 - low ambiguity가 여러 round 유지되어야 하는지
 
+**2026-08-07 해소됨** — 위 네 질문은 baseline source 추적으로 분리 확인했다.
+`0.2`는 machine gate(overall threshold + per-dimension floor + streak 2)의
+입력이고, 완료는 surface별로 CLI 사용자 Confirm / MCP qualify+streak /
+skill Acceptance Guard + Restate 사용자 확인이 겹겹이 결정한다. file:line
+근거는 [INTERVIEW_UPSTREAM_FINDINGS.md](./INTERVIEW_UPSTREAM_FINDINGS.md)
+§2–§4에 있다.
+
 ### Mission Control target
 
 > Evidence: Session-confirmed. Decision: Accepted baseline. Exact score, threshold,
