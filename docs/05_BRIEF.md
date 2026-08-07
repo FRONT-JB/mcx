@@ -91,25 +91,32 @@ Blueprint 후보 context로 기록하되 승인된 범위로 간주하지 않는
 | Brief handoff | Seed generation context | 대화를 실행 명세 생성에 사용할 구조화된 입력으로 바꾼다. |
 | Brief Gate | Interview-to-Seed gate | 충분히 명확하고 승인된 경우에만 다음 단계로 진행한다. |
 
-이 대응표는 **개념적 mapping**이다. 현재 upstream의 정확한 클래스명, 파일 경로,
-계산식, 완료 threshold, 안정성 streak, brownfield/greenfield 차이는 아직 이
-저장소에서 고정된 사실이 아니다.
+이 대응표는 **개념적 mapping**이다.
 
-구현 전 research는 다음을 MUST 확인해야 한다.
+2026-08-07에 pinned baseline
+(`Q00/ouroboros@9486c78575a0332e9b84d93ef5832985291d7943`)에서 종료 Gate,
+provenance, clarity 계산을 file:line 근거로 조사했다. 결과는
+[INTERVIEW_UPSTREAM_FINDINGS.md](./research/INTERVIEW_UPSTREAM_FINDINGS.md)에
+있고, 그로부터 확정한 결정은
+[ADR-0009](./adr/0009-brief-completion-gate-policy.md),
+[ADR-0010](./adr/0010-answer-provenance-and-requirement-authority.md),
+[ADR-0011](./adr/0011-brief-deliberate-divergences.md)에 있다.
 
-- 조사한 Ouroboros repository URL, commit 또는 release
-- Interview state와 round의 실제 schema
-- 답변 source/provenance 구분 방식
-- ambiguity/clarity의 차원, 방향, 범위, 계산식
-- 종료 threshold와 별도 hard floor의 존재 여부
-- 여러 번 안정적으로 조건을 만족해야 하는지 여부
-- 사용자 done/approval 신호의 실제 의미
-- 질문 생성과 코드 조사 역할이 어떻게 분리되는지
-- 관련 upstream test가 보호하는 실패 상황
+조사로 확인한 사실:
 
-이전 조사에서 `bigbang/interview`, `bigbang/ambiguity`, Seed generator,
-MCP authoring handler 계열이 연구 후보로 언급되었지만, **pinned upstream에서
-경로를 다시 확인하기 전에는 구현 근거로 인용하지 않는다.**
+- Interview state와 round의 schema, answer provenance 필드
+- clarity 차원·방향·범위·집계식과 dimension별 hard floor
+- 종료 threshold, 안정성 streak, 최소 round의 조합
+- 사용자 done/approval 신호가 surface마다 다른 의미를 가진다는 점
+- 질문 생성이 tool-less one-turn 역할로 분리되어 있다는 점
+
+아직 조사하지 않은 항목:
+
+- 관련 upstream test가 보호하는 실패 상황 (Phase 1 test case 설계 직전)
+- `ooo seed` 진입이 interview score를 다시 강제하는지 (Phase 2)
+
+**pinned upstream에서 경로를 확인하지 않은 내용은 여전히 구현 근거로 인용하지
+않는다.**
 
 ### 3.1 Reconstruction 원칙
 
@@ -227,7 +234,36 @@ Brief의 모든 중요한 진술은 내용뿐 아니라 **무슨 종류의 지�
 - 사실과 결정이 충돌하면 하나를 조용히 덮어쓰지 않고 conflict로 기록한다.
 - 출처가 없는 모델 요약은 codebase fact로 승격하지 않는다.
 
-### 5.2 질문 라우팅 규칙
+### 5.2 Requirement authority
+
+위 세 종류는 **지식의 성격**을 나눈다. 이와 직교하는 두 번째 축이 필요하다.
+어떤 답변이 요구사항을 만들 권한을 갖는가?
+
+| authority | 의미 | 예 |
+|---|---|---|
+| `decision` | 사용자가 내렸거나 사용자를 대신해 확정된 규범적 선택 | 사용자 답변, 사용자가 승인한 기본값 |
+| `observation` | 다른 곳에서 채택한 사실 | 코드·설정에서 읽은 값, 문서·리서치 인용 |
+
+이 축의 기준은 **인간이 입력했는지가 아니라 결정인지 채택된 사실인지**다.
+시스템이 사용자를 대신해 확정한 기본값은 사람이 타이핑하지 않았어도
+`decision`이다. 반대로 사용자가 직접 붙여 넣은 코드 스니펫은 사람이
+입력했어도 `observation`이다.
+
+`observation`은 **요구사항을 만들 권한이 없다.** 이것은 권고가 아니라 §9의
+handoff 투영으로 강제한다. 강제하지 않으면 “현재 코드는 3회 재시도한다”는
+관찰이 요구사항 추출 과정에서 “3회 재시도해야 한다”로 바뀌고, 아무도 결정한
+적 없는 조건이 명세가 된다.
+
+authority는 답변이 상태에 들어오는 **단일 지점에서 한 번** 결정하고 이후에는
+저장된 값을 읽기만 한다 (§8.1 규칙 9). surface마다 출처 표기를 다시 해석하면
+같은 표기가 화면에 따라 다르게 분류되는 drift가 생긴다. 이는
+[upstream이 실제로 겪은 결함](./research/INTERVIEW_UPSTREAM_FINDINGS.md#5-answer-provenance와-requirement-authority)이며,
+단일 분류 지점은 그 대응책이다.
+
+Assumption은 두 축 어디에도 자동으로 속하지 않는다. 명시적으로 표시하고
+material하면 `CLEAR`를 막는다.
+
+### 5.3 질문 라우팅 규칙
 
 1. 질문이 허용된 범위에서 관찰 가능한 현재 사실인가?
    - 그렇다면 Fact Resolver에 보낸다.
@@ -278,7 +314,7 @@ Python class나 저장 schema가 아니다.
 | Authorized context scope | 예 | 읽을 수 있는 repository/document 범위다. |
 | Current Brief revision | 재개 시 | stale update를 막기 위한 기준 revision이다. |
 | User answer | 답변 시 | 어떤 질문에 대한 답인지 연결한다. |
-| Provenance | 예 | user, code, document, research, assumption 등을 구분한다. |
+| Provenance | 예 | 두 축을 함께 기록한다. authority는 `decision` 또는 `observation` (§5.2), source는 관찰 위치나 응답 주체다. |
 | Re-entry evidence | 재진입 시 | 이전 Stage의 gap과 관련 Telemetry다. |
 
 입력 원문과 정규화된 요약을 분리한다. 모델이 만든 요약만 남기고 사용자의 원문을
@@ -298,7 +334,8 @@ Python class나 저장 schema가 아니다.
     │   ├─ question identity and text
     │   ├─ targeted knowledge gap
     │   ├─ answer
-    │   └─ provenance
+    │   └─ provenance: authority + source
+    ├─ clarity stability signal (연속 통과 횟수)
     ├─ observed facts with source locators
     ├─ user/product decisions
     ├─ assumptions
@@ -318,6 +355,11 @@ Python class나 저장 schema가 아니다.
 6. score와 함께 사용한 policy version을 남긴다.
 7. Gate decision은 평가한 정확한 Brief revision을 참조한다.
 8. persistence 실패 시 메모리 상태만 전이된 것처럼 응답하지 않는다.
+9. answer authority는 답변이 상태에 들어오는 단일 지점에서 한 번 결정하고,
+   이후 모든 소비자는 저장된 값을 읽는다. 소비자가 원문 표기를 다시 해석하지
+   않는다.
+10. Brief가 material하게 변경되면 저장된 clarity 평가와 stability signal이
+    함께 무효화된다. 둘 중 하나만 남기지 않는다.
 
 ### 8.2 논리적 진행 상태
 
@@ -360,7 +402,30 @@ handoff는 최소한 다음 의미를 포함해야 한다.
 Brief handoff는 승인된 Blueprint가 아니다. Blueprint Stage가 이를 바탕으로
 Seed를 생성하고 QA·refinement·승인을 별도로 수행한다.
 
-### 9.1 Exit Contract
+### 9.1 Requirement projection — observation withholding
+
+handoff는 하나의 평면적 대화 기록이 아니라 **두 개의 구분된 채널**을 제공한다.
+
+| 채널 | 내용 | 소비 방식 |
+|---|---|---|
+| Requirement input | Goal, Constraints, Non-goals, 성공 조건을 도출하는 입력 | Blueprint의 요구사항·AC 생성이 읽는다. |
+| Observed facts | 관찰된 코드·문서 사실과 source locator | Blueprint가 제약과 현재 상태를 이해하는 데 읽는다. |
+
+Requirement input 채널에서는 `observation` authority를 가진 답변의 **본문이
+제외되고**, 관찰이 존재했다는 사실과 그것이 어떤 질문을 낳았는지만 남는다.
+질문 텍스트는 그대로 투영한다. 관찰을 수집한 목적이 다음 질문을 날카롭게 하는
+것이었으므로 그 맥락까지 지우면 안 된다.
+
+Observed facts 채널은 온전히 유지된다. **withholding은 사실을 숨기는 장치가
+아니라 사실이 요구사항으로 승격되는 경로를 끊는 장치다.** 이 구분이 무너지면
+Blueprint가 제약을 모른 채 명세를 만들거나, 반대로 관찰이 요구사항으로
+둔갑한다.
+
+이 투영은 요약이나 검토 단계가 아니라 **입력 지점에서** 적용해야 한다. 요구사항
+추출기가 관찰 문장을 한 번 재작성하고 나면 표기가 사라져서 결정과 구분할 수
+없게 된다.
+
+### 9.2 Exit Contract
 
 Brief에서의 정상 exit는 저장된 `CLEAR — Clear for Blueprint` 하나뿐이다.
 `HOLD`는 Stage exit가 아니라 현재 Brief를 유지하는 Gate decision이다.
@@ -383,6 +448,11 @@ Brief에서의 정상 exit는 저장된 `CLEAR — Clear for Blueprint` 하나�
 
 Mission Control은 사용자의 원문 요청을 그대로 보존하고 별도의 normalized view를
 만든다. normalization이 요구사항을 추가하거나 삭제해서는 안 된다.
+
+초기 context가 prompt-safe 한도를 넘으면 일반 질문보다 먼저 **요약 round**를
+수행한다. 원문은 그대로 보존하고, 이후 prompt에는 사용자가 확인한 요약을
+사용한다. 한도 값은 policy로 주입하며 초기 기본값은 `3500`자다. 모델이 임의로
+잘라낸 context로 질문을 생성하지 않는다.
 
 ### Step 2 — 최초 knowledge map 생성
 
@@ -431,10 +501,18 @@ Mission Control은 필요한 최소 context만 Question Generator에 전달한�
 현재 snapshot을 versioned policy로 평가한다. score만 저장하지 않고 어떤
 dimension이 왜 부족한지 남긴다.
 
+최소 round 수에 도달하기 전에는 평가를 **수행하지 않는다**. 그 구간에서는
+어떤 결과가 나와도 종료 후보가 될 수 없으므로 평가 비용이 순수 낭비다.
+평가를 생략한 구간과 평가했으나 통과하지 못한 구간을 상태에서 구분한다.
+
+평가 결과는 stability signal을 갱신한다 (§11.1).
+
 ### Step 9 — 반복 또는 승인 요청
 
-material gap이 남으면 Step 3으로 돌아간다. Gate 후보 조건을 만족하면 정확한
-Brief revision의 요약을 사용자에게 보여 주고 Blueprint 진행 승인을 요청한다.
+material gap이 남으면 Step 3으로 돌아간다. 종료 후보 조건을 모두 만족하면
+질문 루프를 멈추고 **승인 요청 단계로 넘어간다** (§12). 이 전이는 Gate
+`CLEAR`가 아니다. 조건 충족은 “사용자에게 승인을 물을 수 있는 상태”를 뜻하며,
+승인 없이 다음 Stage로 진행하지 않는다.
 
 ### Step 10 — Gate decision
 
@@ -447,35 +525,64 @@ Mission Control은 승인, assessment, unresolved item, provenance, persistence
 
 점수는 질문 루프를 통제하는 수단이지 진실 그 자체가 아니다.
 
-### 11.1 필수 계약
+정책의 근거와 대안 검토는
+[ADR-0009](./adr/0009-brief-completion-gate-policy.md)에 있다. 아래 값은
+policy의 **초기 기본값**이며 versioned policy로 주입한다.
 
-scoring 구현은 다음을 MUST 명시한다.
+### 11.1 종료 후보 조건 — 네 가지가 모두 필요하다
 
-- 무엇을 평가하는지
-- 높은 값과 낮은 값 중 어느 쪽이 더 명확한지
-- 값의 허용 범위
-- overall 값의 계산 또는 집계 방식
-- dimension별 hard condition 존재 여부
-- threshold를 어디서 읽는지
-- policy version
-- 평가 실패와 confidence를 어떻게 표현하는지
+질문 루프를 멈출 수 있는 상태(“종료 후보”)는 다음을 **모두** 만족해야 한다.
+하나라도 미달이면 루프를 계속한다.
 
-### 11.2 이 문서가 고정하지 않는 것
+| 조건 | 초기 기본값 | 이 조건이 막는 실패 |
+|---|---|---|
+| 전체 ambiguity threshold | `overall <= 0.20` | 전반적으로 모호한 상태의 조기 종료 |
+| dimension별 minimum floor | goal `0.75`, constraint `0.65`, success criteria `0.70`, context `0.60`(brownfield) | 한 축이 무너졌는데 다른 축의 높은 점수가 가중 평균으로 가리는 상황 |
+| stability signal | 연속 `2`회 통과 | 단발성으로 낮게 나온 평가에 의한 종료 |
+| minimum rounds | `3` | 근거가 쌓이기 전의 종료 |
 
-다음은 upstream 확인과 ADR 전까지 숫자로 고정하지 않는다.
+`floor`가 별도로 필요한 이유는 집계 방식 때문이다. 가중 평균만 사용하면 성공
+조건이 전혀 검증 불가능해도 goal과 constraint 점수가 높아 전체 threshold를
+통과할 수 있다. floor는 그 상쇄를 막는다.
 
-- 정확한 dimension과 weight
-- ambiguity 또는 clarity 중 canonical metric
-- 통과 threshold
-- 특정 dimension의 minimum floor
-- 연속 몇 번 조건을 만족해야 하는지
-- 최대 질문 수
-- greenfield와 brownfield의 서로 다른 정책
+### 11.2 Metric 정의
 
-구현은 threshold를 prompt 안의 magic number로 숨겨서는 안 된다. versioned
-policy로 주입하고 domain test에서 경계값을 검증할 수 있어야 한다.
+- canonical metric은 **ambiguity**이며 **낮을수록 명확**하다. 범위는
+  `0.0`~`1.0`이다.
+- dimension은 **clarity**로 평가하며 **높을수록 명확**하다. 범위는 동일하다.
+- 집계: `ambiguity = 1 − Σ(dimension clarity × weight)`.
+- 초기 weight — greenfield 3차원: goal `0.40`, constraint `0.30`,
+  success criteria `0.30`. brownfield 4차원: goal `0.35`, constraint `0.25`,
+  success criteria `0.25`, context `0.15`.
+- 두 metric의 방향이 반대이므로 저장·로그·CLI 출력에서 어느 쪽인지 항상
+  명시한다.
 
-### 11.3 Score 단독 종료 금지
+brownfield 정책은 차원과 weight의 **자리를 예약**한다. v1 첫 구현은 greenfield
+경로를 대상으로 하며, brownfield 전용 탐색 단계는 범위에 포함하지 않는다
+([ADR-0011](./adr/0011-brief-deliberate-divergences.md)).
+
+### 11.3 정책 주입과 실패 표현
+
+- threshold, floor, weight, streak, minimum round는 prompt 안의 magic number가
+  아니라 versioned policy 객체로 주입한다.
+- 저장된 평가 결과는 사용한 policy version을 함께 남긴다.
+- 평가 실패(파싱 불가, runtime 오류)는 낮은 점수나 높은 점수 어느 쪽으로도
+  해석하지 않는다. 결과 없음으로 기록하고 stability signal을 초기화한다.
+- domain test가 각 조건의 경계값을 독립적으로 검증할 수 있어야 한다.
+
+### 11.4 Stability signal의 수명
+
+- 평가가 종료 후보 조건을 만족하면 signal을 1 증가시키고, 만족하지 못하면
+  `0`으로 초기화한다.
+- Brief가 material하게 변경되면 저장된 평가와 signal을 함께 무효화한다
+  (§8.1 규칙 10).
+- `CLEAR` 이후 사용자가 Brief를 다시 열면 signal은 `0`에서 시작한다. 재개는
+  이전 종료 판단에 대한 도전이므로 이전 안정성을 승계하지 않는다.
+- signal 갱신은 durable하게 저장한 뒤에만 사용자에게 보고한다. 저장에
+  실패했는데 “한 번 더 확인하면 됩니다”라고 응답하면 사용자는 진행되지 않는
+  루프에 갇힌다.
+
+### 11.5 Score 단독 종료 금지
 
 score가 통과 범위여도 다음 중 하나가 있으면 `HOLD`다.
 
@@ -494,17 +601,38 @@ score가 통과 범위여도 다음 중 하나가 있으면 `HOLD`다.
 
 ## 12. User Approval
 
-사용자 승인은 질문 루프의 종료 신호인 동시에 Blueprint로 진행할 권한이다.
+“질문을 그만하자”와 “이 내용으로 Blueprint에 진행한다”는 **서로 다른 두
+신호**다. 구현에서 하나로 합치지 않는다.
 
-### 승인 계약
+| 신호 | 의미 | 효과 |
+|---|---|---|
+| 종료 후보 도달 | §11.1의 네 조건 충족 또는 사용자의 중단 요청 | 질문 루프를 멈추고 승인 요청 단계로 넘어간다. |
+| 진행 승인 | 사용자가 특정 revision으로 Blueprint 진행을 승인 | Gate가 `CLEAR`를 판정할 수 있는 조건 하나가 충족된다. |
+
+질문을 그만두는 것만으로는 다음 Stage로 가지 않는다. 반대로 사용자가 언제든
+중단을 요청할 수 있지만, 그 경우에도 §11.5의 hard condition이 남아 있으면
+Gate는 `HOLD`한다.
+
+### 12.1 Restate gate — 승인을 요청하는 방식
+
+승인 요청은 대화 전체를 다시 보여 주는 방식이 아니다. 합의된 목표를 **한
+문장으로 재진술**하고, 그 한 줄만 읽은 사람도 같은 결론에 도달하는지 확인한다.
+
+- Brief의 다른 모든 기록은 원문과 구조를 보존한다. 압축은 이 지점에만 적용한다.
+- 재진술은 새로운 요구사항을 추가하거나 합의된 제약을 빠뜨리지 않는다.
+- 사용자가 재진술을 수정하면 그 수정이 새 답변으로 기록되고 revision이
+  올라간다. 수정된 재진술을 승인 없이 그대로 통과시키지 않는다.
+- 재진술과 함께 Goal, Constraints, Non-goals, 성공 조건 요약을 볼 수 있어야
+  한다.
+
+### 12.2 승인 계약
 
 - 승인은 특정 Mission의 특정 Brief revision을 참조한다.
-- 승인 전에 사용자가 Goal, Constraints, Non-goals, 성공 조건 요약을 볼 수 있어야 한다.
-- 승인의 원문 또는 명시적 action을 보존한다.
+- 승인의 원문 또는 명시적 action을 보존한다. 상태 전이만으로 승인을 갈음하지
+  않는다.
 - 오래된 revision에 대한 승인을 최신 revision에 재사용하지 않는다.
 - 승인 뒤 material decision이 바뀌면 새 revision과 재승인이 필요하다.
-- “질문을 그만하자”와 “이 내용으로 Blueprint에 진행한다”를 동일하게 취급할지는
-  아직 open decision이며, 구현에서 암묵적으로 합치지 않는다.
+- 승인 기록의 저장이 실패하면 승인받지 않은 것으로 취급한다.
 
 사용자 승인은 필요조건이지만 충분조건은 아니다. 필수 gap이 남아 있으면
 Mission Control은 `HOLD` 이유를 설명해야 한다.
@@ -523,7 +651,7 @@ Brief Gate는 다음 조건을 모두 만족할 때만 `CLEAR`할 수 있다.
 - 성공 조건이 Blueprint에서 검증 가능한 AC로 정제될 수 있다.
 - material unresolved decision과 conflict가 없다.
 - material assumption이 해결되었거나 사용자에게 명시적으로 승인되었다.
-- clarity policy의 통과 조건을 만족한다.
+- clarity policy의 종료 후보 조건 네 가지를 모두 만족한다 (§11.1).
 - 중요한 사실과 결정에 provenance가 있다.
 - 사용자가 정확한 Brief revision의 진행을 승인했다.
 - state와 approval이 durable storage에 성공적으로 보존되었다.
@@ -570,6 +698,9 @@ Brief state는 특정 Claude, Codex, OpenCode 대화에만 존재해서는 안 �
 - stale revision update는 조용히 덮어쓰지 않는다.
 - 저장 성공 전에는 사용자에게 전이가 완료되었다고 알리지 않는다.
 - 재시도는 기존 기록을 삭제하지 않고 별도 attempt/event로 남긴다.
+- 사용자 답변은 canonical state에 먼저 저장한 뒤 Telemetry를 기록한다.
+  Telemetry 저장소의 실패나 지연이 Brief 진행을 막아서는 안 된다. 반대로
+  Telemetry 성공을 상태 저장 성공으로 간주하지도 않는다.
 
 구체적인 파일/SQLite/event store 선택은 Architecture/ADR에서 결정한다.
 
@@ -625,9 +756,18 @@ Brief의 오류는 구현 오류와 specification gap을 구분한다.
 | user approval만 있고 material gap 존재 | 구체적 이유와 함께 HOLD | approval을 만능 override로 사용 |
 | 민감정보가 답변에 포함 | 저장·Telemetry 정책에 따라 최소화/마스킹 | 모든 로그에 복제 |
 | 재귀 Mission Control 호출 시도 | 차단하고 capability violation 기록 | 하위 오케스트레이터 생성 |
+| 초기 context가 prompt-safe 한도 초과 | 요약 round를 먼저 요구하고 원문 보존 | 모델이 임의로 잘라낸 context로 질문 생성 |
+| 질문 생성이 반복 실패하고 사용자가 재시도를 거부 | 재개 조건과 이유를 명시한 `HOLD`로 남긴다 | 조용한 종료 또는 상태 삭제 |
+| clarity 평가 결과를 파싱할 수 없음 | 결과 없음으로 기록하고 stability signal을 초기화 | 실패를 낮은 ambiguity로 해석 |
+| stability signal 저장 실패 | 오류로 처리하고 진행 가능 상태를 보고하지 않음 | 저장되지 않은 signal로 “한 번 더 확인” 응답 |
 
 retry 횟수와 timeout 값은 이 문서에서 고정하지 않는다. 모든 재시도는 식별되고
 bounded해야 하며, 진전이 없으면 `HOLD`로 전환한다.
+
+재개 불가능한 terminal status를 별도로 도입할지는
+[Mission Lifecycle](./02_MISSION_LIFECYCLE.md)이 소유하는 결정이다. Brief는
+그때까지 재개 조건을 명시한 `HOLD`로 표현하며, 상태를 삭제하거나 조용히
+종료하지 않는다.
 
 ---
 
@@ -662,12 +802,25 @@ schema를 확정하지 않는다.
       Reason: 수정·삭제 범위와 실패 표시 기준에 제품 결정이 필요합니다.
       Next: 위 두 결정을 확인합니다.
 
-조건을 충족하고 사용자가 해당 revision을 승인한 경우:
+종료 후보 조건을 모두 충족하면 질문을 멈추고 재진술로 승인을 요청한다.
+
+    Mission Control:
+      합의된 내용을 한 문장으로 정리했습니다.
+
+        goal: 로그인 사용자가 게시물에 댓글을 작성·조회할 수 있게 한다.
+              (수정·삭제는 이번 범위 밖)
+
+      이 한 줄만 읽은 사람도 같은 결과를 떠올릴까요?
+
+    User:
+      맞다.
+
+사용자가 해당 revision을 승인한 경우:
 
     CLEAR — Clear for Blueprint
     Evidence:
       - approved Brief revision
-      - clarity assessment
+      - clarity assessment (policy version, stability signal)
       - sourced decisions and facts
 
 CLI는 Gate를 자체 계산하지 않고 Core application boundary의 결과를 표시해야 한다.
@@ -706,6 +859,19 @@ CLI는 Gate를 자체 계산하지 않고 Core application boundary의 결과를
 | B-024 | 동일 입력으로 재전송된 answer | idempotency 정책에 따라 round가 중복 생성되지 않는다. |
 | B-025 | 사용자 승인은 했지만 성공 조건이 검증 불가 | 승인과 별개로 HOLD하고 gap을 설명한다. |
 | B-026 | CLEAR 후 handoff 생성 | Goal/Constraints/Non-goals/성공 조건/출처/승인 revision을 Blueprint가 읽을 수 있다. |
+| B-027 | 전체 threshold는 통과, 한 dimension이 floor 미달 | 종료 후보가 되지 않고 질문을 계속한다. |
+| B-028 | 종료 조건을 한 번만 만족 | stability signal이 1이며 종료 후보가 아니다. |
+| B-029 | 최소 round 도달 전 | clarity 평가를 수행하지 않고, 미평가 상태가 미통과와 구분된다. |
+| B-030 | 네 조건 모두 충족 | 질문 루프가 멈추고 승인 요청 단계로 전이한다. 승인 없이 `CLEAR`하지 않는다. |
+| B-031 | observation authority 답변 포함 | requirement input 투영에서 본문이 제외되고, observed facts 채널과 질문 텍스트에는 남는다. |
+| B-032 | 동일 답변을 여러 소비자가 읽음 | 저장된 authority 값을 읽으며 원문 표기를 재해석하지 않는다. |
+| B-033 | 시스템이 사용자를 대신해 확정한 기본값 | observation이 아니라 decision으로 분류된다. |
+| B-034 | `CLEAR` 이후 사용자가 답변을 추가 | 저장된 평가와 stability signal이 함께 초기화되고 재승인이 필요하다. |
+| B-035 | clarity 평가 결과 파싱 실패 | 결과 없음으로 기록하고 signal을 초기화하며 낮은 ambiguity로 해석하지 않는다. |
+| B-036 | stability signal 저장 실패 | 오류로 처리하고 진행 가능 상태를 보고하지 않는다. |
+| B-037 | 초기 context가 한도 초과 | 일반 질문보다 요약 round를 먼저 수행하고 원문을 보존한다. |
+| B-038 | 사용자가 Restate 문장을 수정 | 새 revision으로 기록되고 자동 승인되지 않는다. |
+| B-039 | 동일 Brief를 CLI와 MCP에서 처리 | 같은 policy와 Gate 조건이 적용되어 동일한 판정을 만든다. |
 
 ### 17.1 Test doubles
 
@@ -725,12 +891,14 @@ Core test는 실제 Codex/OpenCode 없이 다음 deterministic double로 실행 
 
 - [x] upstream repository와 baseline commit을 pin했다.
 - [x] 핵심 Interview source에서 state, round, provenance 모델을 baseline scan했다.
-- [ ] ambiguity/clarity 계산과 종료 정책을 확인했다.
+- [x] ambiguity/clarity 계산과 종료 정책을 확인했다. (CLI/MCP/skill 3개 surface end-to-end)
 - [ ] 관련 upstream test가 보호하는 실패 상황을 정리했다.
-- [ ] 유지·단순화·변경할 동작을 research note에 기록했다.
+- [x] 유지·단순화·변경할 동작을 research note에 기록했다.
 
-위 두 완료 항목은 baseline scan 범위다. handler/skill/test를 포함한 종료 Gate의
-end-to-end 조사는 아래 미완료 항목과 research backlog에 남아 있다.
+조사 결과는
+[INTERVIEW_UPSTREAM_FINDINGS.md](./research/INTERVIEW_UPSTREAM_FINDINGS.md),
+결정은 ADR-0009~0011에 있다. upstream test 조사는 Phase 1 test case를 코드로
+옮기기 직전에 수행한다.
 
 ### Domain
 
@@ -803,14 +971,7 @@ end-to-end 조사는 아래 미완료 항목과 research backlog에 남아 있�
 
 | 결정 | 필요한 근거/결정 위치 |
 |---|---|
-| pinned Ouroboros version과 정확한 source path | upstream research |
-| canonical metric이 ambiguity인지 clarity인지 | upstream research + ADR |
-| dimension, range, direction, weight, 집계식 | upstream research + ADR |
-| 통과 threshold와 dimension별 hard floor | Brief policy ADR |
-| stability streak 또는 최소 round 필요 여부 | upstream test + ADR |
-| greenfield/brownfield 별도 정책 | upstream research |
 | maximum rounds, timeout, retry/no-progress budget | Lifecycle/ADR |
-| “질문 종료”와 “Blueprint 진행 승인”의 관계 | UX/approval ADR |
 | material assumption의 정의와 예외 승인 방식 | Brief policy ADR |
 | Fact Resolver의 읽기 도구와 repository snapshot identity | Architecture/Security ADR |
 | exact Brief state enum과 persistence schema | Lifecycle/Architecture |
@@ -818,7 +979,15 @@ end-to-end 조사는 아래 미완료 항목과 research backlog에 남아 있�
 | CLI interactive input, resume, 출력 형식 | CLI Reference |
 | Question Generator structured output schema | Runtime/Application design |
 | corrective re-entry record의 exact schema와 activation identity | Mission Lifecycle |
+| 재개 불가 terminal status 도입 여부 | Mission Lifecycle |
 | 다국어 질문과 저장 원문의 canonical language | UX ADR |
+| brownfield 탐색 단계와 4번째 차원의 활성화 시점 | 별도 RFC (v1 이후) |
+| 질문 후보 패널과 다중 관점 검토의 도입 조건 | 별도 RFC (v1 이후) |
+
+2026-08-07에 다음 항목이 ADR-0009~0011로 닫혔다: pinned source path, canonical
+metric과 방향, dimension·weight·집계식, 통과 threshold와 dimension floor,
+stability streak와 최소 round, greenfield/brownfield 정책 구조, “질문 종료”와
+“진행 승인”의 관계.
 
 open decision이 해결되기 전 임시 구현값이 필요하면 숨은 default로 두지 않는다.
 테스트에서 주입 가능하게 만들고, 임시 상태와 근거를 명시한다.
@@ -841,6 +1010,10 @@ open decision이 해결되기 전 임시 구현값이 필요하면 숨은 defaul
 10. Question Generator나 Assessor가 자신의 결과를 승인하지 않는다.
 11. Gate decision은 Mission Control이 근거와 함께 남긴다.
 12. `CLEAR`는 Blueprint 생성 자격이지 승인된 Blueprint 자체가 아니다.
+13. `observation` authority를 가진 답변은 요구사항을 만들지 않는다.
+14. 종료 후보 조건 충족은 승인 요청 자격이지 `CLEAR`가 아니다.
+15. answer authority는 단일 지점에서 한 번 결정되고 소비자가 재해석하지 않는다.
+16. CLI와 MCP는 동일한 clarity policy와 Gate 조건을 사용한다.
 
 ---
 

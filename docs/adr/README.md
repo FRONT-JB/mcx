@@ -24,6 +24,9 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0006](./0006-dual-terminology.md) | 사용자 용어와 내부 Ouroboros 용어를 분리한다. | Accepted |
 | [0007](./0007-mcp-is-control-surface.md) | MCP는 Core가 아니라 control surface다. | Accepted |
 | [0008](./0008-bounded-recovery.md) | Recover는 evidence-driven이며 bounded하다. | Accepted |
+| [0009](./0009-brief-completion-gate-policy.md) | Brief 종료는 네 조건을 모두 만족해야 하며 그것만으로 `CLEAR`가 되지 않는다. | Accepted |
+| [0010](./0010-answer-provenance-and-requirement-authority.md) | 답변 authority를 분리하고 observation의 요구사항 승격을 투영으로 차단한다. | Accepted |
+| [0011](./0011-brief-deliberate-divergences.md) | Brief에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
 
 ## Template
 

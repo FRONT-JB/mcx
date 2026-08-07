@@ -1212,12 +1212,13 @@ migration 계획 없이 즉시 교체하지 않는다.
 | MCP는 Core가 아니라 control surface/adapter다. | Confirmed |
 | 원본 Workflow와 최소 권한 철학을 먼저 재구성한다. | Confirmed |
 | 첫 산출물은 이 Constitution이다. | Confirmed |
+| Brief 종료는 threshold·dimension floor·stability·최소 round를 모두 만족해야 하며, 그것만으로 `CLEAR`가 되지 않는다. | Confirmed (ADR-0009) |
+| 답변은 requirement authority(`decision`/`observation`)를 별도 축으로 가지며 observation은 요구사항을 만들지 않는다. | Confirmed (ADR-0010) |
 
 ### 아직 확정하지 않은 결정
 
 | 항목 | 결정 위치 |
 |---|---|
-| Ambiguity/Clarity 계산식과 threshold | Brief Stage Guide / ADR |
 | Blueprint QA 점수와 승인 세부 정책 | Blueprint Stage Guide |
 | 전체 상태·attempt의 정확한 serialization과 RecoveryDirective schema | Mission Lifecycle |
 | retry budget과 무진전 판정 | Mission Lifecycle / ADR |

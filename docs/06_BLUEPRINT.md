@@ -269,9 +269,22 @@ Exit Condition은 Verify가 실제로 평가할 수 있어야 한다.
 
 중요한 요구사항은 Brief answer, code fact, research evidence와 연결한다.
 
-- user decision은 requirement authority를 가질 수 있다.
-- code/research observation은 현재 사실을 설명하지만 제품 결정을 자동 만들지 않는다.
+- `decision` authority를 가진 답변만 requirement authority를 가진다.
+- `observation`은 현재 사실을 설명하지만 제품 결정을 자동 만들지 않는다.
 - assumption은 명시적으로 표시하고 Gate 영향도를 기록한다.
+
+이 규칙은 권고가 아니라 Brief handoff의 투영으로 강제된다
+([ADR-0010](./adr/0010-answer-provenance-and-requirement-authority.md)).
+Blueprint는 handoff의 두 채널을 다르게 사용한다.
+
+| 채널 | 용도 |
+|---|---|
+| Requirement input | Goal, Constraints, Non-goals, Acceptance Criteria를 도출한다. `observation` 답변의 본문은 이 채널에 없다. |
+| Observed facts | 현재 상태와 제약을 이해한다. source locator와 함께 온전히 제공된다. |
+
+Generator는 observed facts를 읽어 제약을 이해하되, 관찰된 값을 그대로 요구사항
+문장으로 옮기지 않는다. 관찰이 요구사항이 되어야 한다면 그것은 Brief로 되돌아가
+사용자 결정으로 확정해야 할 항목이다.
 
 ---
 
@@ -655,7 +668,7 @@ Next action:
 
 - canonical Seed serialization과 schema version
 - 필수/선택 field와 ontology 포함 여부
-- source provenance category와 authority rule
+- Seed에 기록할 source reference의 concrete schema (authority rule 자체는 [ADR-0010](./adr/0010-answer-provenance-and-requirement-authority.md)에서 확정)
 - AC dependency를 Seed에 포함할지 Execute에서 파생할지
 - AC quality rubric과 QA score 사용 여부
 - refinement attempt budget

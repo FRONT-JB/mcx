@@ -36,12 +36,12 @@
 | `02_MISSION_LIFECYCLE.md` | Draft | exact state/Recover open decisions 검토 |
 | `03_RUNTIME.md` | Draft | protocol examples로 contract tests 정의 |
 | `04_MCP.md` | Draft | tool schema와 transport 결정 전 Core boundary 유지 |
-| `05_BRIEF.md` | Draft | upstream findings 반영과 첫 test cases 확정 |
+| `05_BRIEF.md` | Active contract | 구현으로 검증 (upstream findings와 ADR-0009~0011 반영 완료) |
 | `06_BLUEPRINT.md` | Draft | schema/QA/revision policy 확정 |
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 8 Accepted baseline ADRs | 구현으로 검증 |
+| `adr/` | 11 Accepted ADRs | 구현으로 검증 |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -153,14 +153,15 @@
   ([Open Questions §0](../research/OPEN_QUESTIONS.md) 참조)
 - [x] 첫 test-first vertical slice가 `05_BRIEF.md`에 고정되었다.
 
-Brief 우선 조사(Open Questions §0)는 2026-08-07 완료되어
-[INTERVIEW_UPSTREAM_FINDINGS.md](../research/INTERVIEW_UPSTREAM_FINDINGS.md)에
-기록되었다 (LICENSE 재확인만 구현 직전 반복).
+Brief 우선 조사(Open Questions §0)와 그에 따른 결정은 2026-08-07 완료되었다.
+근거는 [INTERVIEW_UPSTREAM_FINDINGS.md](../research/INTERVIEW_UPSTREAM_FINDINGS.md),
+결정은 ADR-0009~0011, 계약은 [Brief Guide](../05_BRIEF.md) §11·§12·§9.1에 있다.
+Test Matrix는 B-039까지 확장되었다.
 
-다음 검증 가능한 목표 한 개: **findings §8의 Proposed 항목을 결정으로
-바꿔 `05_BRIEF.md`와 필요한 ADR에 반영하고, Phase 1의 첫 test cases를
-확정한다.** 결정 반영 전에는 threshold 같은 미확정 값을 구현에서 고정하지
-않는다.
+다음 검증 가능한 목표 한 개: **Phase 1 첫 vertical slice의 첫 실패 테스트를
+작성한다.** 그 전에 필요한 선행 결정은 Python packaging/test framework와 최소
+durable state 방식이며, 각각 ADR로 남긴다. upstream test가 보호하는 실패
+상황(Open Questions §1)은 test case를 코드로 옮기기 직전에 조사한다.
 
 ## Update protocol
 

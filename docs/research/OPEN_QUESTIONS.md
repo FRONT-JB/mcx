@@ -26,8 +26,9 @@
 
 2026-08-07: 1번 항목의 근거 수집이 완료되어
 [INTERVIEW_UPSTREAM_FINDINGS.md](./INTERVIEW_UPSTREAM_FINDINGS.md)에
-기록했다 (LICENSE 재확인은 구현 직전 반복). 해당 §1 항목은 `[-]`로
-표시하며, §2 결정이 `05_BRIEF.md`/ADR에 반영되면 `[x]`로 닫는다.
+기록했고, §2 결정은 ADR-0009/0010/0011과 `05_BRIEF.md`에 반영되어 닫혔다.
+§1의 Brief 관련 항목은 upstream test 조사(Phase 1 test case 설계 직전)와
+LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
 ---
 
@@ -52,14 +53,16 @@
 
 ## 2. Brief decisions
 
-- [ ] Greenfield/Brownfield를 v1에서 구분할지 결정한다.
-- [ ] source provenance의 canonical categories를 결정한다.
-- [ ] clarity dimension과 score 방향을 결정한다.
-- [ ] score threshold, minimum rounds, stability streak의 관계를 결정한다.
-- [ ] user approval을 command/state 중 어디에 기록할지 결정한다.
-- [ ] 질문 생성 실패와 빈 응답 fallback을 정의한다.
-- [ ] initial context size와 prompt compaction policy를 정의한다.
-- [ ] codebase fact를 누가 어떤 read-only capability로 수집할지 결정한다.
+2026-08-07에 ADR-0009/0010/0011로 결정했다.
+
+- [x] Greenfield/Brownfield를 v1에서 구분할지 결정한다. → 정책 자리만 예약, 탐색 단계는 유예 (ADR-0011)
+- [x] source provenance의 canonical categories를 결정한다. → authority 2값 + source 별도 축 (ADR-0010)
+- [x] clarity dimension과 score 방향을 결정한다. → dimension은 clarity(높을수록 명확), canonical metric은 ambiguity (ADR-0009)
+- [x] score threshold, minimum rounds, stability streak의 관계를 결정한다. → 네 조건 모두 필요 (ADR-0009)
+- [x] user approval을 command/state 중 어디에 기록할지 결정한다. → revision에 묶인 1급 상태 (ADR-0011)
+- [x] 질문 생성 실패와 빈 응답 fallback을 정의한다. → 재개 조건을 명시한 HOLD, terminal status는 Lifecycle 소관 (05_BRIEF §15)
+- [x] initial context size와 prompt compaction policy를 정의한다. → 한도 초과 시 요약 round, 기본값 3500자 (05_BRIEF §10 Step 1)
+- [x] codebase fact를 누가 어떤 read-only capability로 수집할지 결정한다. → 별도 Fact Resolver 역할 유지 (ADR-0011)
 
 ## 3. Blueprint decisions
 
