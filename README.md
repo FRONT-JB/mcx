@@ -46,4 +46,5 @@ uv sync
 uv run pytest
 uv run mypy src tests
 uv run ruff check .
+uv run ruff format --check src tests
 ```

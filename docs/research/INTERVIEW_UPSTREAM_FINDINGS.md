@@ -175,6 +175,46 @@ baseline `LICENSE`는 MIT, copyright (c) 2025 Q00. 코드 복사·상당한 포�
 | initial context 한도 | 3,500자 + summary round | 한도 상수화 + 초과 시 요약 요구 채택 |
 | codebase fact 수집 | 전용 read-only explore 단계 | v1 범위 결정 필요 (brownfield와 함께) |
 
+## 8.5 upstream test가 보호하는 실패 (2026-08-07 추가 조사)
+
+`tests/unit/bigbang/test_ambiguity.py`(1,588줄)와
+`tests/unit/mcp/tools/test_interview_done_streak.py`를 확인했다.
+
+### 촘촘하게 보호되는 것 — stability streak
+
+`test_interview_done_streak.py`는 이슈 #405와 PR #428을 참조하는 **회귀
+테스트 모음**이다. 실제로 겪은 실패가 그대로 테스트로 남아 있다.
+
+| 테스트 | 막는 실패 |
+|---|---|
+| `test_explicit_done_no_infinite_loop` | 사용자가 `done`을 반복해도 끝나지 않는 루프 |
+| `..._live_rescore_advances_streak_exactly_once` | 한 턴에 streak가 두 번 올라 단일 신호로 완료되는 것 |
+| `..._nonqualifying_live_rescore_resets_stale_streak` | 약한 재평가 후에도 낡은 streak가 남는 것 |
+| `test_explicit_done_advances_streak` | qualifying score에서 신호가 누적되지 않는 것 |
+
+**시사점**: stability signal은 “올리고 비교”가 아니라 **한 평가당 정확히 한 번
+갱신**과 **미달 시 확실한 초기화**가 핵심이다. 반복 신호가 진전을 만들지 못하면
+사용자가 갇힌다.
+
+### 경계값 계약
+
+- `overall == 0.20`은 **통과**한다 (`<=`). `test_is_ready_for_seed_at_threshold`.
+- dimension clarity는 `0.0`~`1.0` 범위 밖이면 `ValueError`, 경계값 `0.0`/`1.0`은
+  허용.
+- 가중치 합이 `1.0`인지 검증하는 테스트가 있다 (`test_weights_sum_to_one`).
+- Milestone(`initial`/`progress`/`refined`/`ready`)이라는 진행 표시 개념이 있고
+  구간 경계마다 테스트가 있다. Mission Control에는 대응 개념이 없다.
+
+### 보호되지 않는 것 — dimension floor
+
+`GOAL_CLARITY_FLOOR` 등 네 상수는 `qualifies_for_seed_completion`에서 실제로
+사용되지만, **그 동작을 검증하는 테스트가 upstream 전체에 없다.**
+`grep -rn 'floor' tests/unit/`에 ambiguity 관련 결과가 하나도 없다.
+
+**시사점**: floor는 upstream에서 코드로만 존재하고 회귀 보호가 없다. Mission
+Control은 [Brief Guide](../05_BRIEF.md) §17의 B-027로 이 경계를 명시적으로
+테스트한다. 이는 upstream과의 divergence가 아니라 검증 보강이다.
+
 ## 9. 미확인 / 후속 조사
 
 - `ooo seed`(Blueprint 진입)가 interview score를 다시 강제하는지 —

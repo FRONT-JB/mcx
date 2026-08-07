@@ -892,7 +892,7 @@ Core test는 실제 Codex/OpenCode 없이 다음 deterministic double로 실행 
 - [x] upstream repository와 baseline commit을 pin했다.
 - [x] 핵심 Interview source에서 state, round, provenance 모델을 baseline scan했다.
 - [x] ambiguity/clarity 계산과 종료 정책을 확인했다. (CLI/MCP/skill 3개 surface end-to-end)
-- [ ] 관련 upstream test가 보호하는 실패 상황을 정리했다.
+- [x] 관련 upstream test가 보호하는 실패 상황을 정리했다. (findings §8.5)
 - [x] 유지·단순화·변경할 동작을 research note에 기록했다.
 
 조사 결과는

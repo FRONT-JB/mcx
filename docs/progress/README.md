@@ -7,8 +7,8 @@
 | Project phase | Phase 1 — Brief vertical slice 구현 중 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 진행 중 |
-| Source code | `src/mission_control/domain/brief/` (provenance, state) |
-| Automated tests | 26 passed (`tests/unit/domain/brief/`) |
+| Source code | `src/mission_control/domain/brief/` (provenance, state, clarity) |
+| Automated tests | 49 passed (`tests/unit/domain/brief/`) |
 | First implementation target | Brief domain/state/Gate vertical slice |
 | Updated | 2026-08-07 |
 
@@ -80,7 +80,10 @@
   - [x] answer authority와 requirement input 투영 (B-031·B-032·B-033)
   - [x] round 축적, revision 증가, 승인 revision 바인딩과 stale 처리 (B-008·B-014)
 - [ ] one-question tool-less text backend contract와 deterministic fake
-- [ ] ambiguity/clarity policy와 user approval
+- [-] ambiguity/clarity policy와 user approval
+  - [x] 종료 후보 네 조건과 경계값, stability signal 전이 (B-027~B-030, B-035)
+  - [x] 승인의 revision 바인딩 (B-014)
+  - [ ] 상태·정책·승인을 묶는 Gate 판정
 - [ ] 최소 durable state 방식 ADR와 repository
 - [ ] Brief 허용/금지 Stage transition tests
 
@@ -163,10 +166,10 @@ Test Matrix는 B-039까지 확장되었다.
 선행 결정은 ADR-0012(toolchain·실행 모델)와 ADR-0013(durable state)으로
 확정했고, 첫 코드가 들어왔다.
 
-다음 검증 가능한 목표 한 개: **clarity policy의 네 조건(threshold, dimension
-floor, stability signal, 최소 round)을 versioned policy로 구현하고 경계값을
-테스트한다** (B-027~B-030, B-035). 착수 전에 upstream test가 보호하는 실패
-상황(Open Questions §1)을 조사한다.
+다음 검증 가능한 목표 한 개: **Brief Gate를 구현한다.** 상태(round·승인),
+clarity 정책 판정, hard condition을 함께 평가해 `CLEAR`/`HOLD`와 이유·근거를
+남기고, 종료 후보 충족만으로는 `CLEAR`가 되지 않음을 테스트로 고정한다
+(B-012, B-013, B-025, B-030).
 
 ### 현재 구현의 알려진 한계
 
