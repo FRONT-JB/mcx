@@ -4,23 +4,25 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 1 — Brief vertical slice 구현 중 |
+| Project phase | Phase 2 — Blueprint vertical slice 시작 전 |
 | Mission status | ACTIVE |
-| Gate | Phase 0 COMPLETE; Phase 1 진행 중 |
-| Source code | `domain/brief/`, `domain/errors.py`, `application/` (ports, brief_service), `adapters/persistence/` |
-| Automated tests | 111 passed (unit + integration) |
-| First implementation target | Brief domain/state/Gate vertical slice |
+| Gate | Phase 0 COMPLETE; Phase 1 COMPLETE |
+| Source code | `domain/brief/`, `domain/stage.py`, `domain/errors.py`, `application/` (ports, brief_service), `adapters/persistence/` |
+| Automated tests | 140 passed (unit + integration) |
+| First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-07 |
 
 ## Current facts
 
 - Git 저장소는 문서 작업 전에 비어 있었다.
-- 구현 코드, packaging, dependency, test framework는 아직 선택하지 않았다.
+- Python 3.12 + uv + pydantic + pytest, layered layout으로 확정했다 (ADR-0012).
+- Brief Stage의 domain/application/adapter가 구현되었고 140개 테스트가 통과한다.
 - Mission Control의 Constitution과 설계 문서 초안이 작성되었다.
 - upstream `Q00/ouroboros`의 기준 commit을 기록했다.
 - 사용자 용어와 내부/upstream 용어 mapping을 확정했다.
 - Runtime은 Codex/OpenCode 방향이며 Gemini는 v1 범위에서 제외했다.
-- 상세 수치, persistence 기술, exact API는 아직 결정하지 않았다.
+- Brief의 threshold와 durable state는 확정했다 (ADR-0009, ADR-0013). 이후
+  Stage의 수치와 exact API는 아직 결정하지 않았다.
 - 25개 Markdown 문서의 link, navigation, fence, parser, whitespace, terminology와
   lifecycle consistency 통합 검사가 통과했다.
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
@@ -36,12 +38,12 @@
 | `02_MISSION_LIFECYCLE.md` | Draft | exact state/Recover open decisions 검토 |
 | `03_RUNTIME.md` | Draft | protocol examples로 contract tests 정의 |
 | `04_MCP.md` | Draft | tool schema와 transport 결정 전 Core boundary 유지 |
-| `05_BRIEF.md` | Active contract | 구현으로 검증 (upstream findings와 ADR-0009~0011 반영 완료) |
+| `05_BRIEF.md` | Verified contract | Phase 1 구현과 140개 테스트로 검증 (미착수 행은 progress 0001 참조) |
 | `06_BLUEPRINT.md` | Draft | schema/QA/revision policy 확정 |
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 11 Accepted ADRs | 구현으로 검증 |
+| `adr/` | 13 Accepted ADRs | 구현으로 검증 (0009~0013은 Phase 1로 검증됨) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -50,6 +52,7 @@
 ## Progress records
 
 - [0000 — Documentation Foundation](./0000_DOCUMENTATION_FOUNDATION.md)
+- [0001 — Brief Vertical Slice](./0001_BRIEF_VERTICAL_SLICE.md)
 
 ## Phase roadmap
 
@@ -70,22 +73,28 @@
 - [x] 전체 문서 통합 검사
 - [x] 사용자 검토와 수정 (2026-08-07)
 
-### Phase 1 — Brief vertical slice
+### Phase 1 — Brief vertical slice — COMPLETE
 
 목표: 첫 구현을 Brief에 필요한 최소 Core로 제한하고, 질문 loop와 CLEAR/HOLD Gate를
 외부 Runtime 없이 검증한다.
 
-- [ ] Brief에 필요한 최소 Mission, Stage, GateDecision, Attempt domain model
+- [x] Brief에 필요한 최소 Stage, GateDecision domain model
+  - Mission aggregate와 Attempt는 만들지 않았다. Brief는 attempt lineage를 쓰지
+    않고 Mission 참조는 `mission_id`로 충분하다. Mission의 canonical stage 저장은
+    Blueprint로 나가는 전이가 실제로 필요해지는 Phase 2에서 다룬다.
 - [x] Interview revision, round, answer provenance
   - [x] answer authority와 requirement input 투영 (B-031·B-032·B-033)
   - [x] round 축적, revision 증가, 승인 revision 바인딩과 stale 처리 (B-008·B-014)
 - [x] one-question tool-less text backend contract와 deterministic fake (B-002, B-003)
-- [-] ambiguity/clarity policy와 user approval
+- [x] ambiguity/clarity policy와 user approval
   - [x] 종료 후보 네 조건과 경계값, stability signal 전이 (B-027~B-030, B-035)
   - [x] 승인의 revision 바인딩 (B-014)
   - [x] 상태·정책·승인을 묶는 Gate 판정 (B-012, B-013, B-025, B-030)
+  - [x] clarity 평가 port와 최소 round 이전 생략, 실패 처리 (B-029·B-035·B-036)
 - [x] 최소 durable state 방식 ADR와 repository (ADR-0013, B-017·B-019)
-- [ ] Brief 허용/금지 Stage transition tests
+- [x] Brief 허용/금지 Stage transition tests (L-S01·L-B02·L-B04)
+
+Gate와 evidence는 [progress 0001](./0001_BRIEF_VERTICAL_SLICE.md)에 있다.
 
 ### Phase 2 — Blueprint vertical slice
 
@@ -166,10 +175,13 @@ Test Matrix는 B-039까지 확장되었다.
 선행 결정은 ADR-0012(toolchain·실행 모델)와 ADR-0013(durable state)으로
 확정했고, 첫 코드가 들어왔다.
 
-다음 검증 가능한 목표 한 개: **clarity 평가 port를 붙여 Gate까지의 흐름을
-닫는다.** 평가 결과와 stability signal을 상태에 저장하고, material 변경 시
-둘을 함께 무효화하며(§8.1 규칙 10, B-034), 최소 round 전에는 평가를 호출하지
-않는다(B-029). 그 뒤 Brief 허용/금지 전이 테스트로 Phase 1을 닫는다.
+Phase 1은 2026-08-07 완료되었다
+([progress 0001](./0001_BRIEF_VERTICAL_SLICE.md)).
+
+다음 검증 가능한 목표 한 개: **Brief handoff 객체를 정의해 Blueprint의 입력
+계약을 고정한다** (B-026). 두 채널(requirement input / observed facts) 투영
+함수는 이미 있으므로, 승인된 revision과 Gate evidence를 함께 담는 형태를 정하고
+Blueprint가 그것만 읽도록 만든다. 이것이 Phase 2의 첫 작업이다.
 
 ### 현재 구현의 알려진 한계
 
@@ -177,9 +189,20 @@ Test Matrix는 B-039까지 확장되었다.
 
 - 승인 이력이 최신 하나만 유지된다. “rev2를 승인했다가 rev4에서 재승인”의
   흐름은 Gate decision과 Telemetry가 들어올 때 보존 방식을 정한다.
+- Gate decision을 저장하지 않는다. 판정은 매번 상태에서 다시 계산되며 `CLEAR`의
+  근거 reference가 남지 않는다 (B-015 부분). Telemetry와 함께 다룬다.
+- 저장된 평가의 `policy_version`이 현재 정책과 다른 경우를 검사하지 않는다.
+  정책을 바꾸면 이전 정책으로 매긴 점수가 그대로 재사용된다. 지금은 정책이
+  하나뿐이라 발생하지 않으며, 두 번째 정책이 생길 때 결정한다.
+- clarity 평가자에게 `observation` 답변의 본문을 그대로 전달한다. requirement
+  input 투영은 upstream 기준으로 요구사항 추출 입력에만 적용되므로 여기서는
+  적용하지 않았다. 다만 "점수를 매긴 입력"과 "Blueprint가 받는 입력"이 달라지는
+  긴장이 있으므로, handoff를 정의할 때 함께 판단한다.
 - 질문 생성기가 한 문자열 안에 여러 질문을 담는 경우를 탐지하지 않는다. 반환
   타입이 질문 하나만 담도록 구조적으로 제한하며, 문장 단위 탐지는 신뢰할 만한
   방법이 없어 프롬프트와 출력 스키마의 문제로 남긴다.
+- assumption과 conflict를 별도 개념으로 모델링하지 않았다 (§8, B-006·B-009).
+  현재는 `unresolved_items`의 `is_material`로만 다룬다.
 - `mission_id`와 `initial_intent`의 빈 값 검증이 없다. Entry Contract(§6)
   강제는 application use case 계층에서 다룬다.
 - 시각(timestamp)을 다루지 않는다. Clock port 도입 시 함께 추가한다.
