@@ -9,6 +9,7 @@
 - [SESSION_DECISIONS.md](./SESSION_DECISIONS.md) — 프로젝트를 시작한 대화의 확정·폐기·미확정 결정
 - [OPEN_QUESTIONS.md](./OPEN_QUESTIONS.md) — 구현 전에 원본과 우리 설계에서 확인할 질문
 - [INTERVIEW_UPSTREAM_FINDINGS.md](./INTERVIEW_UPSTREAM_FINDINGS.md) — Brief 우선 조사 결과 (Open Questions §0, file:line 근거)
+- [PERSISTENCE_UPSTREAM_FINDINGS.md](./PERSISTENCE_UPSTREAM_FINDINGS.md) — 저장 계층(event store, checkpoint, brownfield registry) 조사
 
 ## Evidence levels
 

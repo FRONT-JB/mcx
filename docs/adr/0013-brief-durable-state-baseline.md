@@ -55,8 +55,13 @@ Phase 1의 durable state는 **Mission별 단일 JSON 문서**로 시작한다.
 ### 4. Port 경계
 
 도메인과 정책은 저장 방식을 알지 못한다. application 계층이 repository port를
-통해서만 상태를 읽고 쓴다. Phase 1 테스트는 인메모리 구현과 실패를 재현하는
-구현으로 동작한다 ([Brief Guide](../05_BRIEF.md) §17.1).
+통해서만 상태를 읽고 쓴다. port는
+[ADR-0012](./0012-python-toolchain-and-layout.md)의 실행 모델에 따라 `async`로
+정의하며, Phase 1의 파일 구현은 그 안에서 동기 I/O를 호출한다. 저장 매체를
+바꾸어도 port 시그니처는 유지된다.
+
+Phase 1 테스트는 인메모리 구현과 실패를 재현하는 구현으로 동작한다
+([Brief Guide](../05_BRIEF.md) §17.1).
 
 ### 5. 이번 결정의 범위 밖
 

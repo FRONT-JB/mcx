@@ -123,7 +123,11 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
 ## 9. Persistence and Telemetry decisions
 
-- [ ] file store, SQLite, event sourcing 중 v1 baseline을 결정한다.
+기초 조사는 [PERSISTENCE_UPSTREAM_FINDINGS.md](./PERSISTENCE_UPSTREAM_FINDINGS.md)에
+있다. Brief 범위의 baseline은 ADR-0013에서 결정했고, 나머지는 Phase 3(Execute)
+설계 직전에 확정한다.
+
+- [-] file store, SQLite, event sourcing 중 v1 baseline을 결정한다. (Brief 범위는 ADR-0013으로 결정, 실행 이벤트는 Phase 3)
 - [ ] atomic state transition과 crash recovery 요구를 정의한다.
 - [ ] Telemetry event/report/bundle schema를 결정한다.
 - [ ] retention, redaction, output-size 정책을 결정한다.

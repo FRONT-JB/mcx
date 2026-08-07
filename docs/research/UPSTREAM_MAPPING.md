@@ -306,6 +306,13 @@ Mission Control v1은 우선 MCP **server/control surface**에 집중한다.
 현재 architecture는 append-only SQLite event store, replay, checkpoint, audit trail을
 설명한다.
 
+2026-08-07 baseline 조사에서 확인한 사실: upstream은 저장 대상을 **매체별로
+분리**한다. Interview 상태는 JSON 파일이고, 실행 이벤트·세션 guard·brownfield
+등록부는 SQLite(`ouroboros.db`)이며, workflow checkpoint는 별도 JSON 파일이다.
+append-only 이벤트 스트림만으로는 동시 전이 선점을 막지 못해 compare-and-set
+guard 테이블을 함께 둔다. 상세는
+[PERSISTENCE_UPSTREAM_FINDINGS.md](./PERSISTENCE_UPSTREAM_FINDINGS.md)에 있다.
+
 ### Mission Control target
 
 > Evidence: Session-confirmed + Inferred. Decision: durable Mission state and
