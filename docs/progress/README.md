@@ -7,8 +7,8 @@
 | Project phase | Phase 2 — Blueprint vertical slice 진행 중 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 진행 중 |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa), `domain/stage.py`, `domain/errors.py`, `application/`, `adapters/persistence/` |
-| Automated tests | 262 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint service, ports), `adapters/persistence/` (brief·blueprint) |
+| Automated tests | 329 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -16,8 +16,10 @@
 
 - Git 저장소는 문서 작업 전에 비어 있었다.
 - Python 3.12 + uv + pydantic + pytest, layered layout으로 확정했다 (ADR-0012).
-- Brief Stage의 domain/application/adapter와 Blueprint domain(spec·assembly·QA)이
-  구현되었고 262개 테스트가 통과한다.
+- Brief Stage와 Blueprint Stage의 domain/application/adapter가 구현되었고
+  329개 테스트가 통과한다. Blueprint는 생성 → QA 반복 → 수정 → 승인 →
+  Execute 진입 Gate가 파일 저장소를 거쳐 end-to-end로 돈다 (결정적 fake
+  생성기·채점자 기준).
 - Mission Control의 Constitution과 설계 문서 초안이 작성되었다.
 - upstream `Q00/ouroboros`의 기준 commit을 기록했다.
 - 사용자 용어와 내부/upstream 용어 mapping을 확정했다.
@@ -41,11 +43,11 @@
 | `03_RUNTIME.md` | Draft | protocol examples로 contract tests 정의 |
 | `04_MCP.md` | Draft | tool schema와 transport 결정 전 Core boundary 유지 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
-| `06_BLUEPRINT.md` | Draft | schema/QA/revision policy 확정 |
+| `06_BLUEPRINT.md` | Draft | schema·QA·revision policy는 ADR-0017~0019·0021로 확정, Phase 2 종료 검토에서 구현 evidence 대조 |
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 20 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019는 Phase 2로, 0020은 Phase 1 소급) |
+| `adr/` | 22 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -114,14 +116,22 @@ CLEAR 경로 테스트 전부 감사 단계를 포함하도록 갱신했다.
 - [-] generation/QA/refinement loop
   - [x] 생성 계약: 위임 경계와 결정적 범위 검사 (ADR-0018)
   - [x] QA 루프 정책과 반복 상한, 최선 시도 추적 (ADR-0019)
-  - [ ] 수정 후보 제시와 사용자 채택 절차 (CLI/MCP surface)
-- [ ] AC quality validation
-- [-] explicit user approval and revision lineage
+  - [x] 루프의 durable 상태와 채점 허용 규칙 — 상한·FAIL 중단·통과 재채점
+    금지가 재시작을 건너 유지된다 (ADR-0021 §4, `test_state.py`·
+    `test_blueprint_flow.py`)
+  - [ ] 수정 후보 제시와 사용자 채택 절차 (CLI/MCP surface). 채택된 수정이
+    들어오는 application 진입점(`revise` — 범위 재검사, 새 revision)은 구현됨
+- [ ] AC quality validation — 구조 검사(`output_assertion`은 명령 요구, 존재
+  검사)는 있으나 의미 판정은 QA 채점자 어댑터가 붙어야 동작한다 (ADR-0019 §4)
+- [x] explicit user approval and revision lineage
   - [x] `BlueprintApproval` — QA 결과와 임계 미달 수락을 승인 기록에 고정
     (ADR-0019 §8)
-  - [ ] `BlueprintService` — handoff 조회 → 생성 → 조립 → QA 반복 → 승인 → 저장
-- [ ] approved Seed revision binding
-- [ ] Execute entry Gate
+  - [x] `BlueprintService` — handoff 조회 → 생성 → 조립 → QA 반복 → 승인 →
+    저장 (ADR-0021, commit 709f9ec, `test_blueprint_service.py` 22건)
+- [x] approved Seed revision binding — 승인은 채점된 현재 revision에 묶이고,
+  revise가 revision을 올리면 stale이 된다 (ADR-0021 §5)
+- [x] Execute entry Gate — `evaluate_blueprint_gate`가 승인된 현재 revision과
+  현재 Brief revision 일치를 요구한다 (ADR-0021 §6, `test_gate.py`)
 
 **upstream 런타임 관측 반영 (2026-08-08).** v0.50.8 도그푸딩 세션 전사를 대조해
 세 항목을 고쳤다 —
@@ -216,10 +226,14 @@ Phase 2의 첫 결정(Blueprint schema)은 2026-08-07 완료되었다
 
 생성 계약(ADR-0018)과 QA 루프 정책(ADR-0019)은 2026-08-07 확정되었다.
 
-다음 검증 가능한 목표 한 개: **`BlueprintService`로 흐름을 닫는다.** handoff
-조회 → 생성 → 조립 → QA 반복 → 승인 → 저장을 조율하고, 승인이 Blueprint
-revision에 묶이며, Execute 진입 Gate가 승인된 revision을 요구한다. QA 수정
-후보를 사용자에게 제시하고 선택받는 절차는 surface(Phase 6·7)가 다룬다.
+`BlueprintService`는 2026-08-08 완료되었다 (ADR-0021·0022, commit 709f9ec,
+329 tests). handoff 조회 → 생성 → 조립 → QA 반복 → 수정 → 승인 → Execute 진입
+Gate가 파일 저장소를 거쳐 이어지고, 승인은 채점된 현재 revision에 묶인다.
+
+다음 검증 가능한 목표 한 개: **Phase 2 종료 검토를 수행하고 progress record
+0002를 남긴다.** 남은 체크리스트 두 항목(AC quality validation의 의미 판정,
+수정 후보 채택 surface)의 처분 — Phase 2 완료 조건인지 이후 Phase로 넘기는지
+— 을 검토 결과와 함께 확정한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -265,6 +279,14 @@ revision에 묶이며, Execute 진입 Gate가 승인된 revision을 요구한다
   ([ADR-0018](../adr/0018-blueprint-generation-contract.md) §6).
 - **QA 채점자 어댑터가 없다.** port와 정책만 있으므로 실제 채점은 아직
   일어나지 않는다.
+- **상한 도달 시 최선의 시도가 현재 revision이 아니면 그것을 채택하는 경로가
+  없다.** 승인은 현재 revision만 대상이므로, 이 경우 사용자는 이전 revision의
+  내용을 수락할 수 없다. 수정 후보 채택 절차(Phase 6·7)와 함께 다루며, 내용
+  동일성 판정이 필요해지면 content hash open decision을 그때 확정한다
+  ([ADR-0021](../adr/0021-blueprint-state-and-revisions.md) §5).
+- **FAIL 이후의 출구가 없다.** 채점·승인이 모두 거부되므로 에스컬레이션(Brief
+  복귀)이 유일한 경로인데, 그 복귀 절차 자체는 미구현이다
+  ([ADR-0021](../adr/0021-blueprint-state-and-revisions.md) Cost).
 
 ### 현재 구현의 알려진 한계
 

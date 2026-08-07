@@ -71,13 +71,25 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
 ## 3. Blueprint decisions
 
-- [ ] Seed schema의 필수/선택 필드를 결정한다.
-- [ ] Non-goal과 Constraint의 validation rule을 정의한다.
-- [ ] AC quality rubric과 QA 통과 policy를 결정한다.
-- [ ] Seed revision ID와 parent lineage를 결정한다.
-- [ ] approval actor와 approval evidence를 결정한다.
+- [x] Seed schema의 필수/선택 필드를 결정한다. → 방향 필드(goal, constraints,
+      non_goals, acceptance_criteria)와 lineage만, `extra="forbid"`
+      ([ADR-0017](../adr/0017-blueprint-schema-baseline.md))
+- [x] Non-goal과 Constraint의 validation rule을 정의한다. → 그대로 옮겨야
+      하며 추가·누락은 결정적 범위 검사가 거부
+      ([ADR-0018](../adr/0018-blueprint-generation-contract.md))
+- [x] AC quality rubric과 QA 통과 policy를 결정한다. → quality bar 문장 +
+      0.90/0.40/최대 5회 ([ADR-0019](../adr/0019-blueprint-qa-loop.md))
+- [x] Seed revision ID와 parent lineage를 결정한다. → 1부터 연속 정수
+      revision, `brief_revision`으로 lineage, 전체 revision 보존
+      ([ADR-0021](../adr/0021-blueprint-state-and-revisions.md) §2)
+- [-] approval actor와 approval evidence를 결정한다. → evidence는
+      `BlueprintApproval`(statement + QA 근거,
+      [ADR-0019](../adr/0019-blueprint-qa-loop.md) §8)로 확정. actor
+      identity와 승인 UX는 surface(Phase 6·7)에서 결정한다.
 - [ ] user-edited YAML을 지원할지 결정한다.
-- [ ] schema/ontology를 v1에 포함할지 결정한다.
+- [x] schema/ontology를 v1에 포함할지 결정한다. → 제외. upstream 필드 5개
+      (ontology_schema 등)는 v1 미포함으로 기록
+      ([ADR-0017](../adr/0017-blueprint-schema-baseline.md) Cost)
 
 ## 4. Execute decisions
 

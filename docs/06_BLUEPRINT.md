@@ -690,18 +690,27 @@ Next action:
 
 ## 18. Open decisions
 
-- canonical Seed serialization과 schema version
-- 필수/선택 field와 ontology 포함 여부
+- ~~canonical Seed serialization~~ → mission당 단일 JSON 문서
+  ([ADR-0021](./adr/0021-blueprint-state-and-revisions.md) §1). schema version
+  필드는 미정
+- ~~필수/선택 field와 ontology 포함 여부~~ →
+  [ADR-0017](./adr/0017-blueprint-schema-baseline.md)
 - Seed에 기록할 source reference의 concrete schema (authority rule 자체는 [ADR-0010](./adr/0010-answer-provenance-and-requirement-authority.md)에서 확정)
 - AC dependency를 Seed에 포함할지 Execute에서 파생할지
-- AC quality rubric과 QA score 사용 여부
-- refinement attempt budget
+- ~~AC quality rubric과 QA score 사용 여부~~ →
+  [ADR-0019](./adr/0019-blueprint-qa-loop.md)
+- ~~refinement attempt budget~~ → 최대 5회, durable 상태로 유지
+  ([ADR-0019](./adr/0019-blueprint-qa-loop.md) §2,
+  [ADR-0021](./adr/0021-blueprint-state-and-revisions.md) §4)
 - approval UX와 actor identity
-- content hash와 revision ID 생성 방식
+- ~~revision ID 생성 방식~~ → 1부터 연속 정수
+  ([ADR-0021](./adr/0021-blueprint-state-and-revisions.md) §2). content hash는
+  미정 — 최선 시도 채택 절차가 내용 동일성 판정을 요구할 때 확정한다
 - editorial change와 semantic revision 구분
 - user-authored Seed import/edit 지원 여부
 - 이전 revision evidence 재사용 조건
-- Seed 저장 위치와 atomic approval transaction
+- ~~Seed 저장 위치와 atomic approval transaction~~ → 같은 문서의 원자 교체
+  ([ADR-0021](./adr/0021-blueprint-state-and-revisions.md) §1)
 
 결정은 Ouroboros source/test 조사와 Mission Control failure fixture를 함께 근거로 삼아
 ADR에서 확정한다.
