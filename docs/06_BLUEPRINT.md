@@ -647,7 +647,9 @@ Next action:
 - [ ] revision lineage를 보존한다.
 - [ ] stale Brief/approval을 감지한다.
 - [ ] Execute가 승인 revision 없이 시작되지 않음을 테스트했다.
-- [ ] upstream 차이를 research 문서에 기록했다.
+- [ ] upstream 관찰을 research 문서에 기록했다.
+- [ ] 의도적 차이를 Stage의 divergence ADR에 등록했다. 확인하지 못한
+      항목은 미확인으로 같은 곳에 적었다.
 
 ---
 

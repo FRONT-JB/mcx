@@ -6,6 +6,10 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 ## 규칙
 
 - 한 ADR은 하나의 결정만 다룬다.
+- upstream과 의도적으로 다른 동작은 Stage별 divergence ADR 하나에 모은다
+  (Brief는 [0011](./0011-brief-deliberate-divergences.md)). 다른 ADR에서
+  결정했더라도 그 divergence ADR에서 링크한다. 대조하지 못한 항목은 "차이 없음"이
+  아니라 미확인으로 같은 곳에 적는다.
 - 상태는 `Proposed`, `Accepted`, `Superseded`, `Rejected` 중 하나다.
 - Accepted ADR의 의미를 바꿀 때는 기존 파일을 덮어쓰지 않고 새 ADR로 대체한다.
 - 코드와 하위 문서는 Accepted ADR을 따라야 한다.
@@ -29,6 +33,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0011](./0011-brief-deliberate-divergences.md) | Brief에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
 | [0012](./0012-python-toolchain-and-layout.md) | Python 3.12 + uv + pydantic + pytest를 사용하고, 실행 모델은 upstream처럼 도메인 동기 / use case·port async로 나눈다. | Accepted |
 | [0013](./0013-brief-durable-state-baseline.md) | Brief durable state는 revision 이력을 포함한 단일 JSON 문서로 시작한다. | Accepted |
+| [0014](./0014-brief-concurrent-write-protection.md) | stale write 거부를 유지하고 내용 버전과 쓰기 순서를 두 축으로 나눈다. | Accepted |
 
 ## Template
 

@@ -50,7 +50,9 @@ Phase 1의 durable state는 **Mission별 단일 JSON 문서**로 시작한다.
 - 동시 접근은 file lock으로 직렬화한다.
 - 저장 실패는 예외를 삼키지 않고 명시적 실패 결과로 반환한다. 호출자는 이를
   전이 실패로 처리한다 ([Brief Guide](../05_BRIEF.md) §15).
-- stale revision에 기반한 갱신은 거부한다.
+- stale write는 거부한다. 이 항목은 upstream에 대응물이 없는 의도적 차이이며,
+  판정 기준과 근거는 [ADR-0014](./0014-brief-concurrent-write-protection.md)가
+  대체한다. 위 세 항목과 달리 이 줄은 작성 당시 upstream 대조 없이 기록되었다.
 
 ### 4. Port 경계
 
@@ -103,6 +105,7 @@ Phase 1 테스트는 인메모리 구현과 실패를 재현하는 구현으로 
 - 프로세스를 종료하고 다시 시작해도 Brief를 이어갈 수 있다
   ([Brief Guide](../05_BRIEF.md) §17의 B-019).
 - 저장 실패를 주입하면 `CLEAR`가 기록되지 않는다 (B-016).
-- stale revision 갱신이 최신 상태를 덮어쓰지 않는다 (B-017).
+- stale write가 최신 상태를 덮어쓰지 않는다 (B-017,
+  [ADR-0014](./0014-brief-concurrent-write-protection.md)).
 - 승인이 참조한 revision을 이후에도 조회할 수 있다 (B-014).
 - 도메인 테스트가 파일시스템 없이 실행된다.

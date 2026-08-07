@@ -92,11 +92,43 @@ clarity), 그리고 인터뷰 이전의 read-only 코드베이스 탐색 단계�
 **근거**: §17과 UPSTREAM_MAPPING §10. 자리를 미리 예약하는 이유는 나중에
 활성화할 때 policy 구조가 깨지지 않게 하기 위해서다.
 
+### 7. 다른 ADR에서 결정된 차이 — 등록 링크
+
+이 ADR은 Brief의 **divergence register**다. 차이를 다른 ADR에서 결정했더라도
+여기에서 링크해 한 곳에서 전체를 볼 수 있게 한다. 아래 항목의 근거와 대안 검토는
+각 ADR에 있다.
+
+| 차이 | upstream | 결정 |
+|---|---|---|
+| 종료 후보 조건 충족을 auto-complete가 아니라 **승인 요청 시점**으로 매핑 | MCP가 사용자 신호 없이 완료 처리 | [ADR-0009](./0009-brief-completion-gate-policy.md) |
+| **assumption 축**을 별도로 유지 | `user`/`observation` 이진 분류만 존재 | [ADR-0010](./0010-answer-provenance-and-requirement-authority.md) §4 |
+| 수정 시 **revision 증가와 감사 이력**, 승인의 revision 바인딩 | interview state에 revision 축 없음 | [ADR-0013](./0013-brief-durable-state-baseline.md) |
+| **stale write 거부**와 내용 버전/쓰기 순서 두 축 | 동시 쓰기 보호 없음 (last-write-wins) | [ADR-0014](./0014-brief-concurrent-write-protection.md) |
+| **dimension floor 회귀 테스트** 추가 | floor는 코드에만 있고 테스트 없음 | 차이가 아니라 검증 보강 ([findings](../research/INTERVIEW_UPSTREAM_FINDINGS.md) §8.5) |
+
+toolchain 차이(mypy strict, 의존성, pytest-xdist)는 Brief 동작이 아니라 개발
+환경이므로 [ADR-0012](./0012-python-toolchain-and-layout.md)에만 둔다.
+
+### 8. 아직 등록되지 않은 것 — 미확인 표시
+
+다음은 Phase 1 구현 중 결정되었으나 upstream과 대조하지 못했다. 차이인지 같은
+것인지 모르는 상태이며, 해당 영역을 다시 다룰 때 확인한다.
+
+| 항목 | 상태 |
+|---|---|
+| clarity 평가자에게 `observation` 본문을 그대로 전달 | `upstream 미확인` — 요구사항 추출 입력에만 투영을 적용한다는 판단의 근거는 있으나 평가 입력에 대한 upstream 확인은 없다 |
+| 평가 실패 시 예외를 올림 | **차이 가능성 높음** — upstream은 삼키고 진행하며 사용자에게 오류를 보이지 않는다 (`authoring_handlers.py:1836-1846`) |
+| 채점과 질문 생성 사이에 순서 제약 없음 | **차이** — upstream은 채점이 먼저 끝나야 질문을 만든다 (`authoring_handlers.py:3265-3271`). 우리는 점수가 질문 생성기에 전달되지 않는다 |
+| material 변경 시 stability signal 초기화 | **우리가 더 넓다** — upstream은 채점이 나쁘거나 실패할 때만 초기화한다 (`authoring_handlers.py:350-375`) |
+| Stage enum과 Gate가 소유하는 전이 | **차이** — upstream은 artifact별 status와 surface마다 다른 gate를 가진다 |
+
 ## Consequences
 
 ### Positive
 
 - upstream과 다른 지점이 우연이 아니라 근거를 가진 결정으로 존재한다.
+- 다른 ADR에서 결정된 차이도 이 등록부에서 링크되어 전체를 한 곳에서 본다.
+- 대조하지 못한 항목이 "차이 없음"으로 오해되지 않는다.
 - 유예 항목의 재도입 조건이 명시되어 있다.
 - 헌법 위반 없이 upstream 구조를 최대한 따른다.
 

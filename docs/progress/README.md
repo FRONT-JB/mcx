@@ -183,6 +183,28 @@ Phase 1은 2026-08-07 완료되었다
 함수는 이미 있으므로, 승인된 revision과 Gate evidence를 함께 담는 형태를 정하고
 Blueprint가 그것만 읽도록 만든다. 이것이 Phase 2의 첫 작업이다.
 
+### CLEAR 조건 중 강제되지 않는 것
+
+[Brief Guide](../05_BRIEF.md) §13.1은 `CLEAR` 조건 11개를 규정한다. `Gate`가
+실제로 검사하는 것은 4개다 — clarity 네 조건, 현재 revision 승인, material
+미해결 항목, 판정에 기록되는 policy version. 나머지는 **계약 미달**이며 계약
+위반과 구분해 여기에 명시한다.
+
+| 조건 | 상태 |
+|---|---|
+| 중요한 Non-goals가 기록되어 있다 | 코드에 개념이 없다. L-B01이 검사하려는 HOLD를 만들 수 있는 경로가 없다 |
+| 적용 가능한 Constraints가 기록되어 있다 | LLM의 `constraint` 명확도 점수가 대신하고 있을 뿐, 기록 여부를 확인하지 않는다 |
+| Goal이 재해석 없이 충분히 명확하다 | `goal` dimension floor로만 근사한다 |
+| material conflict가 없다 | conflict를 모델링하지 않는다 |
+| material assumption이 해결/승인되었다 | assumption을 모델링하지 않는다 |
+| 중요한 사실과 결정에 provenance가 있다 | `authority`는 타입으로 강제되나 `source`가 없고 존재 여부도 검사하지 않는다 |
+| state와 approval이 durable하게 보존되었다 | Gate는 순수 함수라 확인할 수 없다. `decide_gate`가 저장소에서 읽기 때문에 우연히 성립할 뿐이다 |
+| Gate decision이 판단 근거를 참조한다 | policy version만 있고 evidence reference가 없다 |
+
+또한 미해결 항목은 승인 외 유일한 Gate 차단 사유인데 **application 경계에
+진입점이 없다.** `note_unresolved`는 도메인에만 있고 `BriefService`가 호출하지
+않아, 실제 사용 경로로는 이 차단을 발생시킬 수 없다.
+
 ### 현재 구현의 알려진 한계
 
 계약 위반은 아니지만 이후 확장이 필요한 지점이다.
@@ -201,6 +223,22 @@ Blueprint가 그것만 읽도록 만든다. 이것이 Phase 2의 첫 작업이�
 - 질문 생성기가 한 문자열 안에 여러 질문을 담는 경우를 탐지하지 않는다. 반환
   타입이 질문 하나만 담도록 구조적으로 제한하며, 문장 단위 탐지는 신뢰할 만한
   방법이 없어 프롬프트와 출력 스키마의 문제로 남긴다.
+- stale write 충돌 시 재확인을 요청하지 않는다. 탐지 후 오류를 전파하는 데서
+  멈추며, `StaleWriteError`를 잡는 코드가 없다
+  ([ADR-0014](../adr/0014-brief-concurrent-write-protection.md) §3). 동시 writer가
+  실제로 생기는 Phase 7에서 구현한다.
+- 답변이 질문에 identity로 연결되지 않는다. `record_answer`는 질문 식별자를 받지
+  않고 대기 중인 마지막 round를 채운다. 지금 안전한 이유는 "열린 질문은 항상
+  하나"라는 상태 불변 조건뿐이며, 질문을 여러 개 여는 변경은 §8.1 규칙 1을 조용히
+  깬다.
+- clarity 정책의 주입 가능성이 검증되지 않았다. `greenfield_v1()` 외의 정책을
+  만드는 테스트가 없어, threshold를 코드에 하드코딩해도 테스트가 통과한다.
+- 질문이 겨냥한 gap(`targeted_gap`)을 생성기가 반환하지만 저장하지 않는다.
+  재개 시에는 `"resumed"`라는 실제 gap이 아닌 값을 반환한다 (§8 state 목록 미달).
+- `observation` 답변도 최소 round 수에 포함된다. 사용자가 결정한 것이 하나도 없어도
+  최소 round 조건을 통과할 수 있다. Fact Resolver 도입 시 함께 판단한다.
+- stability signal이 `required_stability`에서 상한에 걸린다. 이후 정책이 연속
+  횟수를 늘리면 이미 상한에 있던 상태는 차액만 채우면 된다.
 - assumption과 conflict를 별도 개념으로 모델링하지 않았다 (§8, B-006·B-009).
   현재는 `unresolved_items`의 `is_material`로만 다룬다.
 - `mission_id`와 `initial_intent`의 빈 값 검증이 없다. Entry Contract(§6)

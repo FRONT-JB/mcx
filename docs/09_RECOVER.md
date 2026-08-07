@@ -536,7 +536,9 @@ Next action:
 - [ ] Recover가 MISSION COMPLETE를 선언하지 않는다.
 - [ ] 재검증 routing을 테스트했다.
 - [ ] recursion guard를 테스트했다.
-- [ ] upstream 차이를 research 문서에 기록했다.
+- [ ] upstream 관찰을 research 문서에 기록했다.
+- [ ] 의도적 차이를 Stage의 divergence ADR에 등록했다. 확인하지 못한
+      항목은 미확인으로 같은 곳에 적었다.
 
 ---
 

@@ -122,7 +122,10 @@ provenance, clarity 계산을 file:line 근거로 조사했다. 결과는
 
 - upstream 동작을 이해하기 전에 더 좋아 보이는 방식으로 교체하지 않는다.
 - upstream의 수치 예시를 Mission Control 기본값으로 복사하지 않는다.
-- 의도적으로 단순화한 동작은 테스트와 ADR 또는 research note로 드러낸다.
+- 의도적으로 단순화하거나 다르게 만든 동작은 테스트와
+  [divergence register](./adr/0011-brief-deliberate-divergences.md)로 드러낸다.
+  research note는 관찰의 자리이지 결정의 자리가 아니다 (Constitution Appendix A
+  16번).
 - 코드 복사와 행동 재구성을 구분하고 라이선스·고지 의무를 확인한다.
 
 ---
@@ -312,7 +315,7 @@ Python class나 저장 schema가 아니다.
 | Mission reference | 예 | canonical Mission을 식별한다. |
 | Initial intent | 최초 진입 시 | 사용자의 원문 요청을 보존한다. |
 | Authorized context scope | 예 | 읽을 수 있는 repository/document 범위다. |
-| Current Brief revision | 재개 시 | stale update를 막기 위한 기준 revision이다. |
+| Current Brief revision | 재개 시 | 승인 유효성 판정의 기준이 되는 내용 버전이다. 덮어쓰기 판정은 쓰기 순서가 담당한다 (§8.1 규칙 3). |
 | User answer | 답변 시 | 어떤 질문에 대한 답인지 연결한다. |
 | Provenance | 예 | 두 축을 함께 기록한다. authority는 `decision` 또는 `observation` (§5.2), source는 관찰 위치나 응답 주체다. |
 | Re-entry evidence | 재진입 시 | 이전 Stage의 gap과 관련 Telemetry다. |
@@ -349,7 +352,11 @@ Python class나 저장 schema가 아니다.
 
 1. 질문과 답변은 identity로 연결된다.
 2. 답변 source와 knowledge kind를 혼동하지 않는다.
-3. 수정은 revision을 증가시키고 이전 값을 감사 가능하게 남긴다.
+3. 상태는 두 개의 축을 가진다. **내용 버전**(revision)은 요구사항에 영향을 주는
+   변경에서만 증가하며 이전 값을 감사 가능하게 남긴다. **쓰기 순서**(sequence)는
+   상태가 바뀌는 모든 저장에서 증가하며 덮어쓰기 판정에 쓰인다. 질문 제시,
+   clarity 평가 기록, 승인 기록은 저장되지만 내용 버전을 올리지 않는다
+   ([ADR-0014](./adr/0014-brief-concurrent-write-protection.md)).
 4. 승인 이후 material field가 바뀌면 기존 승인은 현재 revision에 유효하지 않다.
 5. 미답변 질문을 답변된 것처럼 저장하지 않는다.
 6. score와 함께 사용한 policy version을 남긴다.
@@ -695,7 +702,9 @@ Brief state는 특정 Claude, Codex, OpenCode 대화에만 존재해서는 안 �
 - 각 mutation은 Mission과 previous revision을 확인한다.
 - 질문 생성 전후, 답변 수신, assessment, approval, Gate decision을 재개할 수 있다.
 - 중복 요청은 같은 round를 두 번 생성하지 않도록 식별 가능해야 한다.
-- stale revision update는 조용히 덮어쓰지 않는다.
+- stale write는 조용히 덮어쓰지 않는다. 판정 기준은 내용 버전이 아니라 쓰기
+  순서다 — 요구사항을 바꾸지 않는 변경도 저장은 되어야 하기 때문이다
+  (`upstream 대응물 없음`, [ADR-0014](./adr/0014-brief-concurrent-write-protection.md)).
 - 저장 성공 전에는 사용자에게 전이가 완료되었다고 알리지 않는다.
 - 재시도는 기존 기록을 삭제하지 않고 별도 attempt/event로 남긴다.
 - 사용자 답변은 canonical state에 먼저 저장한 뒤 Telemetry를 기록한다.
@@ -748,7 +757,7 @@ Brief의 오류는 구현 오류와 specification gap을 구분한다.
 | Generator가 tool 호출을 시도 | 실행을 차단하고 capability violation 기록 | 편의를 위해 권한 허용 |
 | runtime unavailable/timeout | 현재 revision 보존, 오류 Telemetry, 정책상 재시도 또는 HOLD | state 초기화 |
 | persistence 실패 | 전이·승인·CLEAR 중단 | 메모리 결과만 성공으로 응답 |
-| stale answer/revision | 최신 question과 revision을 제시해 재확인 | 최신 state 덮어쓰기 |
+| stale write 충돌 | 최신 question과 revision을 제시해 재확인 (`Phase 7 미구현` — Phase 1은 탐지 후 오류 전파까지) | 최신 state 덮어쓰기 |
 | 동일 질문 반복 | no-progress로 기록하고 다른 gap/표현 선택 또는 HOLD | 무한 반복 |
 | code fact를 찾지 못함 | unknown과 조사 범위 기록, 권한 요청 또는 사용자 확인 | assumption을 fact로 저장 |
 | 사실과 제품 결정 충돌 | conflict로 보존하고 사용자에게 의미를 설명 | 한쪽을 자동 삭제 |
@@ -831,6 +840,15 @@ CLI는 Gate를 자체 계산하지 않고 Core application boundary의 결과를
 
 정확한 test framework는 미확정이지만 다음 행동은 구현 전에 test case로 정의한다.
 
+> **upstream 근거 표시.** 이 표는 Brief upstream 조사(`a2cb097`) **이전에**
+> 작성되었고, 조사 결과를 반영한 재조정(`9886877`)은 모든 행을 다시 훑지 않았다.
+> 따라서 **표시가 없는 행은 upstream과 개별 대조되지 않았다.** 검증된 계약으로
+> 취급하지 않는다.
+>
+> 개별 대조가 끝난 행에는 근거를 함께 적는다. 대응물이 없으면
+> `upstream 대응물 없음`과 등록 ADR을, 확인하지 못했으면 `upstream 미확인`을
+> 그 자리에 적는다.
+
 | ID | 시나리오 | 기대 결과 |
 |---|---|---|
 | B-001 | 모호한 초기 요청으로 시작 | Mission과 Brief revision이 생성되고 중요한 질문 하나를 반환한다. |
@@ -849,7 +867,7 @@ CLI는 Gate를 자체 계산하지 않고 Core application boundary의 결과를
 | B-014 | 이전 revision 승인 후 내용 변경 | 기존 approval이 stale 처리되고 재승인을 요구한다. |
 | B-015 | 현재 revision 승인 및 모든 조건 충족 | CLEAR for Blueprint와 근거 reference를 저장한다. |
 | B-016 | persistence 실패 직후 승인 | CLEAR를 기록하거나 표시하지 않는다. |
-| B-017 | stale answer가 도착 | 최신 state를 덮어쓰지 않고 재확인을 요청한다. |
+| B-017 | 저장된 것보다 앞서지 않는 쓰기가 도착 (`upstream 대응물 없음`, [ADR-0014](./adr/0014-brief-concurrent-write-protection.md)) | 최신 state를 덮어쓰지 않는다. 재확인 요청은 Phase 7에서 구현한다. |
 | B-018 | 같은 질문이 반복됨 | no-progress를 감지하고 무한 루프를 막는다. |
 | B-019 | runtime timeout 후 재개 | 이전 rounds와 unresolved item을 잃지 않고 재개한다. |
 | B-020 | generator가 Mission Control MCP 재호출 시도 | 호출을 차단하고 capability violation을 기록한다. |

@@ -140,11 +140,56 @@ checkpoint를 **함께** 커밋한다. 이벤트만 저장되고 checkpoint가 �
 | append-only + guard 테이블 | Gate decision을 이벤트로만 표현하면 동시 전이 선점 문제가 남는다. 단일 프로세스 v1에서는 지연 가능하나 MCP 도입 시 필수 |
 | checkpoint ≠ event | 재개 스냅샷과 증거 누적을 같은 것으로 뭉치지 않는다 |
 | UoW로 phase 경계 커밋 | Attempt 경계에서 Telemetry와 상태를 함께 커밋해야 부분 실패가 없다 |
-| 전 계층 async | Execute/MCP 단계의 비동기 요구 ([ADR-0012](../adr/0012-python-toolchain-and-layout.md) Divergence 3의 재평가 트리거) |
+| 전 계층 async | Execute/MCP 단계의 비동기 요구. [ADR-0012](../adr/0012-python-toolchain-and-layout.md)는 도메인 동기 / use case·port async로 확정했으므로, 이 조사는 그 경계를 바꿀 근거가 아니라 adapter 구현의 요구사항이다 |
 | 가벼운 migration | 저장 schema 변경 대비는 필요하지만 무거운 도구는 불필요 |
 | projection은 권위 없음 | Mission Control의 파생 뷰(요약, 리포트)도 canonical state를 대체하지 않는다 |
 
-## 9. 아직 조사하지 않은 것
+## 9. Interview state의 동시 쓰기 — 보호 장치가 없다
+
+> 2026-08-07 재조사. Phase 1 구현이 `revision` 하나로 두 가지 판정을 하려다
+> 모순에 부딪힌 뒤, "upstream은 같은 문제를 어떻게 푸는가"를 확인했다.
+
+**upstream은 interview state에 동시 쓰기 보호를 하지 않는다.** last-write-wins다.
+
+- `bigbang/interview.py:1119-1144` — `save_state`는 직렬화 후 기록한다. 저장 전
+  read-back도, `updated_at` 비교도, version precondition도, 충돌 분기도 없다.
+- `core/file_lock.py:17-46` — advisory `flock`. 읽기 한 번 또는 쓰기 한 번
+  동안만 잡는다. `load_state`가 shared lock(`interview.py:1185`),
+  `save_state`가 exclusive lock(`:1126`)을 **각각 따로** 획득하므로
+  load→수정→save 구간은 보호되지 않는다. lock이 보장하는 것은 파일 원자성이지
+  트랜잭션 원자성이 아니다.
+- `core/owner_only.py:109-135` — 임시 파일 + rename + fsync. 찢어진 읽기는
+  막지만 lost update는 명시적으로 막지 않는다.
+
+**upstream의 유일한 정수는 concurrency용이 아니다.**
+
+- `bigbang/interview.py:245` — `requirement_input_revision: int = 0`. 유일한
+  카운터이며, 쓰기 순서/sequence 필드는 모델 어디에도 없다.
+- `:338-342` — 이 값을 올리는 곳은 `invalidate_requirement_distillation()`
+  하나뿐이고, 호출처는 `record_answer`(`:477`)와 참조가 실제로 바뀐
+  `merge_turn_context`(`:392`)뿐이다.
+- `core/requirement_candidate.py:269-275` — 용도는 파생 read model
+  (`requirement_distillation`) 캐시 무효화다. `is_current()`는
+  `schema_version` + `input_revision` + `input_fingerprint`(SHA-256)를 모두
+  요구한다. 즉 카운터는 내용 지문과 짝을 이루며, 승인이나 완료를 가리키지
+  않는다.
+- 승인·완료가 참조하는 version stamp는 **없다**. 완료는 `status = COMPLETED`
+  (`:1651`)와 영속화된 `completion_candidate_streak`뿐이다.
+
+**upstream이 우리와 같은 모순을 겪지 않는 이유는 decoupling이다.**
+
+- `mcp/tools/authoring_handlers.py:3649-3661` — 답변 대기 질문을 저장할 때
+  `rounds`와 `updated_at`만 건드린다. `ambiguity_score`와
+  `completion_candidate_streak`을 **손대지 않는다**.
+- `bigbang/interview.py:455-463` — `record_answer`는 새 round를 붙이지 않고
+  기존의 질문-only round를 채운다.
+
+즉 upstream은 "질문 저장이 승인 상태를 흔든다"는 상황 자체를 만들지 않으며,
+버전 축을 나눠서 푸는 것이 아니다. Mission Control이 이 문제를 겪은 원인은 우리가
+**upstream에 없는 stale write 거부를 도입했기 때문**이며, 그 결정과 대응은
+[ADR-0014](../adr/0014-brief-concurrent-write-protection.md)에 기록되어 있다.
+
+## 10. 아직 조사하지 않은 것
 
 - 이벤트 타입 전체 목록과 aggregate 경계 설계
 - `events/` 패키지의 이벤트 정의와 versioning 전략
