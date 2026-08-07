@@ -347,9 +347,9 @@ goal/criteria가 참조하는 모든 엔티티를 덮는 ontology_schema, 필드
   `qa_threshold`, `qa_iterations`, `qa_accepted_below_threshold`가 선언된
   필드인지 `extra="allow"`로 붙은 것인지
 - `InvestmentSpec`의 용도
-- `agents/seed-closer.md` — §12가 관측한 Seed 직전 closure 감사의 여섯 축이
-  규정된 것인지, 그 blocking 판정이 무엇을 근거로 나오는지. Mission Control에
-  대응물이 없다
+- ~~`agents/seed-closer.md` — §12가 관측한 Seed 직전 closure 감사~~
+  **2026-08-08 해소 → §13.** 여섯 축은 규정이며, 위치는 Seed 생성이 아니라
+  interview 종료 gate다
 - `skills/seed/SKILL.md`의 best attempt 추적 문구 전문 — 동점 규칙이 실제로
   없는지 (§12가 관측한 동점 처리의 근거 확인)
 - 2,637줄 파싱 계층이 방어하는 실패 목록 (구조화 출력을 쓰는 우리에게 어디까지
@@ -494,3 +494,60 @@ Gate만 진행을 결정한다"가 재료는 준다. Execute를 거치지 않았
 Telemetry가 없다. 하지만 **Execute Telemetry 없이 나타난 작업을 Verify가 어떻게
 다루는지는 아직 정하지 않았다.**
 
+
+## 13. Closure gate — Brief의 출구 감사
+
+> Checked: 2026-08-08 (동일 baseline clone). Evidence level: **Verified.**
+> §12가 관측으로 남긴 closure 감사의 소스 확인이다.
+
+### 13.1 타이밍 — Seed 생성 단계가 아니라 interview의 출구다
+
+§12는 이것을 "Seed 생성 직전"으로 기록했는데, 소스 기준의 정확한 위치는
+**interview 종료 gate**다. `skills/interview/SKILL.md` step 8 "Seed-ready
+Acceptance Guard": MCP가 seed-ready를 신호해도 **완료 선언과 `ooo seed` 제안
+전에** 감사를 통과해야 하고, 통과 후에도 restate gate(step 9)를 거쳐야 한다.
+
+강제는 두 겹이다.
+
+- **MCP 계층**: `mcp/tools/subagent.py:1213-1218`이 인터뷰어 프롬프트에
+  "Seed-ready Guard"를 삽입한다 — "Do not treat ambiguity <= 0.2 as
+  sufficient for closure."
+- **skill 계층**: step 8이 3-lane fan-out 감사를 규정한다
+  (tri-panel builder는 `subagent.py:2656`, 합성은 `:2732`).
+
+### 13.2 판정 철학과 여섯 축
+
+`agents/seed-closer.md:13` — **"Treat a low ambiguity score as permission to
+audit closure, not permission to close."** 점수는 감사의 자격이지 종료의
+자격이 아니다.
+
+판정 기준은 하나다: 남은 미해결 사항이 구현을 **실질적으로(materially)**
+바꾸는가. 여섯 축(ownership/SSoT, protocol/API contract, lifecycle/recovery,
+migration, cross-client impact, verification)은 그 기준의 점검표이며,
+**brownfield 또는 system-level 작업에 한해** 적용한다 (`:15`, `:27`).
+
+gate는 양방향이다 — 너무 이른 종료만이 아니라 과잉 인터뷰도 거부한다
+(`:31-34` "Reject Over-Interviewing": 새 질문이 문구 다듬기만 낳으면 이미
+끝난 것).
+
+### 13.3 3-lane 구조와 결정적 합성
+
+- `closer` — seed-closer 기준 적용. **이 lane의 판정만 gate다.**
+- `contrarian` — 숨은 가정, 건너뛴 결정 공격. HIGH 심각도만 차단.
+- `gap_hunter` — 빠진 요구, 검증 불가 AC 사냥. HIGH 심각도만 차단.
+
+합성은 결정적이다: closer가 `seed_ready`가 아니면 차단, 다른 lane은 HIGH만
+차단, 차단 시 "MCP says seed-ready, but I am not accepting it yet because
+\<gap\>"으로 명시적으로 신호를 뒤집고 가장 임팩트 큰 blocking 질문 하나를
+던진다. 병렬 primitive가 없으면 closer 단일 실행이 공식 fallback이다.
+
+§12의 관측(6축 표, 검증 축 blocking)은 이 규정의 실행으로 확인됐다.
+
+### 13.4 Mission Control 함의 — 결정의 소속이 바뀐다
+
+이 감사의 대응물은 **Blueprint 단계가 아니라 Brief Gate(CLEAR 판정)의
+확장**이다. 우리 Gate는 결정적(정책 점수 + 승인)인데, upstream은 "점수
+충족은 필요조건일 뿐"이라는 판단 감사를 그 위에 얹는다. 도입 여부·형태
+(별도 assessor port인지, 기존 clarity 평가의 확장인지)는 결정하지 않았다 —
+[Open Questions §2](./OPEN_QUESTIONS.md#2-brief-decisions)에 등록한다.
+BlueprintService 설계를 막지 않는다.
