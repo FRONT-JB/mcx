@@ -612,6 +612,35 @@ score가 통과 범위여도 다음 중 하나가 있으면 `HOLD`다.
 반대로 score가 하나의 참고값에 불과한데 모델 설명만으로 임의 `CLEAR`해서도
 안 된다.
 
+### 11.6 Closure audit — 점수는 감사의 자격이지 종료의 자격이 아니다
+
+종료 후보 조건(§11.1)을 모두 만족해도 곧바로 승인 요청으로 가지 않는다.
+**closure 감사**가 material한 미해결 결정이 남아 있지 않은지 판정한다.
+upstream 근거: `agents/seed-closer.md`("Treat a low ambiguity score as
+permission to audit closure, not permission to close"),
+`skills/interview/SKILL.md` step 8, 합성 함수
+`mcp/tools/subagent.py:2732` — 상세는
+[SEED_UPSTREAM_FINDINGS §13](./research/SEED_UPSTREAM_FINDINGS.md). 결정은
+[ADR-0020](./adr/0020-brief-closure-audit.md).
+
+세 관점(lane)이 독립적으로 본다.
+
+| lane | 과제 | 판정력 |
+|---|---|---|
+| closer | 6축 점검표(소유권/SSoT·API 계약·lifecycle/복구·마이그레이션·cross-client·검증, brownfield/system-level 한정) 포함 closure gate 적용 | **verdict가 gate** |
+| contrarian | 숨은 가정·과적된 용어·건너뛴 결정 공격 | HIGH 심각도만 차단 |
+| gap_hunter | 빠진 요구·미기재 제약·검증 불가 성공 조건 사냥 | HIGH 심각도만 차단 |
+
+합성은 결정적이다 — closer가 `not_ready`면 차단(질문은 blocking_question,
+없으면 reason), advisory HIGH마다 차단(질문은 question, 없으면 finding),
+MEDIUM/LOW는 차단하지 않는다. 차단 질문은 다음 round의 입력이 된다.
+
+감사 결과는 revision에 묶어 저장한다. material 변경이 revision을 올리므로
+오래된 감사는 자동으로 무효가 된다. 계약 문장(gate summary, lane 과제,
+severity 규칙)은 upstream 영어 원문 그대로 쓴다 — 번역은 변형이다
+(ADR-0020 §4). ambiguity 점수는 감사 요청에 전달하지 않는다
+(`upstream과 다름` — ADR-0020 §5에 등록).
+
 ---
 
 ## 12. User Approval
@@ -668,6 +697,8 @@ Brief Gate는 다음 조건을 모두 만족할 때만 `CLEAR`할 수 있다.
   미해결·미확인·권위 부족은 `required`인 후보에서 막는다
   ([ADR-0015](./adr/0015-requirement-candidate-model.md)).
 - clarity policy의 종료 후보 조건 네 가지를 모두 만족한다 (§11.1).
+- 현재 revision의 closure 감사가 존재하고 ready다 (§11.6,
+  [ADR-0020](./adr/0020-brief-closure-audit.md)).
 - 중요한 사실과 결정에 provenance가 있다.
 - 사용자가 정확한 Brief revision의 진행을 승인했다.
 - state와 approval이 durable storage에 성공적으로 보존되었다.
@@ -899,6 +930,10 @@ CLI는 Gate를 자체 계산하지 않고 Core application boundary의 결과를
 | B-037 | 초기 context가 한도 초과 | 일반 질문보다 요약 round를 먼저 수행하고 원문을 보존한다. |
 | B-038 | 사용자가 Restate 문장을 수정 | 새 revision으로 기록되고 자동 승인되지 않는다. |
 | B-039 | 동일 Brief를 CLI와 MCP에서 처리 | 같은 policy와 Gate 조건이 적용되어 동일한 판정을 만든다. |
+| B-040 | 종료 후보 조건 충족, closure 감사 없음 (`skills/interview/SKILL.md` step 8, [ADR-0020](./adr/0020-brief-closure-audit.md)) | `CLEAR` 거부. 점수는 감사의 자격이지 종료의 자격이 아니다. |
+| B-041 | closer가 `not_ready` (`subagent.py:2732` 합성 규칙) | 차단. blocking_question(없으면 reason)이 HOLD 사유로 남는다. |
+| B-042 | advisory lane이 HIGH 심각도 (`subagent.py:2760` 근방) | 차단. MEDIUM/LOW는 차단하지 않는다. |
+| B-043 | 감사 후 material 변경 발생 (`upstream 대응물 없음` — revision 바인딩은 우리 방식, [ADR-0020](./adr/0020-brief-closure-audit.md) §6) | 감사가 stale이 되어 `CLEAR` 거부. 재감사가 필요하다. |
 
 ### 17.1 Test doubles
 

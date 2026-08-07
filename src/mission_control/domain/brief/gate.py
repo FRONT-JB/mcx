@@ -45,6 +45,9 @@ class GateBlockingCondition(StrEnum):
     APPROVAL_MISSING = "approval_missing"
     APPROVAL_STALE = "approval_stale"
     UNPROMOTABLE_REQUIREMENT = "unpromotable_requirement"
+    CLOSURE_AUDIT_MISSING = "closure_audit_missing"
+    CLOSURE_AUDIT_STALE = "closure_audit_stale"
+    CLOSURE_BLOCKED = "closure_blocked"
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +103,34 @@ def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGat
     )
 
     gate_blockers: list[GateBlocker] = []
+
+    # closure 감사가 승인 요청보다 앞선 단계다 — 점수는 감사의 자격이지 종료의
+    # 자격이 아니다 (docs/05_BRIEF.md §11.6, ADR-0020).
+    if state.closure_audit is None:
+        gate_blockers.append(
+            GateBlocker(
+                condition=GateBlockingCondition.CLOSURE_AUDIT_MISSING,
+                detail="closure audit for the current Brief revision is missing",
+            )
+        )
+    elif not state.has_current_closure_audit:
+        gate_blockers.append(
+            GateBlocker(
+                condition=GateBlockingCondition.CLOSURE_AUDIT_STALE,
+                detail=(
+                    f"closure audit targets revision {state.closure_audit.revision} "
+                    f"but the current revision is {state.revision}"
+                ),
+            )
+        )
+    else:
+        for question in state.closure_audit.audit.decision.blocking_questions:
+            gate_blockers.append(
+                GateBlocker(
+                    condition=GateBlockingCondition.CLOSURE_BLOCKED,
+                    detail=question,
+                )
+            )
 
     if state.approval is None:
         gate_blockers.append(

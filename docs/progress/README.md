@@ -7,8 +7,8 @@
 | Project phase | Phase 2 — Blueprint vertical slice 진행 중 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 진행 중 |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, gate, handoff), `domain/blueprint/` (spec, assembly, qa), `domain/stage.py`, `domain/errors.py`, `application/`, `adapters/persistence/` |
-| Automated tests | 241 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa), `domain/stage.py`, `domain/errors.py`, `application/`, `adapters/persistence/` |
+| Automated tests | 262 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -38,12 +38,12 @@
 | `02_MISSION_LIFECYCLE.md` | Draft | exact state/Recover open decisions 검토 |
 | `03_RUNTIME.md` | Draft | protocol examples로 contract tests 정의 |
 | `04_MCP.md` | Draft | tool schema와 transport 결정 전 Core boundary 유지 |
-| `05_BRIEF.md` | Verified contract | Phase 1 구현과 140개 테스트로 검증 (미착수 행은 progress 0001 참조) |
+| `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
 | `06_BLUEPRINT.md` | Draft | schema/QA/revision policy 확정 |
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 19 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019는 Phase 2로) |
+| `adr/` | 20 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019는 Phase 2로, 0020은 Phase 1 소급) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -95,6 +95,14 @@
 - [x] Brief 허용/금지 Stage transition tests (L-S01·L-B02·L-B04)
 
 Gate와 evidence는 [progress 0001](./0001_BRIEF_VERTICAL_SLICE.md)에 있다.
+
+**2026-08-08 소급 추가 — closure 감사 (ADR-0020, B-040~B-043).** upstream
+조사(research §13)에서 종료 gate에 판단 감사가 있음을 확인해 Phase 1 완료
+범위를 소급 확장했다. 3-lane(closer/contrarian/gap_hunter) 전부 재구성, 합성은
+결정적 도메인 코드, `CLEAR`는 현재 revision의 ready 감사를 요구한다. 계약
+문장은 upstream 영어 원문이며, ambiguity 점수 비전달이 등록된 divergence다.
+`domain/brief/closure.py` + `BriefService.audit_closure` + 테스트 21건, 기존
+CLEAR 경로 테스트 전부 감사 단계를 포함하도록 갱신했다.
 
 ### Phase 2 — Blueprint vertical slice
 

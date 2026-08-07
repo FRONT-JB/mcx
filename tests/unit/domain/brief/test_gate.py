@@ -9,6 +9,14 @@ from mission_control.domain.brief.clarity import (
     ClarityPolicy,
     DimensionScore,
 )
+from mission_control.domain.brief.closure import (
+    AdvisoryLane,
+    AdvisoryReport,
+    CloserReport,
+    CloserVerdict,
+    ClosureAudit,
+    ClosureSeverity,
+)
 from mission_control.domain.brief.gate import GateBlockingCondition, evaluate_brief_gate
 from mission_control.domain.brief.requirement import (
     CandidateContentSource,
@@ -55,10 +63,25 @@ def _assessed(
     return state
 
 
+def _ready_audit() -> ClosureAudit:
+    """세 lane 모두 통과한 감사."""
+    return ClosureAudit(
+        closer=CloserReport(verdict=CloserVerdict.READY, reason="nothing material remains"),
+        contrarian=AdvisoryReport(
+            lane=AdvisoryLane.CONTRARIAN, severity=ClosureSeverity.LOW, finding="minor"
+        ),
+        gap_hunter=AdvisoryReport(
+            lane=AdvisoryLane.GAP_HUNTER, severity=ClosureSeverity.LOW, finding="minor"
+        ),
+    )
+
+
 def _ready_brief() -> BriefState:
-    """네 조건과 승인을 모두 갖춘 상태."""
+    """네 조건, closure 감사, 승인을 모두 갖춘 상태."""
     state = _assessed(_answered_brief(), _assessment(), times=POLICY.required_stability)
-    return state.approve(statement="이대로 진행해 주세요")
+    return state.record_closure_audit(audit=_ready_audit()).approve(
+        statement="이대로 진행해 주세요"
+    )
 
 
 def _conditions(decision: object) -> list[GateBlockingCondition]:
@@ -158,7 +181,7 @@ class TestApprovalIsNotSufficient:
             required=False,
         )
         state = _assessed(state, _assessment(), times=POLICY.required_stability)
-        state = state.approve(statement="진행")
+        state = state.record_closure_audit(audit=_ready_audit()).approve(statement="진행")
 
         decision = evaluate_brief_gate(state=state, policy=POLICY)
 
@@ -268,3 +291,76 @@ class TestAssessmentBelongsToTheRevision:
         assert reopened.assessment is None
         assert reopened.stability_signal == 0
         assert evaluate_brief_gate(state=reopened, policy=POLICY).outcome == "HOLD"
+
+
+class TestClosureAuditGatesClear:
+    """§11.6 — 점수는 감사의 자격이지 종료의 자격이 아니다 (B-040 ~ B-043)."""
+
+    def test_candidacy_without_an_audit_holds(self) -> None:
+        """B-040 — 네 조건과 승인이 있어도 감사가 없으면 CLEAR가 아니다."""
+        state = _assessed(_answered_brief(), _assessment(), times=POLICY.required_stability)
+        state = state.approve(statement="진행")
+
+        decision = evaluate_brief_gate(state=state, policy=POLICY)
+
+        assert decision.outcome == "HOLD"
+        assert GateBlockingCondition.CLOSURE_AUDIT_MISSING in _conditions(decision)
+
+    def test_blocked_audit_holds_with_its_questions(self) -> None:
+        """B-041 — closer의 차단 질문이 HOLD 사유로 그대로 남는다."""
+        blocked = ClosureAudit(
+            closer=CloserReport(
+                verdict=CloserVerdict.NOT_READY,
+                reason="verification is absent",
+                blocking_question="what observable fact proves this is done?",
+            ),
+            contrarian=AdvisoryReport(
+                lane=AdvisoryLane.CONTRARIAN, severity=ClosureSeverity.LOW, finding="minor"
+            ),
+            gap_hunter=AdvisoryReport(
+                lane=AdvisoryLane.GAP_HUNTER, severity=ClosureSeverity.LOW, finding="minor"
+            ),
+        )
+        state = _assessed(_answered_brief(), _assessment(), times=POLICY.required_stability)
+        state = state.record_closure_audit(audit=blocked).approve(statement="진행")
+
+        decision = evaluate_brief_gate(state=state, policy=POLICY)
+
+        assert decision.outcome == "HOLD"
+        assert GateBlockingCondition.CLOSURE_BLOCKED in _conditions(decision)
+        assert "what observable fact proves this is done?" in decision.blocking_reasons
+
+    def test_high_advisory_alone_holds(self) -> None:
+        """B-042 — closer가 ready여도 HIGH advisory가 있으면 HOLD다."""
+        audit = ClosureAudit(
+            closer=CloserReport(verdict=CloserVerdict.READY, reason="ok"),
+            contrarian=AdvisoryReport(
+                lane=AdvisoryLane.CONTRARIAN,
+                severity=ClosureSeverity.HIGH,
+                finding="hidden assumption about ownership",
+            ),
+            gap_hunter=AdvisoryReport(
+                lane=AdvisoryLane.GAP_HUNTER, severity=ClosureSeverity.LOW, finding="minor"
+            ),
+        )
+        state = _assessed(_answered_brief(), _assessment(), times=POLICY.required_stability)
+        state = state.record_closure_audit(audit=audit).approve(statement="진행")
+
+        decision = evaluate_brief_gate(state=state, policy=POLICY)
+
+        assert decision.outcome == "HOLD"
+        assert "hidden assumption about ownership" in decision.blocking_reasons
+
+    def test_material_change_makes_the_audit_stale(self) -> None:
+        """B-043 — 감사 후 답변이 오면 그 감사는 현재 내용의 감사가 아니다."""
+        state = _ready_brief()
+        assert evaluate_brief_gate(state=state, policy=POLICY).outcome == "CLEAR"
+
+        reopened = state.record_answer(question="추가", answer="추가", authority="decision")
+        reopened = _assessed(reopened, _assessment(), times=POLICY.required_stability)
+        reopened = reopened.approve(statement="다시 진행")
+
+        decision = evaluate_brief_gate(state=reopened, policy=POLICY)
+
+        assert decision.outcome == "HOLD"
+        assert GateBlockingCondition.CLOSURE_AUDIT_STALE in _conditions(decision)

@@ -11,12 +11,32 @@ from mission_control.domain.brief.clarity import (
     ClarityPolicy,
     DimensionScore,
 )
+from mission_control.domain.brief.closure import (
+    AdvisoryLane,
+    AdvisoryReport,
+    CloserReport,
+    CloserVerdict,
+    ClosureAudit,
+    ClosureSeverity,
+)
 from mission_control.domain.brief.gate import evaluate_brief_gate, next_stage_after_brief
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.errors import StaleGateDecisionError
 from mission_control.domain.stage import Stage
 
 POLICY = ClarityPolicy.greenfield_v1()
+
+
+def _ready_audit() -> ClosureAudit:
+    return ClosureAudit(
+        closer=CloserReport(verdict=CloserVerdict.READY, reason="nothing material remains"),
+        contrarian=AdvisoryReport(
+            lane=AdvisoryLane.CONTRARIAN, severity=ClosureSeverity.LOW, finding="minor"
+        ),
+        gap_hunter=AdvisoryReport(
+            lane=AdvisoryLane.GAP_HUNTER, severity=ClosureSeverity.LOW, finding="minor"
+        ),
+    )
 
 
 def _assessment() -> ClarityAssessment:
@@ -41,7 +61,9 @@ def _clear_brief() -> BriefState:
     state = _brief()
     for _ in range(POLICY.required_stability):
         state = state.record_assessment(assessment=_assessment(), policy=POLICY)
-    return state.approve(statement="이대로 진행해 주세요")
+    return state.record_closure_audit(audit=_ready_audit()).approve(
+        statement="이대로 진행해 주세요"
+    )
 
 
 class TestAllowedTransition:

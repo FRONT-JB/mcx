@@ -11,10 +11,14 @@ from mission_control.application.brief_service import (
     BriefNotFoundError,
     BriefService,
     ClarityAssessmentError,
+    ClosureAuditError,
+    ClosureContractError,
     QuestionContractError,
 )
 from mission_control.application.ports import (
     AssessmentRequest,
+    CloserAuditRequest,
+    ClosureChallengeRequest,
     GeneratedQuestion,
     QuestionRequest,
 )
@@ -22,6 +26,13 @@ from mission_control.domain.brief.clarity import (
     ClarityAssessment,
     ClarityPolicy,
     DimensionScore,
+)
+from mission_control.domain.brief.closure import (
+    AdvisoryLane,
+    AdvisoryReport,
+    CloserReport,
+    CloserVerdict,
+    ClosureSeverity,
 )
 from mission_control.domain.brief.requirement import (
     CandidateContentSource,
@@ -98,6 +109,52 @@ class ScriptedClarityAssessor:
         )
 
 
+class ScriptedClosureAssessor:
+    """고정된 closer 판정을 반환한다. 실패도 재현할 수 있다."""
+
+    def __init__(
+        self,
+        verdict: CloserVerdict = CloserVerdict.READY,
+        *,
+        blocking_question: str | None = None,
+    ) -> None:
+        self.verdict = verdict
+        self.blocking_question = blocking_question
+        self.requests: list[CloserAuditRequest] = []
+        self.fail_next = False
+
+    async def audit(self, request: CloserAuditRequest) -> CloserReport:
+        self.requests.append(request)
+        if self.fail_next:
+            self.fail_next = False
+            raise ValueError("closer returned unparseable output")
+        return CloserReport(
+            verdict=self.verdict,
+            reason="scripted reason",
+            blocking_question=self.blocking_question,
+        )
+
+
+class ScriptedClosureChallenger:
+    """요청받은 lane 그대로 고정 심각도를 반환한다. lane 위반도 재현할 수 있다."""
+
+    def __init__(self, severity: ClosureSeverity = ClosureSeverity.LOW) -> None:
+        self.severity = severity
+        self.requests: list[ClosureChallengeRequest] = []
+        self.wrong_lane = False
+
+    async def challenge(self, request: ClosureChallengeRequest) -> AdvisoryReport:
+        self.requests.append(request)
+        lane = request.lane
+        if self.wrong_lane:
+            lane = (
+                AdvisoryLane.GAP_HUNTER
+                if request.lane is AdvisoryLane.CONTRARIAN
+                else AdvisoryLane.CONTRARIAN
+            )
+        return AdvisoryReport(lane=lane, severity=self.severity, finding="scripted finding")
+
+
 @pytest.fixture
 def repository() -> InMemoryBriefRepository:
     return InMemoryBriefRepository()
@@ -114,15 +171,29 @@ def assessor() -> ScriptedClarityAssessor:
 
 
 @pytest.fixture
+def closure_assessor() -> ScriptedClosureAssessor:
+    return ScriptedClosureAssessor()
+
+
+@pytest.fixture
+def closure_challenger() -> ScriptedClosureChallenger:
+    return ScriptedClosureChallenger()
+
+
+@pytest.fixture
 def service(
     repository: InMemoryBriefRepository,
     generator: ScriptedQuestionGenerator,
     assessor: ScriptedClarityAssessor,
+    closure_assessor: ScriptedClosureAssessor,
+    closure_challenger: ScriptedClosureChallenger,
 ) -> BriefService:
     return BriefService(
         repository=repository,
         question_generator=generator,
         clarity_assessor=assessor,
+        closure_assessor=closure_assessor,
+        closure_challenger=closure_challenger,
         policy=POLICY,
     )
 
@@ -234,6 +305,8 @@ class TestQuestionContractViolation:
             repository=repository,
             question_generator=ScriptedQuestionGenerator("   "),
             clarity_assessor=ScriptedClarityAssessor(),
+            closure_assessor=ScriptedClosureAssessor(),
+            closure_challenger=ScriptedClosureChallenger(),
             policy=POLICY,
         )
         await _started(service)
@@ -248,6 +321,8 @@ class TestQuestionContractViolation:
             repository=repository,
             question_generator=ScriptedQuestionGenerator(""),
             clarity_assessor=ScriptedClarityAssessor(),
+            closure_assessor=ScriptedClosureAssessor(),
+            closure_challenger=ScriptedClosureChallenger(),
             policy=POLICY,
         )
         await _started(service)
@@ -455,6 +530,8 @@ class TestStabilitySignalAdvancesOncePerAssessment:
             repository=repository,
             question_generator=generator,
             clarity_assessor=assessor,
+            closure_assessor=ScriptedClosureAssessor(),
+            closure_challenger=ScriptedClosureChallenger(),
             policy=POLICY,
         )
         await _answered(service)
@@ -473,6 +550,7 @@ class TestMaterialChangeInvalidatesAssessment:
         await _answered(service)
         await service.assess_clarity(mission_id="m-1")
         qualified = await service.assess_clarity(mission_id="m-1")
+        await service.audit_closure(mission_id="m-1")
         await service.approve(mission_id="m-1", statement="진행")
         assert (await service.decide_gate(mission_id="m-1")).outcome == "CLEAR"
         assert qualified.stability_signal == POLICY.required_stability
@@ -585,6 +663,7 @@ class TestCandidateEntryPoint:
         )
         await service.assess_clarity(mission_id="m-1")
         await service.assess_clarity(mission_id="m-1")
+        await service.audit_closure(mission_id="m-1")
         await service.approve(mission_id="m-1", statement="진행")
 
         decision = await service.decide_gate(mission_id="m-1")
@@ -664,6 +743,8 @@ class TestAssessmentFailure:
             repository=repository,
             question_generator=generator,
             clarity_assessor=PartialAssessor(),
+            closure_assessor=ScriptedClosureAssessor(),
+            closure_challenger=ScriptedClosureChallenger(),
             policy=POLICY,
         )
         await _answered(service)
@@ -697,3 +778,96 @@ class TestAssessmentFailure:
         stored = await repository.load("m-1")
         assert stored is not None
         assert stored.assessment is None
+
+
+class TestClosureAuditUseCase:
+    """§11.6 — 세 lane 감사의 조율과 실패 처리."""
+
+    async def test_audit_runs_all_three_lanes_and_persists(
+        self,
+        service: BriefService,
+        repository: InMemoryBriefRepository,
+        closure_assessor: ScriptedClosureAssessor,
+        closure_challenger: ScriptedClosureChallenger,
+    ) -> None:
+        await _answered(service)
+
+        state = await service.audit_closure(mission_id="m-1")
+
+        assert state.has_current_closure_audit
+        assert len(closure_assessor.requests) == 1
+        assert [item.lane for item in closure_challenger.requests] == [
+            AdvisoryLane.CONTRARIAN,
+            AdvisoryLane.GAP_HUNTER,
+        ]
+        stored = await repository.load("m-1")
+        assert stored is not None and stored.has_current_closure_audit
+
+    async def test_requests_carry_the_upstream_contract_texts(
+        self,
+        service: BriefService,
+        closure_assessor: ScriptedClosureAssessor,
+        closure_challenger: ScriptedClosureChallenger,
+    ) -> None:
+        """계약 문장은 정책이 정하고 역할이 바꿀 수 없다."""
+        await _answered(service)
+
+        await service.audit_closure(mission_id="m-1")
+
+        assert "permission to audit closure" in closure_assessor.requests[0].gate_summary
+        assert all(
+            'Rate "high" ONLY when' in item.severity_rule for item in closure_challenger.requests
+        )
+
+    async def test_lane_failure_leaves_state_unchanged(
+        self,
+        service: BriefService,
+        repository: InMemoryBriefRepository,
+        closure_assessor: ScriptedClosureAssessor,
+    ) -> None:
+        """실패는 결과 없음이다 — 감사 없는 상태로 남아 Gate가 막는다."""
+        await _answered(service)
+        closure_assessor.fail_next = True
+
+        with pytest.raises(ClosureAuditError):
+            await service.audit_closure(mission_id="m-1")
+
+        stored = await repository.load("m-1")
+        assert stored is not None and stored.closure_audit is None
+
+    async def test_wrong_lane_is_a_contract_violation(
+        self,
+        service: BriefService,
+        closure_challenger: ScriptedClosureChallenger,
+    ) -> None:
+        """다른 lane의 결과를 받아들이면 감사의 근거 기록이 거짓이 된다."""
+        await _answered(service)
+        closure_challenger.wrong_lane = True
+
+        with pytest.raises(ClosureContractError):
+            await service.audit_closure(mission_id="m-1")
+
+    async def test_blocked_audit_is_still_recorded(
+        self,
+        repository: InMemoryBriefRepository,
+        generator: ScriptedQuestionGenerator,
+    ) -> None:
+        """차단 판정도 기록이다 — 무엇이 막았는지가 Gate 사유로 남아야 한다."""
+        service = BriefService(
+            repository=repository,
+            question_generator=generator,
+            clarity_assessor=ScriptedClarityAssessor(),
+            closure_assessor=ScriptedClosureAssessor(
+                CloserVerdict.NOT_READY, blocking_question="who owns the cache?"
+            ),
+            closure_challenger=ScriptedClosureChallenger(),
+            policy=POLICY,
+        )
+        await _answered(service)
+
+        state = await service.audit_closure(mission_id="m-1")
+
+        assert state.has_current_closure_audit
+        assert state.closure_audit is not None
+        assert state.closure_audit.audit.decision.ready is False
+        assert "who owns the cache?" in state.closure_audit.audit.decision.blocking_questions

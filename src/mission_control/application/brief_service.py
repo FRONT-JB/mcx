@@ -21,12 +21,25 @@ from mission_control.application.ports import (
     AssessmentRequest,
     BriefRepository,
     ClarityAssessor,
+    CloserAuditRequest,
+    ClosureAssessor,
+    ClosureChallenger,
+    ClosureChallengeRequest,
     GeneratedQuestion,
     OpenRequirement,
     QuestionGenerator,
     QuestionRequest,
 )
 from mission_control.domain.brief.clarity import ClarityPolicy
+from mission_control.domain.brief.closure import (
+    CLOSURE_GATE_SUMMARY,
+    CONTRARIAN_TASK,
+    GAP_HUNTER_TASK,
+    SEVERITY_RULE,
+    AdvisoryLane,
+    AdvisoryReport,
+    ClosureAudit,
+)
 from mission_control.domain.brief.gate import BriefGateDecision, evaluate_brief_gate
 from mission_control.domain.brief.handoff import BriefHandoff, build_brief_handoff
 from mission_control.domain.brief.provenance import AnswerAuthority
@@ -79,6 +92,27 @@ class ClarityAssessmentError(RuntimeError):
         self.mission_id = mission_id
 
 
+class ClosureAuditError(RuntimeError):
+    """closure 감사의 lane 하나가 결과를 만들어 내지 못했다.
+
+    실패를 ready로도 차단으로도 해석하지 않는다. 상태는 바뀌지 않으며 —
+    같은 revision에 대한 이전의 완결된 감사가 있다면 내용이 같으므로 그대로
+    유효하다 — 감사가 없던 상태라면 없는 채로 남아 Gate가 막는다.
+    """
+
+    def __init__(self, mission_id: str) -> None:
+        super().__init__(f"closure audit produced no result for mission {mission_id}")
+        self.mission_id = mission_id
+
+
+class ClosureContractError(RuntimeError):
+    """closure 역할이 계약을 위반한 결과를 반환했다.
+
+    요청한 lane과 다른 lane의 결과를 받아들이면 어느 관점이 실제로 공격했는지
+    기록이 거짓이 된다.
+    """
+
+
 @dataclass(frozen=True, slots=True)
 class BriefService:
     """Brief Stage의 application 경계."""
@@ -86,6 +120,8 @@ class BriefService:
     repository: BriefRepository
     question_generator: QuestionGenerator
     clarity_assessor: ClarityAssessor
+    closure_assessor: ClosureAssessor
+    closure_challenger: ClosureChallenger
     policy: ClarityPolicy
 
     async def start(self, *, mission_id: str, initial_intent: str) -> BriefState:
@@ -221,6 +257,57 @@ class BriefService:
 
         await self.repository.save(assessed)
         return assessed
+
+    async def audit_closure(self, *, mission_id: str) -> BriefState:
+        """세 lane의 closure 감사를 수행하고 현재 revision에 기록한다.
+
+        점수는 감사의 자격이지 종료의 자격이 아니다 — 종료 후보 조건이 충족된
+        뒤, 승인을 요청하기 전에 호출한다 (``docs/05_BRIEF.md`` §11.6).
+
+        어느 lane이든 실패하면 상태를 바꾸지 않고
+        :class:`ClosureAuditError`를 올린다. 같은 revision의 이전 감사가 있다면
+        내용이 같으므로 그대로 유효하고, 없었다면 없는 채로 남아 Gate가 막는다.
+        """
+        state = await self._require(mission_id)
+
+        try:
+            closer = await self.closure_assessor.audit(
+                CloserAuditRequest(
+                    initial_intent=state.initial_intent,
+                    previous_rounds=BriefService._asked_rounds(state),
+                    open_requirements=BriefService._open_requirements(state),
+                    gate_summary=CLOSURE_GATE_SUMMARY,
+                )
+            )
+            contrarian = await self._challenge(state, AdvisoryLane.CONTRARIAN, CONTRARIAN_TASK)
+            gap_hunter = await self._challenge(state, AdvisoryLane.GAP_HUNTER, GAP_HUNTER_TASK)
+        except ClosureContractError:
+            raise
+        except Exception as error:
+            raise ClosureAuditError(mission_id) from error
+
+        audited = state.record_closure_audit(
+            audit=ClosureAudit(closer=closer, contrarian=contrarian, gap_hunter=gap_hunter)
+        )
+        await self.repository.save(audited)
+        return audited
+
+    async def _challenge(self, state: BriefState, lane: AdvisoryLane, task: str) -> AdvisoryReport:
+        report = await self.closure_challenger.challenge(
+            ClosureChallengeRequest(
+                lane=lane,
+                challenge=task,
+                severity_rule=SEVERITY_RULE,
+                initial_intent=state.initial_intent,
+                previous_rounds=BriefService._asked_rounds(state),
+                open_requirements=BriefService._open_requirements(state),
+            )
+        )
+        if report.lane is not lane:
+            raise ClosureContractError(
+                f"challenger was asked for lane {lane.value} but returned lane {report.lane.value}"
+            )
+        return report
 
     async def decide_gate(self, *, mission_id: str) -> BriefGateDecision:
         """저장된 상태로 Gate를 판정한다.

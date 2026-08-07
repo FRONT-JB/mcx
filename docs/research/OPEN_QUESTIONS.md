@@ -63,14 +63,11 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 - [x] 질문 생성 실패와 빈 응답 fallback을 정의한다. → 재개 조건을 명시한 HOLD, terminal status는 Lifecycle 소관 (05_BRIEF §15)
 - [x] initial context size와 prompt compaction policy를 정의한다. → 한도 초과 시 요약 round, 기본값 3500자 (05_BRIEF §10 Step 1)
 - [x] codebase fact를 누가 어떤 read-only capability로 수집할지 결정한다. → 별도 Fact Resolver 역할 유지 (ADR-0011)
-- [ ] **closure 감사를 Brief Gate에 도입할지, 어떤 형태로 할지 결정한다.**
-      upstream은 ambiguity 충족을 종료의 충분조건으로 취급하지 않는다 —
-      "낮은 점수는 감사할 허가이지 닫을 허가가 아니다"
-      ([SEED_UPSTREAM_FINDINGS §13](./SEED_UPSTREAM_FINDINGS.md)). 6축
-      (brownfield/system-level 한정)과 3-lane 구조가 규정으로 확인됐다.
-      우리 Gate는 현재 결정적(정책 + 승인)이며, 판단 감사를 얹는다면 별도
-      assessor port인지 clarity 평가 확장인지가 결정 대상이다. Phase 1
-      완료 범위를 소급 변경하므로 ADR 필수.
+- [x] **closure 감사를 Brief Gate에 도입할지, 어떤 형태로 할지 결정한다.**
+      → 3-lane 전부 재구성해 Core에 도입 (사용자 결정 2026-08-08,
+      [ADR-0020](../adr/0020-brief-closure-audit.md)). closer의 verdict가
+      gate, advisory 두 lane은 HIGH만 차단, 합성은 결정적 도메인 코드.
+      계약 문장은 upstream 원문, ambiguity 점수 비전달은 등록된 divergence.
 
 ## 3. Blueprint decisions
 

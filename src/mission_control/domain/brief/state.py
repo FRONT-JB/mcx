@@ -23,6 +23,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityPolicy
+from mission_control.domain.brief.closure import ClosureAudit, ClosureAuditRecord
 from mission_control.domain.brief.provenance import AnswerAuthority, BriefRound
 from mission_control.domain.brief.requirement import (
     CandidateContentSource,
@@ -85,6 +86,9 @@ class BriefState(BaseModel):
     assessment: ClarityAssessment | None = None
     #: 종료 조건을 연속으로 만족한 횟수. 평가와 짝이며 따로 살아남지 않는다.
     stability_signal: int = 0
+    #: 가장 최근의 closure 감사. 승인처럼 revision에 묶이며, material 변경이
+    #: revision을 올리면 자동으로 stale이 된다 (ADR-0020 §6).
+    closure_audit: ClosureAuditRecord | None = None
     history: tuple[BriefRevisionSnapshot, ...] = Field(default=())
 
     @property
@@ -307,6 +311,25 @@ class BriefState(BaseModel):
                 ),
             }
         )
+
+    def record_closure_audit(self, *, audit: ClosureAudit) -> BriefState:
+        """현재 revision에 대한 closure 감사 결과를 기록한다.
+
+        revision을 올리지 않는다 — 감사는 요구사항을 바꾸지 않는다. 반대
+        방향은 revision 바인딩으로 성립한다: 이후 material 변경이 revision을
+        올리면 이 기록은 자동으로 현재 내용에 대한 감사가 아니게 된다.
+        """
+        return self.model_copy(
+            update={
+                "sequence": self.sequence + 1,
+                "closure_audit": ClosureAuditRecord(revision=self.revision, audit=audit),
+            }
+        )
+
+    @property
+    def has_current_closure_audit(self) -> bool:
+        """현재 revision에 대한 감사가 있는가. 통과 여부는 보지 않는다."""
+        return self.closure_audit is not None and self.closure_audit.revision == self.revision
 
     def approve(self, *, statement: str) -> BriefState:
         """현재 revision에 대한 사용자 승인을 기록한다.

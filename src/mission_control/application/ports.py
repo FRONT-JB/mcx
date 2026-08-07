@@ -19,6 +19,11 @@ from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import QaAssessment, QaFinding
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityDimension
+from mission_control.domain.brief.closure import (
+    AdvisoryLane,
+    AdvisoryReport,
+    CloserReport,
+)
 from mission_control.domain.brief.requirement import (
     CandidateResolution,
     RequirementSection,
@@ -156,6 +161,72 @@ class ClarityAssessor(Protocol):
 
     async def assess(self, request: AssessmentRequest) -> ClarityAssessment:
         """요청된 모든 dimension의 clarity 점수를 반환한다."""
+        ...
+
+
+class CloserAuditRequest(BaseModel):
+    """closer lane 하나를 수행하기 위한 최소 context.
+
+    ``gate_summary``는 정책이 정한 upstream 원문 기준이며 수행자가 바꿀 수
+    없다. clarity 평가와 마찬가지로 **ambiguity 점수는 전달하지 않는다** —
+    upstream은 점수를 주고 "충분조건으로 쓰지 마라"는 경고를 얹지만, 우리는
+    anchoring 위험 자체를 제거한다 (ADR-0020 §5, 등록된 divergence).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    initial_intent: str
+    previous_rounds: tuple[AskedRound, ...]
+    open_requirements: tuple[OpenRequirement, ...]
+    gate_summary: str
+
+
+class ClosureAssessor(Protocol):
+    """closure gate 기준으로 종료 가능 여부를 판정하는 제한된 역할 (closer).
+
+    verdict를 반환하는 것이 다른 평가 port와 다른 이유는 ADR-0020 §8에 있다 —
+    이 판단에는 숨길 통과선이 없다. 판정("구현을 실질적으로 바꿀 미해결 결정이
+    있는가") 자체가 이 역할의 일이다.
+
+    이 port에는 파일 쓰기, Shell, Git, 네트워크가 없다. 감사 실패는 결과
+    없음이다 — 추측한 verdict를 반환하지 말고 예외를 올린다.
+    """
+
+    async def audit(self, request: CloserAuditRequest) -> CloserReport:
+        """closure 판정과, 차단 시 가장 임팩트 큰 후속 질문을 반환한다."""
+        ...
+
+
+class ClosureChallengeRequest(BaseModel):
+    """advisory lane 하나(contrarian 또는 gap_hunter)를 수행하기 위한 입력.
+
+    ``challenge``와 ``severity_rule``은 정책이 정한 upstream 원문이다. 같은
+    port가 lane마다 다른 과제로 두 번 불리므로, 어느 관점을 요청받았는지가
+    요청에 명시된다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    lane: AdvisoryLane
+    challenge: str
+    severity_rule: str
+    initial_intent: str
+    previous_rounds: tuple[AskedRound, ...]
+    open_requirements: tuple[OpenRequirement, ...]
+
+
+class ClosureChallenger(Protocol):
+    """지정된 관점으로 종료 결론을 공격하는 제한된 역할.
+
+    판정력이 없다 — 반환한 finding은 HIGH 심각도일 때만 차단하며, 그 규칙은
+    port가 아니라 결정적 합성이 정한다
+    (:attr:`~mission_control.domain.brief.closure.ClosureAudit.decision`).
+    closer와 분리된 port인 이유는 관점 공격이 판정을 겸하면 자기 공격의
+    성패를 자기가 정하기 때문이다.
+    """
+
+    async def challenge(self, request: ClosureChallengeRequest) -> AdvisoryReport:
+        """요청된 lane의 finding과 심각도를 반환한다."""
         ...
 
 

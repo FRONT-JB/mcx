@@ -13,6 +13,8 @@ from mission_control.adapters.persistence.file_brief_repository import FileBrief
 from mission_control.application.brief_service import BriefService
 from mission_control.application.ports import (
     AssessmentRequest,
+    CloserAuditRequest,
+    ClosureChallengeRequest,
     GeneratedQuestion,
     QuestionRequest,
 )
@@ -20,6 +22,12 @@ from mission_control.domain.brief.clarity import (
     ClarityAssessment,
     ClarityPolicy,
     DimensionScore,
+)
+from mission_control.domain.brief.closure import (
+    AdvisoryReport,
+    CloserReport,
+    CloserVerdict,
+    ClosureSeverity,
 )
 from mission_control.domain.brief.gate import next_stage_after_brief
 from mission_control.domain.stage import Stage
@@ -63,11 +71,29 @@ class ClearingAssessor:
         )
 
 
+class ReadyClosureAssessor:
+    """차단할 material 결정이 없다고 판정한다."""
+
+    async def audit(self, request: CloserAuditRequest) -> CloserReport:
+        return CloserReport(verdict=CloserVerdict.READY, reason="nothing material remains")
+
+
+class CalmClosureChallenger:
+    """요청받은 lane에서 LOW 심각도 finding만 낸다."""
+
+    async def challenge(self, request: ClosureChallengeRequest) -> AdvisoryReport:
+        return AdvisoryReport(
+            lane=request.lane, severity=ClosureSeverity.LOW, finding="minor wording polish"
+        )
+
+
 def _service(root: Path) -> BriefService:
     return BriefService(
         repository=FileBriefRepository(root=root),
         question_generator=SequentialQuestionGenerator(),
         clarity_assessor=ClearingAssessor(),
+        closure_assessor=ReadyClosureAssessor(),
+        closure_challenger=CalmClosureChallenger(),
         policy=POLICY,
     )
 
@@ -86,6 +112,7 @@ async def test_brief_reaches_clear_after_answers_and_approval(tmp_path: Path) ->
     await _answer_the_minimum_rounds(service)
     # 최소 round 이전의 평가는 생략되므로 통과한 평가는 아직 한 번뿐이다.
     await service.assess_clarity(mission_id="m-1")
+    await service.audit_closure(mission_id="m-1")
     state = await service.approve(mission_id="m-1", statement="이대로 진행해 주세요")
 
     decision = await service.decide_gate(mission_id="m-1")
@@ -176,6 +203,7 @@ async def test_gate_holds_until_approval_is_current(tmp_path: Path) -> None:
     await service.start(mission_id="m-1", initial_intent="댓글 기능을 추가하고 싶다")
     await _answer_the_minimum_rounds(service)
     await service.assess_clarity(mission_id="m-1")
+    await service.audit_closure(mission_id="m-1")
     await service.approve(mission_id="m-1", statement="진행")
     assert (await service.decide_gate(mission_id="m-1")).outcome == "CLEAR"
 

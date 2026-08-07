@@ -11,6 +11,14 @@ from mission_control.domain.brief.clarity import (
     ClarityPolicy,
     DimensionScore,
 )
+from mission_control.domain.brief.closure import (
+    AdvisoryLane,
+    AdvisoryReport,
+    CloserReport,
+    CloserVerdict,
+    ClosureAudit,
+    ClosureSeverity,
+)
 from mission_control.domain.brief.gate import evaluate_brief_gate
 from mission_control.domain.brief.handoff import (
     BriefHandoff,
@@ -27,6 +35,18 @@ from mission_control.domain.brief.requirement import (
 from mission_control.domain.brief.state import BriefState
 
 POLICY = ClarityPolicy.greenfield_v1()
+
+
+def _ready_audit() -> ClosureAudit:
+    return ClosureAudit(
+        closer=CloserReport(verdict=CloserVerdict.READY, reason="nothing material remains"),
+        contrarian=AdvisoryReport(
+            lane=AdvisoryLane.CONTRARIAN, severity=ClosureSeverity.LOW, finding="minor"
+        ),
+        gap_hunter=AdvisoryReport(
+            lane=AdvisoryLane.GAP_HUNTER, severity=ClosureSeverity.LOW, finding="minor"
+        ),
+    )
 
 
 def _assessment() -> ClarityAssessment:
@@ -87,7 +107,9 @@ def _cleared_brief() -> BriefState:
     )
     for _ in range(POLICY.required_stability):
         state = state.record_assessment(assessment=_assessment(), policy=POLICY)
-    return state.approve(statement="이대로 진행해 주세요")
+    return state.record_closure_audit(audit=_ready_audit()).approve(
+        statement="이대로 진행해 주세요"
+    )
 
 
 def _handoff_of(state: BriefState) -> BriefHandoff:
@@ -133,7 +155,7 @@ class TestSectionsAreSeparated:
         )
         for _ in range(POLICY.required_stability):
             state = state.record_assessment(assessment=_assessment(), policy=POLICY)
-        state = state.approve(statement="진행")
+        state = state.record_closure_audit(audit=_ready_audit()).approve(statement="진행")
 
         handoff = _handoff_of(state)
 
