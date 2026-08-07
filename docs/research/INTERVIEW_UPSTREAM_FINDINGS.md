@@ -183,11 +183,29 @@ ambiguity score와 **무관하게** Seed 생성을 막는다.
 `RequirementDistillation`은 `InterviewState`에 캐시로 얹힌다. 내용 지문과
 `requirement_input_revision`이 맞아야 유효하고(`:269-275`), 맞지 않으면 load 시
 폐기된다(`interview.py:344-356`). 즉 사용자가 Non-goal을 목록에 직접 적어 넣는
-것이 아니라 **대화에서 distill된다.**
+것이 아니라 **대화에서 derive된다.**
 
-Mission Control의 `unresolved_items`는 손으로 유지하는 primary 목록이므로 이
-지점에서 구조가 다르다. 대응 방식은 결정이 필요하며
-[Open Questions](./OPEN_QUESTIONS.md)에서 다룬다.
+**derive는 LLM 호출이 아니다.** `bigbang/requirement_distillation.py`는 410줄의
+동기 모듈이며 `llm_adapter`를 참조하지 않고 `async` 함수가 하나도 없다.
+`build_requirement_distillation(state)` (`:77`)이 round를 순회하며 결정적으로
+evidence와 candidate를 만든다.
+
+- `initial_context`가 있으면 `required=True`인 `GOAL` 후보 하나를 만들고
+  `CONFIRMED` / `USER` 권위를 준다 (`:90-110`).
+- 각 round의 답변은 evidence가 되지만, **후보가 되는 것은 다국어 키워드 정규식
+  `_EXPLICIT_REQUIREMENT_RE`에 걸리는 답변뿐이다** (`:36-44`, `:159-161`).
+  `must`, `required`, `필수`, `반드시`, `해야 한다`, `要件`, `必須` 등.
+- `provenance == "observation"`인 round는 **순회 자체에서 건너뛴다**
+  (`:130-141`). 주석이 이유를 밝힌다 — `build_promoted_reference_seed`가 LLM 없이
+  Seed를 만들 수 있으므로 프롬프트 조립 단계의 withholding으로는 이 경로에
+  닿지 않는다 (upstream #1755). withholding 규칙이 이 walk에도 있어야 하는
+  이유다.
+
+즉 파생의 비용은 모델 호출이 아니라 **evidence 모델과 lineage 검증, 내용 지문
+캐시, 그리고 무엇이 요구사항인지 판정하는 키워드 heuristic**이다.
+
+Mission Control은 후보를 직접 기록한다. 차이와 근거는
+[ADR-0015](../adr/0015-requirement-candidate-model.md) §4에 있다.
 
 ## 6. LICENSE
 

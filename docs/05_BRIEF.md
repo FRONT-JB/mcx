@@ -412,6 +412,11 @@ handoff는 최소한 다음 의미를 포함해야 한다.
 Brief handoff는 승인된 Blueprint가 아니다. Blueprint Stage가 이를 바탕으로
 Seed를 생성하고 QA·refinement·승인을 별도로 수행한다.
 
+handoff는 **저장되는 상태가 아니라 파생 투영**이다. `CLEAR`된 상태에서 매번
+계산하며 저장소에 기록하지 않는다. 칸별 목록에는 승격 판정을 통과한 후보만
+담기고, 생략된 후보는 이유와 함께 남는다
+([ADR-0016](./adr/0016-brief-handoff-projection.md)).
+
 ### 9.1 Requirement projection — observation withholding
 
 handoff는 하나의 평면적 대화 기록이 아니라 **두 개의 구분된 채널**을 제공한다.
@@ -880,7 +885,7 @@ CLI는 Gate를 자체 계산하지 않고 Core application boundary의 결과를
 | B-023 | 민감정보가 포함된 답변 | 정책에 따라 최소화/마스킹되고 일반 Telemetry에 복제되지 않는다. |
 | B-024 | 동일 입력으로 재전송된 answer | idempotency 정책에 따라 round가 중복 생성되지 않는다. |
 | B-025 | 사용자 승인은 했지만 성공 조건이 검증 불가 | 승인과 별개로 HOLD하고 gap을 설명한다. |
-| B-026 | CLEAR 후 handoff 생성 | Goal/Constraints/Non-goals/성공 조건/출처/승인 revision을 Blueprint가 읽을 수 있다. |
+| B-026 | CLEAR 후 handoff 생성 (`upstream 대응물 없음`, [ADR-0016](./adr/0016-brief-handoff-projection.md)) | Goal/Constraints/Non-goals/성공 조건/출처/승인 revision을 Blueprint가 읽을 수 있다. HOLD·차단·다른 revision에서는 만들어지지 않는다. |
 | B-027 | 전체 threshold는 통과, 한 dimension이 floor 미달 | 종료 후보가 되지 않고 질문을 계속한다. |
 | B-028 | 종료 조건을 한 번만 만족 | stability signal이 1이며 종료 후보가 아니다. |
 | B-029 | 최소 round 도달 전 | clarity 평가를 수행하지 않고, 미평가 상태가 미통과와 구분된다. |

@@ -7,8 +7,8 @@
 | Project phase | Phase 2 — Blueprint vertical slice 시작 전 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE |
-| Source code | `domain/brief/`, `domain/stage.py`, `domain/errors.py`, `application/` (ports, brief_service), `adapters/persistence/` |
-| Automated tests | 140 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, gate, handoff), `domain/stage.py`, `domain/errors.py`, `application/`, `adapters/persistence/` |
+| Automated tests | 173 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-07 |
 
@@ -43,7 +43,7 @@
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 13 Accepted ADRs | 구현으로 검증 (0009~0013은 Phase 1로 검증됨) |
+| `adr/` | 16 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로 검증됨) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -176,12 +176,14 @@ Test Matrix는 B-039까지 확장되었다.
 확정했고, 첫 코드가 들어왔다.
 
 Phase 1은 2026-08-07 완료되었다
-([progress 0001](./0001_BRIEF_VERTICAL_SLICE.md)).
+([progress 0001](./0001_BRIEF_VERTICAL_SLICE.md)). 이후 같은 날 감사에서 드러난
+계약 미달 세 건을 닫았다 — 요구사항 후보 모델(ADR-0015), Brief handoff
+투영(ADR-0016), 그리고 미해결 후보의 application 진입점.
 
-다음 검증 가능한 목표 한 개: **Brief handoff 객체를 정의해 Blueprint의 입력
-계약을 고정한다** (B-026). 두 채널(requirement input / observed facts) 투영
-함수는 이미 있으므로, 승인된 revision과 Gate evidence를 함께 담는 형태를 정하고
-Blueprint가 그것만 읽도록 만든다. 이것이 Phase 2의 첫 작업이다.
+다음 검증 가능한 목표 한 개: **Blueprint(Seed) schema를 정한다.** handoff가
+Blueprint의 입력으로 고정되었으므로, 그 입력에서 무엇이 Seed의 어느 필드가 되는지
+upstream `core/seed.py`와 대조해 결정한다. upstream Seed에는 `non_goals` 필드가
+없다는 사실(`INTERVIEW_UPSTREAM_FINDINGS` §5.5)이 첫 확인 대상이다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

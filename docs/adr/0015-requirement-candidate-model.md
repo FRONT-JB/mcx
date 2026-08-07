@@ -72,17 +72,35 @@ upstream과 같다. 왜 이 진술이 다음 Stage에 가지 않았는지 설명
 ### 4. Divergence — 파생 read model이 아니라 primary state로 기록한다
 
 **upstream**: 후보 목록은 `RequirementDistillation`이라는 **파생 read model**이다.
-LLM이 대화를 읽고 만들어 내며, `InterviewState`에 캐시로 얹혀 내용 지문과
-`requirement_input_revision`이 맞지 않으면 load 시 폐기된다
-(`core/requirement_candidate.py:269-275`, `bigbang/interview.py:344-356`).
+`build_requirement_distillation(state)`가 round를 순회하며 만들고,
+`InterviewState`에 캐시로 얹혀 내용 지문과 `requirement_input_revision`이 맞지
+않으면 load 시 폐기된다 (`core/requirement_candidate.py:269-275`,
+`bigbang/interview.py:344-356`).
 
-**Mission Control v1**: 후보를 대화에서 distill하지 않고 상태에 직접 기록한다.
+**Mission Control v1**: 후보를 대화에서 derive하지 않고 상태에 직접 기록한다.
 `BriefService.record_candidate`와 `resolve_candidate`가 진입점이다.
 
-**근거**: distillation은 LLM 호출과 프롬프트와 캐시 무효화를 함께 요구하며,
-질문 루프를 돌리는 데 필요한 것이 아니라 Blueprint에 넘길 때 필요해지는 것이다.
+**근거**: 이 derive는 LLM 호출이 **아니다** — `bigbang/requirement_distillation.py`
+는 동기 순수 모듈이다. 비용은 다른 데 있다.
+
+- `RequirementEvidence` 모델과 `validate_candidate_lineage` (§5에서 별도로 유예)
+- 내용 지문(SHA-256) 기반 캐시와 무효화
+- 무엇이 요구사항인지 판정하는 **다국어 키워드 정규식**
+  (`requirement_distillation.py:36-44`). 이 heuristic은 `must`, `필수`,
+  `반드시`, `必須` 같은 표현이 답변에 있는지로 후보 여부를 가른다. 재구성한다면
+  의도를 이해한 뒤 명시적으로 해야 하며, 지금 그대로 옮기는 것은
+  Principle 10이 금지하는 "이해 전 복제"에 가깝다.
+- reference cue/contrast 기능 — Mission Control에 대응 개념이 없다.
+
+질문 루프를 돌리는 데 필요한 것이 아니라 Blueprint에 넘길 때 필요해지므로
 Constitution §17("현재 Stage와 승인 범위가 요구하지 않는 작업을 미리 수행하지
 않는다")에 따라 유예한다.
+
+**함께 확인된 것**: upstream은 `provenance == "observation"`인 round를 이 순회에서
+건너뛴다 (`:130-141`). 주석에 따르면 LLM 없이 Seed가 만들어지는 경로가 있어
+프롬프트 조립 단계의 withholding만으로는 부족했기 때문이다(#1755). Mission
+Control이 withholding을 투영과 승격 권위 **두 곳**에서 강제하는 것은 같은 이유의
+구조적 대응이다.
 
 되돌리기 비싼 축(section, resolution, content_source, confirmation_authority,
 required)은 이 결정에서 upstream과 일치한다. 유예한 것은 "누가 목록을
@@ -123,8 +141,9 @@ Blueprint의 근거 추적과 함께 다룬다.
 - **`non_goals: tuple[str, ...]` 필드 추가**: 가장 작은 변경이지만 upstream이
   하나로 푸는 것을 네 개의 평행 구조로 재발명한다. 충돌과 가정을 나중에 추가하면
   차이가 더 벌어진다.
-- **distillation까지 지금 재구성**: 가장 충실하지만 Phase 1 범위를 넘는다. 축은
-  이미 일치하므로 나중에 붙여도 모델이 바뀌지 않는다.
+- **derive까지 지금 재구성**: 가장 충실하지만 evidence 모델·지문 캐시·키워드
+  heuristic을 함께 들여와야 하고, 그중 heuristic은 이해 없이 옮기면 안 되는
+  항목이다. 축은 이미 일치하므로 나중에 붙여도 모델이 바뀌지 않는다.
 - **`required` 대신 `is_material` 유지**: 문서 용어와 맞지만 upstream 축 이름과
   갈라진다. 산문에서는 "material"을 계속 쓰고 필드명만 upstream을 따른다.
 - **Brief가 쓰지 않는 section 값 제거**: 어휘를 잘라내는 것은 upstream과의 차이를

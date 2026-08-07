@@ -28,6 +28,7 @@ from mission_control.application.ports import (
 )
 from mission_control.domain.brief.clarity import ClarityPolicy
 from mission_control.domain.brief.gate import BriefGateDecision, evaluate_brief_gate
+from mission_control.domain.brief.handoff import BriefHandoff, build_brief_handoff
 from mission_control.domain.brief.provenance import AnswerAuthority
 from mission_control.domain.brief.requirement import (
     CandidateContentSource,
@@ -230,6 +231,19 @@ class BriefService:
         """
         state = await self._require(mission_id)
         return evaluate_brief_gate(state=state, policy=self.policy)
+
+    async def build_handoff(self, *, mission_id: str) -> BriefHandoff:
+        """``CLEAR``된 Brief에서 Blueprint 입력을 만든다.
+
+        저장된 상태로 Gate를 다시 판정한 뒤 그 판정으로 handoff를 만든다. 호출자가
+        건네준 판정을 믿지 않는 이유는, 판정 이후 내용이 바뀌었는데 옛 판정으로
+        handoff가 만들어지는 경로를 열지 않기 위해서다.
+
+        handoff는 저장하지 않는다. 파생 투영이므로 상태가 곧 진실이다.
+        """
+        state = await self._require(mission_id)
+        decision = evaluate_brief_gate(state=state, policy=self.policy)
+        return build_brief_handoff(state=state, decision=decision)
 
     async def _require(self, mission_id: str) -> BriefState:
         state = await self.repository.load(mission_id)
