@@ -1,0 +1,69 @@
+[project]
+name = "mission-control"
+dynamic = ["version"]
+description = "Mission Control — specification-first mission coordinator for AI coding agents."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0.0,<3.0.0",
+]
+
+[project.scripts]
+# CLI entry point는 Phase 6에서 추가한다 (ADR-0012 Divergence 2).
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/mission_control/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mission_control"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.11",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+exclude = ["src/mission_control/_version.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["src/mission_control/_version.py"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true

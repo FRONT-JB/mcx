@@ -1,6 +1,6 @@
 # ADR 0012 — Python toolchain and layout
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-07
 - Constitutional basis: Principle 10 (Reconstruct before improve), §17 (Scope와 Reasoning Discipline), §21 (Verification Policy)
 - Upstream evidence: baseline `pyproject.toml`, `tests/` 구조, `bigbang/interview.py`
@@ -30,8 +30,9 @@ upstream baseline에서 확인한 구성:
 
 | 항목 | 값 |
 |---|---|
-| Python | `>= 3.12` |
-| Layout | `src/mcx/`, 테스트는 `tests/`가 패키지 구조를 미러링 |
+| Python | `requires-python >= 3.12`, 개발은 `.python-version`으로 3.12 고정 |
+| Package | `src/mission_control/` — 프로젝트명 기반. CLI 이름 `mcx`는 entry point이지 패키지명이 아니다 (upstream도 `ouroboros` 패키지에 `ooo` CLI) |
+| Layout | 계층 폴더(`domain` / `application` / `adapters`)를 물리적으로 분리하고 테스트가 이를 미러링 |
 | Build | hatchling + hatch-vcs |
 | 의존성 관리 | uv (`[dependency-groups]`, lock file 커밋) |
 | 도메인 모델 | pydantic 2.x |
@@ -125,6 +126,8 @@ pytest-cov, ruff, mypy다.
 
 - `uv sync` 후 Core 테스트가 Codex/OpenCode 설치 없이 실행된다.
 - `mypy --strict`가 통과한다.
+- `domain` 패키지가 `application`·`adapters`를 import하지 않는다
+  ([Architecture](../01_ARCHITECTURE.md) §7.1).
 - 도메인 모듈에 `async` 함수와 I/O 호출이 없다.
 - use case와 port가 `async`로 정의되어 있다.
 - Phase 3에서 Runtime adapter를 추가할 때 use case 시그니처가 바뀌지 않는다.

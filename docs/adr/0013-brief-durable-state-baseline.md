@@ -1,6 +1,6 @@
 # ADR 0013 — Brief durable state baseline
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-07
 - Constitutional basis: Principle 7 (Durable state over conversation memory), §14 (Mission State와 Artifacts)
 - Upstream evidence: `bigbang/interview.py` `save_state`/`load_state`, `state_dir`

@@ -4,11 +4,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 1 준비 — Brief upstream research |
+| Project phase | Phase 1 — Brief vertical slice 구현 중 |
 | Mission status | ACTIVE |
-| Gate | Phase 0 documentation COMPLETE; 구현은 Brief 우선 조사 완료 후 착수 |
-| Source code | 없음 |
-| Automated tests | 없음 |
+| Gate | Phase 0 COMPLETE; Phase 1 진행 중 |
+| Source code | `src/mission_control/domain/brief/provenance.py` |
+| Automated tests | 11 passed (`tests/unit/domain/brief/`) |
 | First implementation target | Brief domain/state/Gate vertical slice |
 | Updated | 2026-08-07 |
 
@@ -76,7 +76,9 @@
 외부 Runtime 없이 검증한다.
 
 - [ ] Brief에 필요한 최소 Mission, Stage, GateDecision, Attempt domain model
-- [ ] Interview revision, round, answer provenance
+- [-] Interview revision, round, answer provenance
+  - [x] answer authority와 requirement input 투영 (B-031·B-032·B-033, 11 tests)
+  - [ ] revision과 round 축적
 - [ ] one-question tool-less text backend contract와 deterministic fake
 - [ ] ambiguity/clarity policy와 user approval
 - [ ] 최소 durable state 방식 ADR와 repository
@@ -158,10 +160,13 @@ Brief 우선 조사(Open Questions §0)와 그에 따른 결정은 2026-08-07 �
 결정은 ADR-0009~0011, 계약은 [Brief Guide](../05_BRIEF.md) §11·§12·§9.1에 있다.
 Test Matrix는 B-039까지 확장되었다.
 
-다음 검증 가능한 목표 한 개: **Phase 1 첫 vertical slice의 첫 실패 테스트를
-작성한다.** 그 전에 필요한 선행 결정은 Python packaging/test framework와 최소
-durable state 방식이며, 각각 ADR로 남긴다. upstream test가 보호하는 실패
-상황(Open Questions §1)은 test case를 코드로 옮기기 직전에 조사한다.
+선행 결정은 ADR-0012(toolchain·실행 모델)와 ADR-0013(durable state)으로
+확정했고, 첫 코드가 들어왔다.
+
+다음 검증 가능한 목표 한 개: **Brief round를 revision과 함께 축적하는 상태
+모델을 만들고, 승인이 특정 revision을 참조하도록 강제한다** (B-008, B-014).
+upstream test가 보호하는 실패 상황(Open Questions §1)은 clarity policy를
+구현하기 직전에 조사한다.
 
 ## Update protocol
 

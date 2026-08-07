@@ -684,10 +684,17 @@ Codex와 OpenCode adapter는 같은 canonical outcome 의미를 만족해야 한
 
 ---
 
-## 14. Provisional Package Layout — PROPOSED, NOT COMMITTED
+## 14. Package Layout — 패키지명과 계층 폴더는 확정, 모듈 배치는 PROPOSED
 
-다음 구조는 의존 방향과 책임 분리를 검토하기 위한 제안이다. 실제 폴더를 생성하거나
-공개 API로 확정한 것이 아니다.
+[ADR-0012](./adr/0012-python-toolchain-and-layout.md)에서 다음을 확정했다.
+
+- 패키지명은 `mission_control`이다. CLI 이름 `mcx`는 entry point이며 패키지명이
+  아니다. upstream도 `ouroboros` 패키지에 `ooo` CLI를 제공한다.
+- `domain` / `application` / `adapters` 계층을 물리 폴더로 분리한다. §7.1의 의존
+  방향을 도구로 검증할 수 있어야 하기 때문이다.
+
+아래 개별 모듈 파일명과 세부 배치는 여전히 제안이며, 구현하면서 확정한다.
+Phase 1은 Brief에 필요한 모듈만 생성한다.
 
 ```text
 src/
@@ -731,12 +738,13 @@ tests/
 - `ports.py` 하나가 커지는지, inbound/outbound port를 분리할지
 - canonical Runtime event port와 domain evidence persistence port를 실제 package에서
   어떻게 분리할지
-- Stage별 module이 lifecycle 중심 module보다 이해하기 쉬운지
-- package명이 PyPI/CLI 배포와 충돌하지 않는지
+- Stage별 module이 lifecycle 중심 module보다 이해하기 쉬운지 — upstream은 기능
+  영역별(`bigbang`, `orchestrator`, `evaluation`)로 나누고 계층을 폴더로 분리하지
+  않는다. 우리는 계층을 우선 분리하되 그 안의 배치는 구현하며 정한다.
+- PyPI 배포명이 충돌하지 않는지 (배포 시점에 확정)
 - 하나의 process로 충분한지, MCP server lifecycle을 어떻게 조립할지
 
-구조가 확정되기 전 문서와 코드에서 위 경로를 이미 존재하는 API처럼 참조하지
-않는다.
+미확정 모듈 경로를 문서와 코드에서 이미 존재하는 API처럼 참조하지 않는다.
 
 ---
 
@@ -810,7 +818,7 @@ Local user workspace
 | mission-level optimistic version check | PROPOSED | Persistence ADR |
 | 단일 local process 중심의 v1 topology | PROPOSED | 첫 vertical slice |
 | dispatch ID를 외부 호출 전에 durable 예약 | PROPOSED | Runtime/Persistence ADR |
-| logical ports와 provisional package layout | PROPOSED | Python skeleton review |
+| logical port 이름과 개별 모듈 배치 | PROPOSED | 구현하며 확정 (패키지명과 계층 폴더는 ADR-0012에서 확정) |
 | deterministic fake clock/ID/runtime/backend | PROPOSED | Test architecture |
 
 ---
