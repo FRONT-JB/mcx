@@ -22,7 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 
 class AcceptanceCriterion(BaseModel):
@@ -45,8 +45,21 @@ class AcceptanceCriterion(BaseModel):
     verify_command: str | None = None
     #: 실행 후 존재해야 하는 산출물 경로.
     expected_artifacts: tuple[str, ...] = ()
-    #: 명령 출력에서 확인할 조건.
+    #: 명령 출력에서 확인할 조건. 확인할 출력이 있으려면 명령이 있어야 한다.
     output_assertion: str | None = None
+
+    @model_validator(mode="after")
+    def _output_assertion_needs_a_command(self) -> AcceptanceCriterion:
+        """출력 조건만 있고 실행할 명령이 없는 계약을 거부한다.
+
+        검사할 출력을 만드는 것이 ``verify_command``이므로, 명령 없는
+        ``output_assertion``은 무엇과도 대조되지 않는다. 검증 수단이 있는 것처럼
+        보이지만 실제로는 아무것도 확인하지 않는 AC가 되며, 이는 확인 수단이
+        아예 없는 AC보다 나쁘다 — 없다는 사실이 드러나지 않기 때문이다.
+        """
+        if self.output_assertion and not self.verify_command:
+            raise ValueError("output_assertion requires verify_command")
+        return self
 
     @computed_field  # type: ignore[prop-decorator]
     @property

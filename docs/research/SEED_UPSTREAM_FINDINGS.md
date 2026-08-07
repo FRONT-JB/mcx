@@ -83,6 +83,28 @@ replaced criterion gets a new key when materialized from its changed contract."
 즉 **AC의 정체성은 성공 계약 그 자체**이며, 계약이 바뀐 AC는 다른 AC다. 문자열만
 있는 legacy AC는 `{"description": str(...).strip()}`으로 파생한다 (`:626-627`).
 
+## 3.1 AC의 검증 수단 — 최소 하나를 요구하지 않는다
+
+세 필드(`verify_command`, `expected_artifacts`, `output_assertion`)가 모두
+`default=None`/빈 튜플이며, **최소 하나를 요구하는 검증기가 없다**
+(`core/seed.py:452-476`). 즉 upstream도 확인 수단이 전혀 없는 AC를 허용한다.
+
+대신 두 가지를 강제한다.
+
+- **`output_assertion`은 `verify_command`를 요구한다.** 스키마 검증기
+  `_validate_raw_success_contract` (`:480-497`)가 `ValueError
+  ("output_assertion requires verify_command")`를 올리고, 실행 시 verify gate
+  (`orchestrator/parallel_executor.py:9651-9657`)가 같은 이유로 실패시킨다.
+- **`verify_command`는 한 줄이어야 한다.** `_unsupported_verify_command_reason`
+  (`bigbang/seed_generator.py:1477-1481`) — 여러 줄이나 heredoc은 거부하고
+  `python -c`나 `pytest`를 쓰라고 안내한다.
+
+한편 "success contract를 가졌는가"의 판정은 `verify_command` 하나만 본다 —
+`orchestrator/shadow_replay.py:622`의
+`has_success_contract = ac_spec is not None and bool(ac_spec.verify_command)`.
+`expected_artifacts`만 있는 AC를 어떻게 취급하는지는 확인하지 못했다
+(`Evidence level: Verified`이나 의도는 `Inferred` 이하).
+
 ## 4. 조사했으나 v1에서 다루지 않기로 한 것
 
 `core/seed.py`에는 산출물 경로 검증 장치가 상당량 있다 (`:41-253`).

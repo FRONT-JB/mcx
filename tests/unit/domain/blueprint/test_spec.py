@@ -100,13 +100,19 @@ class TestVerifiability:
         [
             {"verify_command": "pytest"},
             {"verify_command": None, "expected_artifacts": ("build/out.json",)},
-            {"verify_command": None, "output_assertion": "출력에 OK가 있다"},
+            {"verify_command": "pytest", "output_assertion": "OK"},
         ],
     )
     def test_any_single_check_makes_it_verifiable(self, given: dict[str, object]) -> None:
         criterion = _criterion(**given)  # type: ignore[arg-type]
 
         assert criterion.is_mechanically_verifiable is True
+
+    def test_output_assertion_without_a_command_is_rejected(self) -> None:
+        """검사할 출력을 만드는 것이 명령이므로, 명령 없는 출력 조건은 아무것도
+        대조하지 않으면서 검증 수단이 있는 것처럼 보인다."""
+        with pytest.raises(ValidationError, match="output_assertion requires verify_command"):
+            _criterion(verify_command=None, output_assertion="출력에 OK가 있다")
 
     def test_unverifiable_criteria_are_reported(self) -> None:
         """검증 불가능한 AC를 금지하지 않고 드러낸다."""

@@ -89,16 +89,42 @@ reserved for plugin-owned, structured handoff data".
 거치지 않은 내용이 불변 산출물에 실릴 수 있으면 그 의미가 성립하지 않는다.
 plugin 확장이 실제로 필요해지면 그때 명시적 확장 필드를 설계한다.
 
-### 5. 검증 불가능한 AC를 금지하지 않고 드러낸다
+### 5. 검증 불가능한 AC를 금지하지 않고 드러낸다 — upstream과 같다
 
-`verify_command`, `expected_artifacts`, `output_assertion`은 모두 선택이다.
-셋 다 없는 AC는 `is_mechanically_verifiable`이 거짓이며
-`Blueprint.unverifiable_criteria`로 조회된다.
+`verify_command`, `expected_artifacts`, `output_assertion`은 모두 선택이며 셋 다
+없는 AC가 허용된다. **upstream도 같다** — `AcceptanceCriterionSpec`의 세 필드가
+모두 `default=None`/빈 튜플이고, 최소 하나를 요구하는 검증기가 없다
+(`core/seed.py:452-476`).
 
-금지하지 않는 이유는 기계적으로 확인할 수 없는 수용 기준이 실제로 존재하기
-때문이다. 금지하면 작성자가 형식만 채우는 `verify_command`를 만들어 넣게 되고,
-그것이 더 나쁘다. 검증 불가능한 AC를 Gate에서 어떻게 다룰지는 Blueprint의 QA
-정책이 정한다 — 이 ADR은 **드러나게 하는 것**까지만 정한다.
+Mission Control은 여기에 조회 수단만 더한다. 셋 다 없으면
+`is_mechanically_verifiable`이 거짓이고 `Blueprint.unverifiable_criteria`로
+조회된다. 금지하지 않는 이유는 기계적으로 확인할 수 없는 수용 기준이 실제로
+존재하며, 금지하면 작성자가 형식만 채우는 `verify_command`를 만들어 넣기
+때문이다. Gate에서 어떻게 다룰지는 Blueprint의 QA 정책이 정한다.
+
+### 6. `output_assertion`은 `verify_command`를 요구한다
+
+검사할 출력을 만드는 것이 `verify_command`이므로, 명령 없는 `output_assertion`은
+무엇과도 대조되지 않는다. **검증 수단이 있는 것처럼 보이면서 아무것도 확인하지
+않는 AC**가 되며, 이는 수단이 아예 없는 AC보다 나쁘다 — 없다는 사실이 드러나지
+않기 때문이다.
+
+upstream은 이를 스키마 검증기(`core/seed.py:480-497`,
+`"output_assertion requires verify_command"`)와 실행 시 verify gate
+(`orchestrator/parallel_executor.py:9651-9657`) 두 곳에서 강제한다. Mission
+Control은 스키마 단계에서 강제한다.
+
+### 7. 미확인 — "success contract 보유"의 판정 기준
+
+upstream `orchestrator/shadow_replay.py:622`는
+`has_success_contract = bool(ac_spec.verify_command)`로 **`verify_command`만**
+본다. Mission Control의 `is_mechanically_verifiable`은 셋 중 하나라도 있으면
+참이다.
+
+`expected_artifacts`만 있어도 "파일이 존재하는가"라는 관찰 가능한 증거가 나오므로
+셋 중 하나 기준이 근거 없는 것은 아니지만, upstream이 왜 `verify_command`만
+보는지는 확인하지 못했다. Execute/Verify가 이 판정을 실제로 소비할 때
+재확인한다 (`upstream 미확인`).
 
 ## Consequences
 
@@ -134,4 +160,5 @@ plugin 확장이 실제로 필요해지면 그때 명시적 확장 필드를 설
 - 같은 계약은 위치와 무관하게 같은 key를 갖고, 계약이 바뀌면 새 key를 받는다.
 - 선언되지 않은 필드를 담은 Blueprint 생성이 거부된다.
 - 검증 수단이 없는 AC가 `unverifiable_criteria`로 드러난다.
+- 명령 없는 `output_assertion`이 거부된다.
 - Blueprint가 어느 Brief revision에서 나왔는지 보존한다.
