@@ -7,7 +7,8 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 
 - 한 ADR은 하나의 결정만 다룬다.
 - upstream과 의도적으로 다른 동작은 Stage별 divergence ADR 하나에 모은다
-  (Brief는 [0011](./0011-brief-deliberate-divergences.md)). 다른 ADR에서
+  (Brief는 [0011](./0011-brief-deliberate-divergences.md), Blueprint는
+  [0022](./0022-blueprint-deliberate-divergences.md)). 다른 ADR에서
   결정했더라도 그 divergence ADR에서 링크한다. 대조하지 못한 항목은 "차이 없음"이
   아니라 미확인으로 같은 곳에 적는다.
 - 상태는 `Proposed`, `Accepted`, `Superseded`, `Rejected` 중 하나다.
@@ -40,6 +41,8 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0018](./0018-blueprint-generation-contract.md) | 생성기는 성공 조건만 구체화하고 범위 검사는 결정적으로 한다. | Accepted |
 | [0019](./0019-blueprint-qa-loop.md) | 생성 직후 QA 루프를 Core에 두고 최선 시도를 추적한다. | Accepted |
 | [0020](./0020-brief-closure-audit.md) | 점수 통과 뒤 3-lane closure 감사가 Brief 종료를 gate한다. | Accepted |
+| [0021](./0021-blueprint-state-and-revisions.md) | Blueprint 상태는 revision·QA 기록·승인을 한 문서에 담고, 승인은 채점된 현재 revision을 요구한다. | Accepted |
+| [0022](./0022-blueprint-deliberate-divergences.md) | Blueprint에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
 
 ## Template
 
