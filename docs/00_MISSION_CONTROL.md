@@ -12,7 +12,7 @@
 | CLI | `mcx` |
 | 구현 언어 | Python |
 | 작성일 | 2026-08-07 |
-| 적용 범위 | v1: Ouroboros 핵심 설계의 경량 재구성 및 학습 |
+| 적용 범위 | v1: Ouroboros 설계를 참고한 핵심 워크플로 구현과 학습 |
 
 이 문서는 Mission Control의 **Project Constitution**이자 새 Claude, Codex,
 OpenCode 세션을 위한 필수 온보딩 문서다. 프로젝트의 목적, 책임 경계,
@@ -71,23 +71,23 @@ Mission Control의 핵심 문장은 다음 네 줄이다.
 Mission Control v1의 목적은 더 화려한 AI 에이전트 프레임워크를 발명하는
 것이 아니다.
 
-> **Ouroboros의 핵심 워크플로와 설계 의도를 작은 Python 시스템으로 직접
-> 재구성하면서, 왜 그 구조가 필요한지 끝까지 이해한다.**
+> **Ouroboros의 핵심 워크플로와 설계 의도를 참고해 작은 Python 시스템을
+> 만들면서, 왜 그 구조가 필요한지 끝까지 이해한다.**
 
 따라서 v1은 다음 순서를 따른다.
 
 ```text
-원본 동작과 설계 의도 조사
+Ouroboros 동작과 설계 의도 조사
   → 대응 개념 문서화
   → 최소 구현
   → 테스트와 Telemetry로 검증
-  → 원본과 차이 분석
+  → Ouroboros와 차이 분석
   → 이해가 끝난 뒤에만 개선 제안
 ```
 
 Mission Control은 Ouroboros의 복제품이라는 브랜드를 사용하지 않는다.
 제품 경험과 CLI는 Mission Control 고유 용어를 사용한다. 다만 내부 도메인
-개념은 원본과 직접 비교할 수 있도록 `Interview`, `Seed`, `Run`,
+개념은 Ouroboros와 직접 비교할 수 있도록 `Interview`, `Seed`, `Run`,
 `Evaluate`, `Repair`를 유지한다.
 
 ### 성공의 기준
@@ -99,7 +99,7 @@ Mission Control은 Ouroboros의 복제품이라는 브랜드를 사용하지 않
 - LLM의 주장과 실제 완료 상태가 분리되어 있다.
 - 단계 전이가 코드와 명시적 정책에 의해 통제된다.
 - 각 역할에 필요한 최소 권한만 부여된다.
-- 원본과 다른 부분은 실수로 생기지 않고 문서화된 결정으로 존재한다.
+- Ouroboros와 다른 부분은 실수로 생기지 않고 문서화된 결정으로 존재한다.
 - 대화 세션이 사라져도 미션 상태와 근거를 이어갈 수 있다.
 
 ---
@@ -149,7 +149,7 @@ Controller의 제안이 Blueprint를 자동 변경할 수도 없다.
 
 Mission Control은 사용자 경험과 내부 구현의 언어를 의도적으로 분리한다.
 
-| 사용자·CLI 용어 | 내부·원본 대응 용어 | 의미 |
+| 사용자·CLI 용어 | 내부·Ouroboros 대응 용어 | 의미 |
 |---|---|---|
 | `brief` / Brief | Interview | 목표, 제약, 성공 조건의 모호함을 제거한다. |
 | `blueprint` / Blueprint | Seed | 실행과 검증의 기준이 될 구조화된 명세를 만든다. |
@@ -173,7 +173,7 @@ mcx recover
 ### 용어 사용 규칙
 
 - CLI, 사용자 메시지, 온보딩 설명에는 Mission Control 용어를 사용한다.
-- 코드, 원본 대응표, 구현 연구에는 내부 용어를 함께 표기한다.
+- 코드, Ouroboros 대응표, 구현 연구에는 내부 용어를 함께 표기한다.
 - 최초 등장 시 `Brief (Interview)`처럼 두 용어를 연결한다.
 - `NO-GO`는 사용하지 않는다.
 - 게이트 결과는 대문자 `CLEAR`, `HOLD`를 사용한다.
@@ -358,7 +358,7 @@ attempt로 남긴다.
 
 ### Principle 10 — Reconstruct before improve
 
-v1에서 원본과 다른 동작을 넣기 전에 먼저 원본의 동작, 보호하려는 실패 상황,
+v1에서 Ouroboros와 다른 동작을 넣기 전에 먼저 Ouroboros의 동작, 보호하려는 실패 상황,
 차이의 이유를 문서화한다. 개인 취향이나 최신 유행만으로 Workflow를 바꾸지
 않는다.
 
@@ -448,7 +448,7 @@ Stage로 복귀하는지, 재시도 한도, 회복 불가능 상태의 표현은
 - 사용자 승인 없이 Blueprint 단계로 진행하지 않는다.
 - Brief 역할은 코드를 구현하지 않는다.
 
-구체적인 계산식과 통과 임계값은 원본 버전과 실제 구현을 조사한 후 고정한다.
+구체적인 계산식과 통과 임계값은 Ouroboros의 버전과 실제 구현을 조사한 후 고정한다.
 예시 수치를 헌법으로 복사하지 않는다.
 
 #### 주요 산출물
@@ -911,27 +911,28 @@ Reasoning budget의 구체 모델과 자동 Scope Guard는 유용한 향후 설�
 
 ---
 
-## 18. Upstream Reconstruction Policy
+## 18. Upstream Reference Policy
 
-Mission Control v1은 Ouroboros의 핵심 설계를 학습하기 위한 재구성이다.
+Mission Control v1은 Ouroboros의 핵심 설계를 참고 기준(baseline)으로 삼아
+학습한다.
 
 ### 각 기능을 구현하기 전에 기록할 내용
 
-1. 대응하는 원본 개념과 코드 경로
-2. 원본이 보호하려는 실패 상황
+1. 대응하는 Ouroboros 개념과 코드 경로
+2. Ouroboros가 보호하려는 실패 상황
 3. 관찰한 상태 전이와 Gate
-4. 원본 테스트가 보장하는 행동
+4. Ouroboros 테스트가 보장하는 행동
 5. Mission Control에서 유지할 부분
 6. 의도적으로 단순화하거나 변경할 부분과 이유
 7. 아직 확인하지 못한 가정
 
-### Fidelity 규칙
+### 대조 규칙
 
-- 원본을 이해하기 전에 더 좋아 보이는 구조로 대체하지 않는다.
+- Ouroboros를 이해하기 전에 더 좋아 보이는 구조로 대체하지 않는다.
 - 동작 호환성과 코드 복사를 구분한다.
-- 원본 코드나 문서를 가져오기 전에 현재 라이선스와 고지 의무를 확인한다.
-- 원본 버전 또는 commit을 기록해 시간에 따른 변경을 추적한다.
-- 원본과 다른 동작은 테스트와 ADR로 드러낸다.
+- Ouroboros 코드나 문서를 가져오기 전에 현재 라이선스와 고지 의무를 확인한다.
+- Ouroboros의 버전 또는 commit을 기록해 시간에 따른 변경을 추적한다.
+- Ouroboros와 다른 동작은 테스트와 ADR로 드러낸다.
 - upstream mapping을 새 세션이 찾을 수 있는 문서로 남긴다.
 
 ### 학습 루프
@@ -939,7 +940,7 @@ Mission Control v1은 Ouroboros의 핵심 설계를 학습하기 위한 재구�
 ```text
 Read
   → Explain the protected failure
-  → Reconstruct minimally
+  → Build minimally
   → Test behavior
   → Compare with upstream
   → Record the difference
@@ -977,18 +978,18 @@ Research
 - 최소 권한 정책 완화
 - Telemetry 없이 진행할 수 있는 예외 추가
 - 사용자-facing 명령 또는 용어 변경
-- 원본과 의도적으로 다른 핵심 동작
+- Ouroboros와 의도적으로 다른 핵심 동작
 
 ### 각 Stage 작업의 학습 체크리스트
 
-- [ ] 원본 개념과 관련 코드를 읽었다.
+- [ ] Ouroboros 개념과 관련 코드를 읽었다.
 - [ ] 그 구조가 막는 실패를 내 언어로 설명했다.
 - [ ] Stage의 input, output, entry, exit를 문서화했다.
 - [ ] 허용·금지 capability를 문서화했다.
 - [ ] 정상, 실패, 재개 경로를 테스트로 정의했다.
 - [ ] 최소 구현을 만들었다.
 - [ ] 테스트와 실제 관찰로 검증했다.
-- [ ] 원본과의 차이를 기록했다.
+- [ ] Ouroboros와의 차이를 기록했다.
 - [ ] 다음 세션이 이어갈 수 있게 문서를 갱신했다.
 
 ---
@@ -1041,7 +1042,7 @@ docs/
 | Stage Guide | 이 Stage를 어떻게 구현하고 검증하는가? |
 | ADR | 왜 이 결정을 내렸고 어떤 대안을 거절했는가? |
 | Progress | 현재 사실상 어디까지 완료되었는가? |
-| Research | 원본에서 무엇을 확인했고 어떤 차이가 있는가? |
+| Research | Ouroboros에서 무엇을 확인했고 어떤 차이가 있는가? |
 
 Progress 문서는 계획이 아니라 **검증된 현재 상태**를 기록해야 한다.
 
@@ -1106,12 +1107,12 @@ Domain invariants
 - Telemetry 없는 낙관적 성공 처리
 - 특정 vendor를 Core Workflow의 전제로 만드는 것
 - Gemini runtime 지원
-- 원본 이해보다 새 기능 발명을 우선하는 것
+- Ouroboros 이해보다 새 기능 발명을 우선하는 것
 - 필요성이 입증되지 않은 복잡한 다중 에이전트 구조
 
 대시보드, TUI, 병렬 실행, 고급 모델 라우팅, 다중 모델 합의, 완전한 event
 sourcing 등은 현재 필수 범위가 아니다. 영구 금지 사항도 아니다. 핵심 Workflow를
-재구성한 뒤 명확한 문제와 근거가 있을 때 별도 제안으로 평가한다.
+구현한 뒤 명확한 문제와 근거가 있을 때 별도 제안으로 평가한다.
 
 ---
 
@@ -1186,7 +1187,7 @@ migration 계획 없이 즉시 교체하지 않는다.
 - `CLEAR`와 `HOLD`는 무엇을 의미하는가?
 - 왜 Flight Controller의 “완료” 보고가 충분하지 않은가?
 - 왜 MCP보다 Core Workflow가 먼저인가?
-- 원본과 다르게 만들려면 어떤 기록이 필요한가?
+- Ouroboros와 다르게 만들려면 어떤 기록이 필요한가?
 - 지금 구현할 수 있는 가장 작은 검증 가능한 다음 단계는 무엇인가?
 
 이 질문에 답할 수 없다면 구현을 시작하기 전에 문맥을 더 읽어야 한다.
@@ -1274,7 +1275,7 @@ migration 계획 없이 즉시 교체하지 않는다.
 13. 실패 Telemetry는 삭제하지 않고 Recover 입력으로 사용한다.
 14. 복구는 bounded하며 무한 반복하지 않는다.
 15. 대화 기록만이 미션 상태의 유일한 저장소가 되어서는 안 된다.
-16. 원본과 의도적으로 다른 핵심 동작은 ADR과 테스트로 드러난다.
+16. Ouroboros와 의도적으로 다른 핵심 동작은 ADR과 테스트로 드러난다.
 17. 범위 밖 개선은 승인 없이 구현하지 않는다.
 18. 문서와 코드의 충돌을 숨기지 않는다.
 

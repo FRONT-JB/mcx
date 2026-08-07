@@ -7,9 +7,9 @@
 
 ## 프로젝트 정체
 
-Mission Control은 upstream `Q00/ouroboros`의 핵심 워크플로(Interview → Seed →
-Run → Evaluate → Repair)를 작은 Python 시스템으로 재구성하며 그 설계 의도를
-학습하는 프로젝트다. CLI 이름은 `mcx`다.
+Mission Control은 `Q00/ouroboros`의 워크플로(Interview → Seed → Run →
+Evaluate → Repair) 설계를 참고해 작은 Python 시스템으로 구성하는 프로젝트다.
+CLI 이름은 `mcx`다.
 
 > Mission Control is not an AI. It does not generate or review code.
 > It coordinates missions.
@@ -62,7 +62,7 @@ Stage Guide/승인된 Blueprint > 테스트·인터페이스 계약 > 구현 > �
 - **Stage별 최소 capability.** 자기 작업의 자기 승인 금지, delegated worker의
   Mission Control 재귀 호출 금지 (ADR 0004).
 - **Scope는 hard boundary.** 범위 밖 개선 아이디어는 구현하지 않고 기록만 남긴다.
-- **Reconstruct before improve.** 원본을 이해하기 전에 다르게 만들지 않는다.
+- **Reconstruct before improve.** Ouroboros를 이해하기 전에 다르게 만들지 않는다.
   의도적 차이는 ADR과 테스트로 드러낸다.
 - **Core는 Runtime-neutral.** vendor 세부사항은 adapter 경계 안에만 둔다. 초기
   Runtime은 Codex/OpenCode이며 Gemini는 v1 제외 (ADR 0003).
@@ -72,7 +72,7 @@ Stage Guide/승인된 Blueprint > 테스트·인터페이스 계약 > 구현 > �
 기준은 Constitution §17 (Scope와 Reasoning Discipline). 이 프로젝트가 특히
 피하려는 실패는 과추론으로 워크플로가 느려지고 원래 의도에서 벗어나는 것이다.
 
-- 기본은 upstream Ouroboros의 재구성이다. upstream에 없는 구조·기능을 발명하는
+- 작업의 참고 기준은 upstream Ouroboros다. upstream에 없는 구조·기능을 발명하는
   것은 범위 밖이다.
 - 현재 Stage와 승인 범위가 요구하지 않는 작업을 미리 수행하지 않는다.
 - 요청되지 않은 유연성·설정·추상화를 추가하지 않는다. 단일 사용 코드에
@@ -97,7 +97,7 @@ Stage Guide/승인된 Blueprint > 테스트·인터페이스 계약 > 구현 > �
 ### 되돌리기 비싼 결정은 미루지도, 조용히 바꾸지도 않는다
 
 다음은 나중에 바꾸려면 전면 수정이 되는 항목이다. “필요해지면 그때 재평가”로
-넘기지 말고 지금 upstream과 맞춘다.
+넘기지 말고 지금 upstream과 대조해 확정한다.
 
 - 실행 모델 (동기/비동기 계층 경계)
 - 상태 저장 방식과 revision 표현
@@ -116,7 +116,7 @@ Stage Guide/승인된 Blueprint > 테스트·인터페이스 계약 > 구현 > �
 ### 균열은 큰 결정 하나가 아니라 작은 정당화의 누적으로 생긴다
 
 “이건 사소하니까”, “나중에 맞추면 되니까”가 반복되면 어느 순간 upstream과
-대조가 불가능해지고, 그때부터는 원본을 참고하는 대신 우리 구조에 맞춰
+대조가 불가능해지고, 그때부터는 Ouroboros를 참고하는 대신 우리 구조에 맞춰
 재발명하게 된다. 차이를 만들려면 [ADR](docs/adr/README.md)로 남기고, 남길 만한
 근거가 없으면 차이를 만들지 않는다.
 

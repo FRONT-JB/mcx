@@ -49,7 +49,7 @@ source HOLD decision
 ## 2. Upstream correspondence
 
 Mission Control의 Recover는 Ouroboros의 Repair와 resilience 철학에서 다음을
-보존한다.
+참고했다.
 
 - 실패 evidence를 다음 시도의 입력으로 사용한다.
 - 반복·진동·무진전 같은 stagnation을 관찰한다.
@@ -57,7 +57,7 @@ Mission Control의 Recover는 Ouroboros의 Repair와 resilience 철학에서 다
 - retry는 bounded하다.
 - 교정 결과는 다시 evaluation을 거친다.
 
-원본의 persona rotation, checkpoint rollback, tier escalation, 자동 분해 전체를
+Ouroboros의 persona rotation, checkpoint rollback, tier escalation, 자동 분해 전체를
 v1에 그대로 넣지는 않는다. 먼저 실패 분류, attempt history, bounded repair,
 re-verification의 핵심 루프를 검증한다.
 

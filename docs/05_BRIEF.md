@@ -1,7 +1,7 @@
 # Brief Stage Guide
 
 > **사용자 용어:** Brief<br>
-> **내부·원본 대응 용어:** Interview<br>
+> **내부·Ouroboros 대응 용어:** Interview<br>
 > **진입 전제:** 새 Mission 또는 명시적으로 Brief로 되돌아온 Mission<br>
 > **다음 Stage:** Blueprint (Seed)<br>
 > **문서 상태:** Active Draft — 구현 전 계약<br>
@@ -83,7 +83,7 @@ Blueprint 후보 context로 기록하되 승인된 범위로 간주하지 않는
 
 ## 3. Upstream Correspondence
 
-| Mission Control | Ouroboros 대응 개념 | 유지하려는 설계 의도 |
+| Mission Control | Ouroboros 대응 개념 | 참고한 설계 의도 |
 |---|---|---|
 | Brief | Interview / Big Bang interview | 질문을 통해 암묵적 요구사항을 명시적 상태로 만든다. |
 | Brief round | Interview round | 질문과 답변을 순서와 출처가 있는 기록으로 남긴다. |
@@ -118,7 +118,7 @@ provenance, clarity 계산을 file:line 근거로 조사했다. 결과는
 **pinned upstream에서 경로를 확인하지 않은 내용은 여전히 구현 근거로 인용하지
 않는다.**
 
-### 3.1 Reconstruction 원칙
+### 3.1 대조 원칙
 
 - upstream 동작을 이해하기 전에 더 좋아 보이는 방식으로 교체하지 않는다.
 - upstream의 수치 예시를 Mission Control 기본값으로 복사하지 않는다.
@@ -126,7 +126,7 @@ provenance, clarity 계산을 file:line 근거로 조사했다. 결과는
   [divergence register](./adr/0011-brief-deliberate-divergences.md)로 드러낸다.
   research note는 관찰의 자리이지 결정의 자리가 아니다 (Constitution Appendix A
   16번).
-- 코드 복사와 행동 재구성을 구분하고 라이선스·고지 의무를 확인한다.
+- 코드 복사와 동작 구현을 구분하고 라이선스·고지 의무를 확인한다.
 
 ---
 

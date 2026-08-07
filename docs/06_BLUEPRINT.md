@@ -29,7 +29,7 @@ Brief state
   → immutable approved revision
 ```
 
-사용자에게는 Blueprint라고 부르고, 내부 artifact는 원본 대응을 위해 Seed라고
+사용자에게는 Blueprint라고 부르고, 내부 artifact는 Ouroboros 대응을 위해 Seed라고
 부른다.
 
 ### Blueprint가 하지 않는 일
@@ -46,7 +46,7 @@ Brief state
 
 ## 2. Upstream correspondence
 
-Mission Control은 Ouroboros의 Seed를 다음 의미로 재구성한다.
+Mission Control은 Ouroboros의 Seed에서 다음 설계 의도를 참고했다.
 
 - 긴 interview를 작고 구조화된 실행 specification으로 바꾼다.
 - Seed는 Workflow의 방향과 완료 조건을 고정한다.
@@ -703,7 +703,7 @@ Next action:
 - 이전 revision evidence 재사용 조건
 - Seed 저장 위치와 atomic approval transaction
 
-결정은 원본 source/test 조사와 Mission Control failure fixture를 함께 근거로 삼아
+결정은 Ouroboros source/test 조사와 Mission Control failure fixture를 함께 근거로 삼아
 ADR에서 확정한다.
 
 ---

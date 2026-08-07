@@ -41,7 +41,8 @@ Execution or recovery result
 
 ## 2. Upstream correspondence
 
-Mission Control은 Ouroboros의 progressive evaluation 철학을 다음처럼 보존한다.
+Mission Control은 Ouroboros의 progressive evaluation 철학을 참고해 다음 순서를
+따른다.
 
 1. 저렴하고 결정적인 mechanical checks를 먼저 실행한다.
 2. 통과한 결과를 Acceptance Criteria와 의미적으로 대조한다.
@@ -51,7 +52,7 @@ Mission Control은 Ouroboros의 progressive evaluation 철학을 다음처럼 �
 Mission Control v1은 먼저 mechanical + semantic의 독립성과 Gate 계약을 정확히
 구현한다. Consensus는 필요성과 trigger policy가 문서화된 뒤 확장한다.
 
-원본의 현재 동작과 수치에 대한 조사 결과는
+Ouroboros의 현재 동작과 수치에 대한 조사 결과는
 [Upstream Mapping](./research/UPSTREAM_MAPPING.md)에 기록한다. upstream의
 coverage, semantic score, drift threshold를 확인했다는 이유만으로 Mission
 Control의 기본값으로 자동 채택하지 않는다.
@@ -539,7 +540,7 @@ Next:
 - stale workspace 감지 방식
 - incomplete/blocked/cancelled mission의 최종 표현
 
-이 항목은 원본 수치를 그대로 복사하지 않고 Mission Control의 최소 실패 사례와
+이 항목은 Ouroboros의 수치를 그대로 복사하지 않고 Mission Control의 최소 실패 사례와
 테스트를 먼저 정의한 뒤 결정한다.
 
 ---

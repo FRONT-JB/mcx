@@ -46,9 +46,9 @@ Approved Blueprint
 ## 2. Upstream correspondence
 
 Mission Control의 Execute는 Ouroboros의 `Run`과 execution/orchestrator 개념을
-학습용으로 경량 재구성한다.
+참고한다.
 
-유지할 핵심 의도는 다음과 같다.
+참고한 핵심 의도는 다음과 같다.
 
 - Seed를 실행의 방향으로 사용한다.
 - Acceptance Criteria를 실행과 검증의 추적 단위로 사용한다.
@@ -57,9 +57,9 @@ Mission Control의 Execute는 Ouroboros의 `Run`과 execution/orchestrator 개�
 - 실제 실행 결과를 검증 완료와 분리한다.
 - 실패 증거를 다음 시도에 전달한다.
 
-원본의 병렬 실행, 다단계 분해, 모델 라우팅, 고급 회복 전략을 처음부터 모두
-복제하지 않는다. 먼저 단일 Runtime과 순차 실행으로 상태 전이와 증거 계약을
-검증한 뒤, 원본과 차이를 기록하면서 확장한다.
+Ouroboros의 병렬 실행, 다단계 분해, 모델 라우팅, 고급 회복 전략은 v1 범위
+밖이다. 먼저 단일 Runtime과 순차 실행으로 상태 전이와 증거 계약을 검증한 뒤,
+차이를 기록하면서 확장한다.
 
 현재 upstream 조사 기준과 파일 대응은
 [Upstream Mapping](./research/UPSTREAM_MAPPING.md)에 기록한다.

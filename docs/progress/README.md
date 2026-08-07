@@ -16,13 +16,15 @@
 
 - Git 저장소는 문서 작업 전에 비어 있었다.
 - Python 3.12 + uv + pydantic + pytest, layered layout으로 확정했다 (ADR-0012).
-- Brief Stage의 domain/application/adapter가 구현되었고 140개 테스트가 통과한다.
+- Brief Stage의 domain/application/adapter와 Blueprint domain(spec·assembly·QA)이
+  구현되었고 262개 테스트가 통과한다.
 - Mission Control의 Constitution과 설계 문서 초안이 작성되었다.
 - upstream `Q00/ouroboros`의 기준 commit을 기록했다.
 - 사용자 용어와 내부/upstream 용어 mapping을 확정했다.
 - Runtime은 Codex/OpenCode 방향이며 Gemini는 v1 범위에서 제외했다.
-- Brief의 threshold와 durable state는 확정했다 (ADR-0009, ADR-0013). 이후
-  Stage의 수치와 exact API는 아직 결정하지 않았다.
+- Brief의 threshold와 durable state, Blueprint의 QA 정책은 확정했다
+  (ADR-0009, ADR-0013, ADR-0019). 이후 Stage의 수치와 exact API는 아직
+  결정하지 않았다.
 - 25개 Markdown 문서의 link, navigation, fence, parser, whitespace, terminology와
   lifecycle consistency 통합 검사가 통과했다.
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다

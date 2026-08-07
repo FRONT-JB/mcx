@@ -14,7 +14,8 @@ Brief → Blueprint → Execute → Verify
 
 ## 현재 상태
 
-Phase 1 (Brief vertical slice) 구현 중이다. 검증된 현재 상태는
+Phase 1 (Brief)은 완료했고 Phase 2 (Blueprint vertical slice)를 진행 중이다.
+검증된 현재 상태는
 [docs/progress/README.md](docs/progress/README.md)에 있다.
 
 ## 문서
@@ -32,10 +33,10 @@ Phase 1 (Brief vertical slice) 구현 중이다. 검증된 현재 상태는
 | [adr/](docs/adr/README.md) | Architecture Decision Records |
 | [research/](docs/research/README.md) | upstream 조사와 대응표 |
 
-## Upstream
+## 참고 프로젝트
 
-이 프로젝트는 [`Q00/ouroboros`](https://github.com/Q00/ouroboros)의 핵심
-workflow를 재구성하며 그 설계 의도를 학습한다. 대응표와 의도적 차이는
+이 프로젝트는 [`Q00/ouroboros`](https://github.com/Q00/ouroboros)의 workflow
+설계를 참고했다. 개념 대응표와 차이 기록은
 [research/UPSTREAM_MAPPING.md](docs/research/UPSTREAM_MAPPING.md)와
 [ADR-0011](docs/adr/0011-brief-deliberate-divergences.md)에 있다.
 
