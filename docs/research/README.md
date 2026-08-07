@@ -10,6 +10,7 @@
 - [OPEN_QUESTIONS.md](./OPEN_QUESTIONS.md) — 구현 전에 원본과 우리 설계에서 확인할 질문
 - [INTERVIEW_UPSTREAM_FINDINGS.md](./INTERVIEW_UPSTREAM_FINDINGS.md) — Brief 우선 조사 결과 (Open Questions §0, file:line 근거)
 - [PERSISTENCE_UPSTREAM_FINDINGS.md](./PERSISTENCE_UPSTREAM_FINDINGS.md) — 저장 계층(event store, checkpoint, brownfield registry) 조사
+- [SEED_UPSTREAM_FINDINGS.md](./SEED_UPSTREAM_FINDINGS.md) — Blueprint(Seed) schema와 acceptance criterion identity 조사
 
 ## Evidence levels
 
