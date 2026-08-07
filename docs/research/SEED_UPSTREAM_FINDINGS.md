@@ -120,6 +120,32 @@ replaced criterion gets a new key when materialized from its changed contract."
 Mission Control이 실제로 산출물 경로를 다루는 시점은 Execute(Phase 3)이므로 그때
 함께 재구성한다. `Evidence level: Verified`로 기록만 남긴다.
 
+## 6. 생성 흐름 — 결정적 관문 → 모델 1회 → 결정적 검증
+
+`SeedGenerator.generate` (`bigbang/seed_generator.py:1719`)의 순서.
+
+1. ambiguity threshold gate (`:1770-1789`). `force=True`면 우회하되 실제 점수를
+   metadata에 남긴다.
+2. `initial_context_summary_missing(state)` 확인 (`:1791-1798`).
+3. `build_requirement_distillation(state)` (`:1800`) — 결정적 후보 도출 (§3.1).
+4. `apply_requirement_distillation({}, distillation)` (`:1801`) — 결정적 승격
+   판정. blocker가 있으면 진행하지 않는다.
+5. `_extract_requirements(state)` (`:1981-2050`) — **LLM 호출 한 번**,
+   `CompletionConfig(role="seed_generation")`. system + user 두 메시지.
+   `_parse_extraction_response`가 실패하면 **한 번 재시도**한다
+   (`_MAX_EXTRACTION_RETRIES`).
+6. 결정적 파싱과 검증.
+
+**파싱 계층이 파일의 대부분이다.** 2,637줄 중 `_PosixCaseTracker`(셸 문법 추적),
+`_scan_pipe_led_ac_field_fragment`, `_reject_duplicate_json_keys`,
+`_bounded_json_int`, `_JsonNonFiniteToken` 등이 `:69-1350`에 걸쳐 있다. 모델
+출력이 필드 경계를 넘나들거나 JSON을 깨뜨리는 실패를 실제로 겪었다는 증거로
+읽힌다.
+
+Mission Control은 handoff가 이미 칸별로 나뉘어 있으므로(§2, ADR-0015) 모델에게
+남는 일이 upstream보다 작다. 결정은
+[ADR-0018](../adr/0018-blueprint-generation-contract.md)에 있다.
+
 ## 5. 아직 조사하지 않은 것
 
 - Seed 생성 프롬프트의 추출 계약과 QA/refinement 루프

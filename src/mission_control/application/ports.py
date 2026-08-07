@@ -15,6 +15,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
+from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityDimension
 from mission_control.domain.brief.requirement import (
     CandidateResolution,
@@ -153,4 +154,45 @@ class ClarityAssessor(Protocol):
 
     async def assess(self, request: AssessmentRequest) -> ClarityAssessment:
         """요청된 모든 dimension의 clarity 점수를 반환한다."""
+        ...
+
+
+class BlueprintGenerationRequest(BaseModel):
+    """Blueprint 초안 하나를 만들기 위한 입력.
+
+    **승인된 handoff의 칸들만 전달한다.** 대화 원문도, 관찰 사실도, revision
+    이력도 넘기지 않는다. 생성기가 대화를 다시 읽을 수 있으면 Brief에서 합의되지
+    않은 것을 요구사항으로 되살릴 수 있고, 그것이 handoff를 둔 이유를 없앤다
+    (``docs/adr/0016-brief-handoff-projection.md``).
+
+    ``context``는 예외다. 관찰된 현재 상태는 요구사항이 아니라 성공 조건을
+    확인 가능하게 만드는 재료다 — 어떤 명령으로 무엇을 확인할지 정하려면 지금
+    무엇이 있는지 알아야 한다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    goals: tuple[str, ...]
+    constraints: tuple[str, ...]
+    non_goals: tuple[str, ...]
+    success_criteria: tuple[str, ...]
+    context: tuple[str, ...]
+
+
+class BlueprintGenerator(Protocol):
+    """성공 조건을 확인 가능한 계약으로 구체화하는 제한된 역할.
+
+    생성기의 일은 **구체화**다. 제약과 Non-goal은 사용자가 정한 경계이므로 그대로
+    옮기고, 성공 조건 문장에 "무엇을 실행하고 무엇을 확인할 것인가"를 붙인다.
+
+    범위를 벗어난 초안은 조립 단계가 거부한다
+    (:func:`~mission_control.domain.blueprint.assembly.check_scope`). 계약을
+    프롬프트 문구가 아니라 결정적 검사로 강제하기 위해서다.
+
+    이 port에는 파일 쓰기, Shell, Git, 네트워크가 없다. 확인 명령을 **작성**하는
+    것과 **실행**하는 것은 다른 역할이며, 실행은 Verify가 한다.
+    """
+
+    async def generate(self, request: BlueprintGenerationRequest) -> BlueprintDraft:
+        """초안 하나를 반환한다. lineage와 revision은 담지 않는다."""
         ...

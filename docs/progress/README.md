@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 진행 중 |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, gate, handoff), `domain/stage.py`, `domain/errors.py`, `application/`, `adapters/persistence/` |
-| Automated tests | 192 passed (unit + integration) |
+| Automated tests | 206 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-07 |
 
@@ -43,7 +43,7 @@
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 17 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017은 Phase 2로) |
+| `adr/` | 18 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0018은 Phase 2로) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -101,7 +101,9 @@ Gate와 evidence는 [progress 0001](./0001_BRIEF_VERTICAL_SLICE.md)에 있다.
 목표: Brief를 승인 가능한 불변 Seed revision으로 변환한다.
 
 - [x] Blueprint schema baseline과 AC identity (ADR-0017)
-- [ ] generation/QA/refinement loop
+- [-] generation/QA/refinement loop
+  - [x] 생성 계약: 위임 경계와 결정적 범위 검사 (ADR-0018)
+  - [ ] QA/refinement 루프와 재시도 정책
 - [ ] AC quality validation
 - [ ] explicit user approval and revision lineage
 - [ ] approved Seed revision binding
@@ -184,11 +186,14 @@ Phase 2의 첫 결정(Blueprint schema)은 2026-08-07 완료되었다
 ([ADR-0017](../adr/0017-blueprint-schema-baseline.md),
 [SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md)).
 
-다음 검증 가능한 목표 한 개: **handoff에서 Blueprint를 만드는 생성 계약을
-정한다.** 무엇이 결정적 변환이고 무엇이 모델에 위임되는지 나누고, 위임 부분의
-port를 Brief의 질문·평가 port와 같은 방식으로 제한한다. 생성 프롬프트의 추출
-계약과 QA/refinement 루프는 upstream 조사가 선행되어야 한다
-(`SEED_UPSTREAM_FINDINGS` §5).
+생성 계약은 2026-08-07 확정되었다
+([ADR-0018](../adr/0018-blueprint-generation-contract.md)).
+
+다음 검증 가능한 목표 한 개: **Blueprint use case와 승인·Gate를 붙여 Phase 2의
+흐름을 닫는다.** `BlueprintService`가 handoff 조회 → 생성 → 조립 → 저장을
+조율하고, 승인이 Blueprint revision에 묶이며, Execute 진입 Gate가 승인된
+revision을 요구한다. QA/refinement 루프와 재시도 정책은 그 다음이며 upstream
+조사가 선행되어야 한다 (`SEED_UPSTREAM_FINDINGS` §5).
 
 ### CLEAR 조건 중 강제되지 않는 것
 
