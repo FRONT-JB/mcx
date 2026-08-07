@@ -1238,7 +1238,7 @@ migration 계획 없이 즉시 교체하지 않는다.
 
 이 문서가 작성되었다고 바로 코드를 시작하지 않는다. 첫 구현 전에 다음이 필요하다.
 
-- [ ] 이 Constitution을 사용자가 검토하고 필요한 수정을 반영한다.
+- [x] 이 Constitution을 사용자가 검토하고 필요한 수정을 반영한다.
 - [x] `01_ARCHITECTURE.md`에서 Core 경계와 의존 방향을 정의한다.
 - [x] `02_MISSION_LIFECYCLE.md`에서 최소 상태 전이와 Recover 정책을 정의한다.
 - [x] Brief upstream architecture와 핵심 Interview source를 baseline scan하고, 미완료 심층 조사 항목을 research backlog에 기록한다.

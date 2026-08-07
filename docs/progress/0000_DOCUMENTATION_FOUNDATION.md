@@ -1,7 +1,8 @@
 # Progress 0000 — Documentation Foundation
 
-- Status: READY FOR USER REVIEW
+- Status: COMPLETE
 - Started: 2026-08-07
+- Completed: 2026-08-07
 - Scope owner: Mission Control documentation
 
 ## Goal
@@ -64,7 +65,7 @@
 - [x] exact threshold와 기술 선택의 확정/TBD 상태가 일치한다.
 - [x] upstream 사실이 baseline/source와 구분되어 있다.
 - [x] Git status와 생성 파일 수를 기록한다.
-- [ ] 사용자가 문서 범위를 확인한다.
+- [x] 사용자가 문서 범위를 확인한다. (2026-08-07 세션 승인)
 
 ## Verification evidence
 
@@ -85,12 +86,20 @@ Other untracked entry: .DS_Store (not part of this documentation work; untouched
 
 ## Gate
 
-현재 판정:
+최종 판정:
 
 ```text
-CLEAR — Documentation foundation ready for user review.
+COMPLETE — Documentation foundation reviewed and accepted.
 ```
 
-사용자 범위 확인과 필요한 수정을 반영하면 이 record를 `COMPLETE`로 닫는다. 이
-documentation Gate는 코드 구현 Gate와 별개이며, 구현은
-[Project Progress](./README.md#implementation-hold)의 조건이 해소될 때까지 `HOLD`다.
+2026-08-07 세션에서 사용자가 방향, canonical terminology, v1 boundary 요약을
+검토하고 진행을 승인했다. 검토 중 확인된 사항:
+
+- upstream 충실성은 현행 규범 수준을 유지한다 — 기본은 원본 충실이며, 차이는
+  ADR과 테스트로 문서화된 예외만 허용한다.
+- 과추론·오버프로그래밍 방지를 상시 노출하기 위해 루트 `AGENTS.md`
+  (에이전트 온보딩 지침, `CLAUDE.md` symlink)를 추가했다. Constitution 수정은
+  없었다.
+
+코드 구현 Gate는 [Project Progress](./README.md#implementation-hold)에서 별도로
+관리한다.

@@ -4,9 +4,9 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 0 — Documentation Foundation |
+| Project phase | Phase 1 준비 — Brief upstream research |
 | Mission status | ACTIVE |
-| Gate | Documentation CLEAR for user review; implementation HOLD pending review |
+| Gate | Phase 0 documentation COMPLETE; 구현은 Brief 우선 조사 완료 후 착수 |
 | Source code | 없음 |
 | Automated tests | 없음 |
 | First implementation target | Brief domain/state/Gate vertical slice |
@@ -23,12 +23,15 @@
 - 상세 수치, persistence 기술, exact API는 아직 결정하지 않았다.
 - 25개 Markdown 문서의 link, navigation, fence, parser, whitespace, terminology와
   lifecycle consistency 통합 검사가 통과했다.
+- 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
+  ([progress 0000](./0000_DOCUMENTATION_FOUNDATION.md) Gate 참조).
+- 루트에 에이전트 온보딩 지침 `AGENTS.md`와 `CLAUDE.md` symlink가 추가되었다.
 
 ## Documentation status
 
 | 문서 | 상태 | 다음 Gate |
 |---|---|---|
-| `00_MISSION_CONTROL.md` | Active Draft | 사용자 검토 및 필요한 수정 |
+| `00_MISSION_CONTROL.md` | Active Draft | 구현 evidence로 검증 (사용자 검토 완료) |
 | `01_ARCHITECTURE.md` | Draft | persistence/application boundary 결정 검토 |
 | `02_MISSION_LIFECYCLE.md` | Draft | exact state/Recover open decisions 검토 |
 | `03_RUNTIME.md` | Draft | protocol examples로 contract tests 정의 |
@@ -65,7 +68,7 @@
 - [x] baseline ADRs
 - [x] upstream mapping과 open questions
 - [x] 전체 문서 통합 검사
-- [ ] 사용자 검토와 수정
+- [x] 사용자 검토와 수정 (2026-08-07)
 
 ### Phase 1 — Brief vertical slice
 
@@ -142,13 +145,18 @@
 
 ## Implementation HOLD
 
-문서 foundation은 사용자 검토를 받을 준비가 되어 `CLEAR`다. 코드 구현은 다음
-조건까지 별도 `HOLD`다.
+코드 구현의 HOLD 조건은 다음과 같았고, 2026-08-07에 모두 충족되었다.
 
 - [x] 전체 문서 link/terminology/decision-state 검사가 통과한다.
-- [ ] 사용자가 방향과 핵심 v1 boundary를 검토한다.
-- [ ] Brief 구현에 필요한 Open Questions를 우선순위화한다.
+- [x] 사용자가 방향과 핵심 v1 boundary를 검토한다. (2026-08-07)
+- [x] Brief 구현에 필요한 Open Questions를 우선순위화한다.
+  ([Open Questions §0](../research/OPEN_QUESTIONS.md) 참조)
 - [x] 첫 test-first vertical slice가 `05_BRIEF.md`에 고정되었다.
+
+다음 검증 가능한 목표 한 개: **Brief 우선 조사 항목(Open Questions §0)을
+upstream 기준 commit에서 file:line evidence로 해소하고, 그 결과로 Phase 1의
+첫 test cases를 확정한다.** 조사 완료 전에는 threshold 같은 미확정 값을
+구현에서 고정하지 않는다.
 
 ## Update protocol
 

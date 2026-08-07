@@ -10,6 +10,22 @@
 
 ---
 
+## 0. 현재 우선순위 — Phase 1 (Brief vertical slice)
+
+2026-08-07 Phase 0 검토 후 우선순위화했다. Phase 1 착수 전에는 아래 항목만
+조사하고, 나머지 섹션은 해당 Phase 직전에 조사한다.
+
+1. §1 Upstream baseline 중 Brief 관련 항목
+   - `pyproject.toml`과 package 경계 기록
+   - `ooo interview` 종료 Gate end-to-end 추적
+   - `ambiguity <= 0.2`와 user-controlled completion의 reconcile
+   - completion candidate streak와 user approval 호출 경로
+   - answer provenance enum과 requirement authority 규칙
+   - LICENSE와 copied code notice 재확인 (구현 직전)
+2. §2 Brief decisions 전체
+
+---
+
 ## 1. Upstream baseline
 
 - [ ] baseline commit의 `pyproject.toml`과 package 경계를 기록한다.
