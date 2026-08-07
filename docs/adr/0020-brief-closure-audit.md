@@ -125,6 +125,11 @@ closer만 verdict를 반환하는 같은 모양이다.
 ### Cost
 
 - `CLEAR` 전에 LLM 판단 3회가 추가된다. 비용과 지연은 의도된 마찰이다.
+- **세 lane을 현재 순차로 실행한다** (`BriefService.audit_closure`). upstream
+  기본은 병렬 batch이고 순차는 공인 fallback이다
+  (`skills/interview/SKILL.md:665`) — 판정 결과는 동일하며 벽시계 시간만
+  lane 3개 분량이 된다. 병렬화(`asyncio.gather`)는 구조를 바꾸지 않는 성능
+  최적화이므로 필요해질 때 한다.
 - **Phase 1 완료 범위의 소급 변경이다.** 기존 gate `CLEAR` 테스트가 감사를
   요구하도록 갱신된다.
 - 실제 assessor/challenger 어댑터는 아직 없다. Phase 2 범위에서는 결정적
