@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 진행 중 |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, gate, handoff), `domain/stage.py`, `domain/errors.py`, `application/`, `adapters/persistence/` |
-| Automated tests | 206 passed (unit + integration) |
+| Automated tests | 230 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-07 |
 
@@ -43,7 +43,7 @@
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 18 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0018은 Phase 2로) |
+| `adr/` | 19 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019는 Phase 2로) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -103,7 +103,8 @@ Gate와 evidence는 [progress 0001](./0001_BRIEF_VERTICAL_SLICE.md)에 있다.
 - [x] Blueprint schema baseline과 AC identity (ADR-0017)
 - [-] generation/QA/refinement loop
   - [x] 생성 계약: 위임 경계와 결정적 범위 검사 (ADR-0018)
-  - [ ] QA/refinement 루프와 재시도 정책
+  - [x] QA 루프 정책과 반복 상한, 최선 시도 추적 (ADR-0019)
+  - [ ] 수정 후보 제시와 사용자 채택 절차 (CLI/MCP surface)
 - [ ] AC quality validation
 - [ ] explicit user approval and revision lineage
 - [ ] approved Seed revision binding
@@ -186,14 +187,12 @@ Phase 2의 첫 결정(Blueprint schema)은 2026-08-07 완료되었다
 ([ADR-0017](../adr/0017-blueprint-schema-baseline.md),
 [SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md)).
 
-생성 계약은 2026-08-07 확정되었다
-([ADR-0018](../adr/0018-blueprint-generation-contract.md)).
+생성 계약(ADR-0018)과 QA 루프 정책(ADR-0019)은 2026-08-07 확정되었다.
 
-다음 검증 가능한 목표 한 개: **Blueprint use case와 승인·Gate를 붙여 Phase 2의
-흐름을 닫는다.** `BlueprintService`가 handoff 조회 → 생성 → 조립 → 저장을
-조율하고, 승인이 Blueprint revision에 묶이며, Execute 진입 Gate가 승인된
-revision을 요구한다. QA/refinement 루프와 재시도 정책은 그 다음이며 upstream
-조사가 선행되어야 한다 (`SEED_UPSTREAM_FINDINGS` §5).
+다음 검증 가능한 목표 한 개: **`BlueprintService`로 흐름을 닫는다.** handoff
+조회 → 생성 → 조립 → QA 반복 → 승인 → 저장을 조율하고, 승인이 Blueprint
+revision에 묶이며, Execute 진입 Gate가 승인된 revision을 요구한다. QA 수정
+후보를 사용자에게 제시하고 선택받는 절차는 surface(Phase 6·7)가 다룬다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -220,11 +219,9 @@ revision을 요구한다. QA/refinement 루프와 재시도 정책은 그 다음
 
 ### Blueprint의 알려진 한계
 
-- **AC가 결과인지 수단인지 판정하지 않는다.** upstream은 이를 "missing
-  requirement와 같은 심각도의 결함"으로 규정한다
-  ([SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md) §3.3).
-  `check_scope`는 AC의 존재 여부만 본다. Phase 2의 "AC quality validation"이
-  이 항목이다.
+- **AC가 결과인지 수단인지는 QA 품질 기준이 판정한다** ([ADR-0019](../adr/0019-blueprint-qa-loop.md) §4).
+  `check_scope`는 여전히 존재 여부만 보며, 이 판정은 채점자 어댑터가 붙어야
+  실제로 동작한다.
 - **AC의 출처를 추적하지 않는다.** 성공 조건과 무관한 AC를 만들어도 범위 검사를
   통과한다 ([ADR-0018](../adr/0018-blueprint-generation-contract.md) Cost).
 - **종료코드 검사 개념이 없다.** upstream은 `verify_command`가 있으면 runner가
@@ -236,8 +233,11 @@ revision을 요구한다. QA/refinement 루프와 재시도 정책은 그 다음
   (B-004). 현재는 사용자가 직접 `context` 후보로 기록해야 한다.
 - **생성기가 제약·Non-goal 문자열을 그대로 옮겨야 한다.** 표현을 다듬으면 범위
   위반으로 거부된다. 생성 프롬프트가 원문 보존을 지시해야 한다.
-- **재시도 정책이 없다.** upstream은 파싱 실패 시 한 번 재시도한다
+- **파싱 실패 재시도 정책이 없다.** QA 반복(ADR-0019)과는 다른 실패다.
+  upstream은 추출 파싱 실패 시 한 번 재시도한다
   ([ADR-0018](../adr/0018-blueprint-generation-contract.md) §6).
+- **QA 채점자 어댑터가 없다.** port와 정책만 있으므로 실제 채점은 아직
+  일어나지 않는다.
 
 ### 현재 구현의 알려진 한계
 

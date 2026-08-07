@@ -16,6 +16,8 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict
 
 from mission_control.domain.blueprint.assembly import BlueprintDraft
+from mission_control.domain.blueprint.qa import QaAssessment, QaFinding
+from mission_control.domain.blueprint.spec import AcceptanceCriterion
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityDimension
 from mission_control.domain.brief.requirement import (
     CandidateResolution,
@@ -195,4 +197,46 @@ class BlueprintGenerator(Protocol):
 
     async def generate(self, request: BlueprintGenerationRequest) -> BlueprintDraft:
         """초안 하나를 반환한다. lineage와 revision은 담지 않는다."""
+        ...
+
+
+class QaRequest(BaseModel):
+    """Blueprint 초안 하나를 채점하기 위한 입력.
+
+    ``quality_bar``는 정책이 정한 문장이며 채점자가 바꿀 수 없다. 무엇이 좋은
+    명세인지를 채점자가 정하면 기준과 점수가 같은 곳에서 나온다.
+
+    통과 점수와 반복 상한은 전달하지 않는다. Brief의 clarity 평가와 같은 이유다
+    — 채점자의 일은 채점이고 판정은 정책이 한다. 몇 점이면 통과인지 알려 주면
+    그 선에 맞춰 점수를 조정할 여지가 생긴다.
+
+    ``previous_findings``는 직전 채점에서 지적된 항목이다. 같은 지적을 반복하는지,
+    고쳐진 것을 다시 지적하는지 채점자가 알 수 있어야 반복이 수렴한다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    goal: str
+    constraints: tuple[str, ...]
+    non_goals: tuple[str, ...]
+    acceptance_criteria: tuple[AcceptanceCriterion, ...]
+    quality_bar: str
+    previous_findings: tuple[QaFinding, ...] = ()
+
+
+class BlueprintQaJudge(Protocol):
+    """주어진 기준으로 Blueprint 초안을 채점하는 제한된 역할.
+
+    생성기와 분리된 port인 이유는 자기 결과를 자기가 채점하지 못하게 하기
+    위해서다 (``docs/adr/0004-stage-scoped-minimum-capability.md``).
+
+    채점자는 초안을 고치지 않는다. 지적과 제안만 반환하고, 무엇을 적용할지는
+    사용자가 정한다 — 수정이 자동으로 적용되면 사용자가 승인한 적 없는 명세가
+    승인 대상이 된다.
+
+    채점 실패는 낮은 점수가 아니다. 결과를 추측해 반환하지 말고 예외를 올린다.
+    """
+
+    async def assess(self, request: QaRequest) -> QaAssessment:
+        """점수와 지적 사항을 반환한다. 통과 여부는 판정하지 않는다."""
         ...

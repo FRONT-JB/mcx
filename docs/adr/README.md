@@ -38,6 +38,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0016](./0016-brief-handoff-projection.md) | Brief handoff는 저장하지 않고 CLEAR된 상태에서 매번 파생한다. | Accepted |
 | [0017](./0017-blueprint-schema-baseline.md) | Blueprint v1은 방향만 담고 AC는 성공 계약의 내용으로 식별한다. | Accepted |
 | [0018](./0018-blueprint-generation-contract.md) | 생성기는 성공 조건만 구체화하고 범위 검사는 결정적으로 한다. | Accepted |
+| [0019](./0019-blueprint-qa-loop.md) | 생성 직후 QA 루프를 Core에 두고 최선 시도를 추적한다. | Accepted |
 
 ## Template
 

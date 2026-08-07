@@ -107,6 +107,7 @@ clarity), 그리고 인터뷰 이전의 read-only 코드베이스 탐색 단계�
 | 요구사항 후보를 **파생 read model이 아니라 primary state**로 기록 | LLM이 대화에서 distill해 캐시로 보관 | [ADR-0015](./0015-requirement-candidate-model.md) §4 |
 | **evidence lineage 검사 없음** — 승격 정책의 첫 단계를 재현하지 않음 | `validate_candidate_lineage`로 근거 유효성 검사 | [ADR-0015](./0015-requirement-candidate-model.md) §5 |
 | **Brief handoff를 명시적 타입으로 둠** | Seed 생성기가 interview state 전체를 받으며 경계 계약이 없음 | [ADR-0016](./0016-brief-handoff-projection.md) |
+| **QA 루프를 Core에 둠** — 모든 surface가 같은 품질 기준을 거침 | 루프가 skill 계층에만 있고 CLI에는 없음 | [ADR-0019](./0019-blueprint-qa-loop.md) §1 |
 | **dimension floor 회귀 테스트** 추가 | floor는 코드에만 있고 테스트 없음 | 차이가 아니라 검증 보강 ([findings](../research/INTERVIEW_UPSTREAM_FINDINGS.md) §8.5) |
 
 toolchain 차이(mypy strict, 의존성, pytest-xdist)는 Brief 동작이 아니라 개발
