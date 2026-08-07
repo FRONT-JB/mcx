@@ -228,16 +228,76 @@ Mission Control은 handoff가 이미 칸별로 나뉘어 있으므로(§2, ADR-0
 남는 일이 upstream보다 작다. 결정은
 [ADR-0018](../adr/0018-blueprint-generation-contract.md)에 있다.
 
+## 7. Seed 승인 — 존재하지 않는다
+
+`SeedApproval`, `approve_seed`, `seed_approved` 계열 심볼이 저장소 전체에 **하나도
+없다.**
+
+`cli/commands/seed.py`는 99줄이며 흐름은 다음이 전부다 (`:80-96`).
+
+1. interview state 로드
+2. `state.status != InterviewStatus.COMPLETED`면 오류 후 종료
+3. `_generate_seed_from_interview(...)` 호출
+4. 경로 반환
+
+**사용자 확인 절차가 없다.** `ooo seed`는 생성하고 저장한다. Brief에서 확인한
+것과 같은 구조다 — 별도 approval 객체 없이 status 전이가 근거다
+([ADR-0011](../adr/0011-brief-deliberate-divergences.md) Divergence 2가 이미
+Brief에 대해 기록한 차이가 Seed에서도 그대로 성립한다).
+
+## 8. QA/repair 루프 — core가 아니라 `auto/`에 있다
+
+Seed 품질 검사와 수리는 **자율 드라이버(`ooo auto`) 전용**이다.
+
+- `auto/grading.py` — `SeedGrade(A/B/C)`, `GradeFinding`, `GradeResult`,
+  `GradeGate` (`:27-121`)
+- `auto/seed_repairer.py` — 모듈 docstring이 "Bounded repair loop for
+  auto-generated Seeds"다. `SeedRepairer`는 "Deterministically repair common
+  A-grade failures"이며, `converge`가 "Review/repair until A-grade or bounded
+  stop" (`:88-263`). 취소 신호를 관측하면 `RepairCancelled`를 올린다.
+
+즉 `ooo seed`로 만든 Seed는 **검사도 수리도 거치지 않는다.**
+
+이는 [INTERVIEW_UPSTREAM_FINDINGS](./INTERVIEW_UPSTREAM_FINDINGS.md) §2에서
+확인한 CLI/MCP 비대칭이 Seed 경계에서 **세 번째로** 반복되는 것이다 —
+(1) interview 종료 gate, (2) seed 진입 gate(§6 대비 `authoring_handlers`),
+(3) seed 품질 gate. Mission Control이 surface 간 동일 Gate를 채택한
+[ADR-0011](../adr/0011-brief-deliberate-divergences.md) Divergence 1의 근거가
+그만큼 강화된다.
+
+## 9. AC 품질 판정 방법 — heuristic이며 granularity는 검사하지 않는다
+
+`auto/grading.py`의 판정은 문자열 heuristic이다.
+
+**모호한 표현 목록** (`VAGUE_TERMS`, `:36-45`) — `easy`, `intuitive`, `robust`,
+`scalable`, `better`, `improve`, `optimized`, `user-friendly`, `seamless`.
+
+**관찰 가능성** (`_is_observable`, `:550-574`) —
+
+1. `verify_command`나 `expected_artifacts`가 있으면 **즉시 참**이다. 이는
+   §3.2의 "둘 중 하나만으로도 완결된 계약"과 일치한다.
+2. 없으면 description을 본다. `_OBSERVABLE_HINTS` 22개 키워드(`command`, `exit`,
+   `prints`, `file`, `test`, `http`, `200` …) 중 하나가 있어야 하고, 이어서
+   12개 정규식 중 하나에 걸려야 한다 — 예:
+   `\b(cli|command|process)\b.+\b(exits|returns)\b\s+(with\s+)?(exit\s+code\s+)?0\b`.
+
+**중요: granularity(결과 vs 수단)를 코드에서 검사하지 않는다.** `grading.py`와
+`seed_repairer.py` 어디에도 해당 검사가 없다. §3.3이 "missing requirement와 같은
+심각도의 결함"이라고 규정한 항목이 **프롬프트 지시로만 존재한다.**
+
+**수리 시 identity 처리** — `_repair_criterion_description` (`:319-323`)은
+"Rewrite a criterion's description, refreshing only auto-derived identity"다.
+명시적으로 부여된 key는 보존하고 파생된 key만 갱신한다
+([ADR-0017](../adr/0017-blueprint-schema-baseline.md) §2와 정합).
+
 ## 5. 아직 조사하지 않은 것
 
 추출 프롬프트(`agents/seed-architect.md`)는 2026-08-07에 전문을 읽었다(§3.2·§3.3·
 §3.4). 남은 항목은 다음과 같다.
 
-- **QA/refinement 루프** — 생성된 Seed를 다시 검토·수정하는 경로. Phase 2
-  checklist의 "AC quality validation"과 직결된다
-- **Seed 승인 흐름** — upstream이 Seed 승인을 어떻게 기록하는지. Brief에서는
-  별도 approval 객체가 없었다(ADR-0011 Divergence 2). Seed도 같은지 확인 필요
 - Seed revision lineage와 `parent_seed`의 의미
+- `GradeGate`가 등급을 실제로 어떻게 소비하는지 (A만 통과인지, B도 조건부인지)
+- `SeedRepairer.converge`의 bounded stop 조건 (횟수인지 등급 정체인지)
 - `SeedMetadata`가 보존하는 항목 전체
 - `InvestmentSpec`의 용도
 - 2,637줄 파싱 계층이 방어하는 실패 목록 (구조화 출력을 쓰는 우리에게 어디까지
