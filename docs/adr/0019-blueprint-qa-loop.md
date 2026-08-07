@@ -82,6 +82,15 @@ granularity를 결정적 코드로 판정하지 않는 이유는 판정 자체�
 옆에서 읽는 판단이기 때문이다. 단어 목록으로는 잡히지 않는다. upstream도 같은
 이유로 quality bar에 두었다.
 
+**⚠️ 이 문자열은 upstream 원문이 아니라 한국어 번역이다 (2026-08-08 등록).**
+upstream의 quality bar는 채점자에게 그대로 전달되는 영어 문자열이며 그 문자열
+자체가 채점 계약이다 (`skills/seed/SKILL.md:130`, 원문 인용은
+[SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md) §10). 번역은
+프로젝트 언어 관례를 따른 것이지만 의역이므로 채점 의미가 이동했을 수 있고
+("parsimonious in the ontological sense" → "존재론적으로 인색"), 의미 등가는
+검증되지 않았다. 실제 QA judge 어댑터를 붙일 때 — 채점 모델의 언어 성능과 함께
+— 원문 사용 또는 병기를 재평가한다. 그때까지 번역 수정은 원문 대조를 거친다.
+
 ### 5. 최선의 시도를 따로 기억한다
 
 반복마다 점수가 오르내린다(upstream 실사용 기록:
