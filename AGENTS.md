@@ -67,6 +67,20 @@ Stage Guide/승인된 Blueprint > 테스트·인터페이스 계약 > 구현 > �
 - **Core는 Runtime-neutral.** vendor 세부사항은 adapter 경계 안에만 둔다. 초기
   Runtime은 Codex/OpenCode이며 Gemini는 v1 제외 (ADR 0003).
 
+## 과추론·오버프로그래밍 금지
+
+기준은 Constitution §17 (Scope와 Reasoning Discipline). 이 프로젝트가 특히
+피하려는 실패는 과추론으로 워크플로가 느려지고 원래 의도에서 벗어나는 것이다.
+
+- 기본은 upstream Ouroboros의 재구성이다. upstream에 없는 구조·기능을 발명하는
+  것은 범위 밖이다.
+- 현재 Stage와 승인 범위가 요구하지 않는 작업을 미리 수행하지 않는다.
+- 요청되지 않은 유연성·설정·추상화를 추가하지 않는다. 단일 사용 코드에
+  추상화를 만들지 않는다.
+- 간단한 작업을 불필요한 다중 에이전트 구조로 확장하지 않는다.
+- 추가 추론이 Gate 결과나 구현 선택을 실질적으로 바꾸지 않으면 중단한다.
+- 개선 아이디어와 새 요구사항은 구현하지 않고 기록만 남긴다.
+
 ## 미확정 결정 다루기
 
 - 미확정 항목(threshold 수치, persistence 기술, schema, Python 스택 등)은
