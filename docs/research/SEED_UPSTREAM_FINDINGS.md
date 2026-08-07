@@ -430,3 +430,67 @@ qa_accepted_below_threshold: true
 질문이 한 번 더 나갔다. `agents/seed-closer.md`가 대응 위치로 보이나 소스를
 확인하지 않았다. §11에 조사 항목으로 추가한다.
 
+### 12.3 Stage→Runtime 바인딩이 조용히 우회됐다
+
+> 같은 세션의 후속 관측. **이것은 Execute(Phase 3)와 MCP surface(Phase 7)에
+> 해당하므로 지금 결정하지 않고 기록만 남긴다.** 결정 항목은
+> [Open Questions](./OPEN_QUESTIONS.md) §4·§5·§8에 등록했다.
+
+사용자는 config에 실행 단계 Runtime을 지정해 두었다.
+
+```yaml
+orchestrator:
+  runtime_profile:
+    stages:
+      interview: claude
+      execute:   codex      # ← 구현은 codex가 한다
+      evaluate:  claude
+      reflect:   codex
+```
+
+`codex-cli 0.146.1`이 설치되어 있고 정상 호출된다. 그런데 실제 구현은 **Claude
+세션이 자기 편집 도구로 직접 수행했다.** 서버 파이프라인과 클라이언트 트랙까지
+세 단계가 커밋된 뒤에야 사용자가 알아챘다.
+
+원인은 어느 한 계층의 버그가 아니라 **계층 사이의 빈칸**이다.
+
+| 계층 | 아는 것 | 모르는 것 |
+|---|---|---|
+| config | 어느 Stage를 어느 Runtime이 맡는지 | 그 매핑이 실제로 조회됐는지 |
+| orchestrator (`ooo run`) | 매핑을 읽고 CLI를 띄운다 | 자기가 호출되지 않은 경우 |
+| skill/session | Seed 이후 무엇을 할지 사용자와 정한다 | config에 그런 매핑이 있다는 사실 |
+
+`stages.execute`는 orchestrator가 호출될 때만 조회된다. 세션이 "직접 구현"
+경로를 제안하고 사용자가 그것을 고르면 orchestrator는 아예 실행되지 않으므로,
+매핑은 **무시된 것이 아니라 조회되지 않는다.** 경고도, Telemetry도, Gate도
+없다. 사용자가 묻지 않았으면 끝까지 몰랐을 상태다.
+
+**이것은 §12.2의 store 미반영과 같은 실패 유형이다.** 그쪽은 skill이 만든
+*state*를 core가 모르는 것이고, 이쪽은 skill이 만든 *작업*을 core가 모르는
+것이다. 둘 다 "가장 강한 관문이 skill 계층에 있다"(§8)의 대가다 — 관문이 있는
+계층은 결과를 소유하지 않고, 결과를 소유한 계층은 관문을 갖지 않는다.
+
+**두 결함이 겹치는 지점도 관측됐다.** 세션은 codex로 넘길 때의 주의사항을 이렇게
+말했다 — store의 seed는 v1.0.0이고 QA로 다듬은 v1.5.0은 파일에만 있으므로
+`seed_path`를 명시하지 않으면 codex가 열등한 버전을 읽는다. 즉 §12.2의 state
+분기는 가설이 아니라 **다음 Stage가 잘못된 산출물을 조용히 소비하는** 결과로
+이어진다.
+
+#### Mission Control에 같은 구멍이 있는가
+
+`mcx execute` CLI는 Runtime port를 거치도록 설계되어 있어 자기가 코드를 쓸 수
+없다 ([ADR-0003](../adr/0003-runtime-abstraction.md),
+[Architecture](../01_ARCHITECTURE.md) §7.1). **그러나 MCP surface(Phase 7)에서는
+host가 에이전트다.** 그 세션은 `mcx` 도구와 자기 편집 도구를 동시에 갖는다 —
+관측된 상황과 정확히 같은 조건이다.
+
+[ADR-0004](../adr/0004-stage-scoped-minimum-capability.md)는 이것을 덮지 않는다.
+그 ADR이 막는 것은 **위임받은 worker가 위로 탈출하는 것**(Mission Control 재귀
+호출, 자기 승인)이고, 관측된 것은 반대 방향 — **통제하는 쪽이 worker의 일을
+직접 하는 것**이다.
+
+[ADR-0005](../adr/0005-evidence-over-reasoning.md)의 "Telemetry를 참조하는
+Gate만 진행을 결정한다"가 재료는 준다. Execute를 거치지 않았으면 Execute
+Telemetry가 없다. 하지만 **Execute Telemetry 없이 나타난 작업을 Verify가 어떻게
+다루는지는 아직 정하지 않았다.**
+

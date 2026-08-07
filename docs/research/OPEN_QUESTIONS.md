@@ -83,6 +83,11 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 - [ ] workspace/file scope 표현을 결정한다.
 - [ ] required idempotency의 exact key, scope, retention, duplicate result semantics를 정의한다.
 - [ ] parallel execution 도입 Gate를 정의한다.
+- [ ] **Execute 진입 경로가 하나임을 무엇이 보장하는지, Telemetry가 "무엇이
+      이 작업을 만들었는가"를 기록하는지 결정한다.** upstream 관측에서
+      Stage→Runtime 바인딩이 orchestrator 밖 경로에서 조회되지조차 않았다
+      ([SEED_UPSTREAM_FINDINGS §12.3](./SEED_UPSTREAM_FINDINGS.md)). 계층
+      경계에 해당하므로 Execute 구현 **시작 전에** 정한다.
 
 ## 5. Verify decisions
 
@@ -92,6 +97,10 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 - [ ] UI/API/CLI observation adapter의 우선순위를 결정한다.
 - [ ] conditional consensus를 v1에 포함할지 결정한다.
 - [ ] workspace snapshot/revision 검증 방식을 결정한다.
+- [ ] **Execute Telemetry 없이 나타난 작업을 Verify가 CLEAR할 수 있는지
+      결정한다.** AC가 통과해도 그 작업을 무엇이 만들었는지 기록이 없으면
+      완료 선언의 근거가 비어 있다
+      ([SEED_UPSTREAM_FINDINGS §12.3](./SEED_UPSTREAM_FINDINGS.md)).
 
 ## 6. Recover decisions
 
@@ -120,6 +129,12 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 - [ ] disconnect, cancel, timeout의 의미를 분리한다.
 - [ ] CLI와 MCP parity test 전략을 정의한다.
 - [ ] plugin 설치·발견·설정 UX를 결정한다.
+- [ ] **MCP host가 자기 편집 도구로 작업하고 Verify만 호출하는 경로를 어떻게
+      다룰지 결정한다.** host는 에이전트이며 `mcx` 도구와 자기 도구를 동시에
+      갖는다 — upstream에서 실제로 발생한 조건이다
+      ([SEED_UPSTREAM_FINDINGS §12.3](./SEED_UPSTREAM_FINDINGS.md)).
+      [ADR-0004](../adr/0004-stage-scoped-minimum-capability.md)는 worker가
+      위로 탈출하는 것만 막고 이 방향을 덮지 않는다.
 
 ## 9. Persistence and Telemetry decisions
 
