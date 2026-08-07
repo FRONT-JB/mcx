@@ -25,8 +25,11 @@ authority는 답변이 상태에 기록되는 단일 지점에서 결정되고, 
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
 
 #: 답변이 요구사항을 만들 권한을 갖는지 나타낸다.
 AnswerAuthority = Literal["decision", "observation"]
@@ -38,9 +41,14 @@ WITHHELD_ANSWER_NOTE = (
 )
 
 
-@dataclass(frozen=True, slots=True)
-class BriefRound:
-    """질문 하나와 그에 대한 답변, 그리고 답변의 requirement authority."""
+class BriefRound(BaseModel):
+    """질문 하나와 그에 대한 답변, 그리고 답변의 requirement authority.
+
+    durable state의 일부이므로 직렬화 대상이다. 불변으로 두어 이전 revision의
+    스냅샷이 나중 변경에 오염되지 않게 한다.
+    """
+
+    model_config = ConfigDict(frozen=True)
 
     number: int
     question: str
@@ -59,7 +67,7 @@ class RequirementInputRound:
 
 
 def project_requirement_input(
-    rounds: list[BriefRound] | tuple[BriefRound, ...],
+    rounds: Sequence[BriefRound],
 ) -> list[RequirementInputRound]:
     """Goal, Constraints, Non-goals, 성공 조건을 도출하는 입력으로 투영한다.
 
@@ -87,7 +95,7 @@ def project_requirement_input(
 
 
 def observed_facts(
-    rounds: list[BriefRound] | tuple[BriefRound, ...],
+    rounds: Sequence[BriefRound],
 ) -> list[BriefRound]:
     """관찰된 사실만 원문 그대로 반환한다.
 

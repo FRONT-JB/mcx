@@ -7,8 +7,8 @@
 | Project phase | Phase 1 — Brief vertical slice 구현 중 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 진행 중 |
-| Source code | `src/mission_control/domain/brief/provenance.py` |
-| Automated tests | 11 passed (`tests/unit/domain/brief/`) |
+| Source code | `src/mission_control/domain/brief/` (provenance, state) |
+| Automated tests | 26 passed (`tests/unit/domain/brief/`) |
 | First implementation target | Brief domain/state/Gate vertical slice |
 | Updated | 2026-08-07 |
 
@@ -76,9 +76,9 @@
 외부 Runtime 없이 검증한다.
 
 - [ ] Brief에 필요한 최소 Mission, Stage, GateDecision, Attempt domain model
-- [-] Interview revision, round, answer provenance
-  - [x] answer authority와 requirement input 투영 (B-031·B-032·B-033, 11 tests)
-  - [ ] revision과 round 축적
+- [x] Interview revision, round, answer provenance
+  - [x] answer authority와 requirement input 투영 (B-031·B-032·B-033)
+  - [x] round 축적, revision 증가, 승인 revision 바인딩과 stale 처리 (B-008·B-014)
 - [ ] one-question tool-less text backend contract와 deterministic fake
 - [ ] ambiguity/clarity policy와 user approval
 - [ ] 최소 durable state 방식 ADR와 repository
@@ -163,10 +163,20 @@ Test Matrix는 B-039까지 확장되었다.
 선행 결정은 ADR-0012(toolchain·실행 모델)와 ADR-0013(durable state)으로
 확정했고, 첫 코드가 들어왔다.
 
-다음 검증 가능한 목표 한 개: **Brief round를 revision과 함께 축적하는 상태
-모델을 만들고, 승인이 특정 revision을 참조하도록 강제한다** (B-008, B-014).
-upstream test가 보호하는 실패 상황(Open Questions §1)은 clarity policy를
-구현하기 직전에 조사한다.
+다음 검증 가능한 목표 한 개: **clarity policy의 네 조건(threshold, dimension
+floor, stability signal, 최소 round)을 versioned policy로 구현하고 경계값을
+테스트한다** (B-027~B-030, B-035). 착수 전에 upstream test가 보호하는 실패
+상황(Open Questions §1)을 조사한다.
+
+### 현재 구현의 알려진 한계
+
+계약 위반은 아니지만 이후 확장이 필요한 지점이다.
+
+- 승인 이력이 최신 하나만 유지된다. “rev2를 승인했다가 rev4에서 재승인”의
+  흐름은 Gate decision과 Telemetry가 들어올 때 보존 방식을 정한다.
+- `mission_id`와 `initial_intent`의 빈 값 검증이 없다. Entry Contract(§6)
+  강제는 application use case 계층에서 다룬다.
+- 시각(timestamp)을 다루지 않는다. Clock port 도입 시 함께 추가한다.
 
 ## Update protocol
 
