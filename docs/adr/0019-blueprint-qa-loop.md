@@ -112,9 +112,10 @@ upstream의 quality bar는 채점자에게 그대로 전달되는 영어 문자�
 **실제로 더 나은 명세를 버린다.** 근거 없는 우리 규칙을 유지하는 것보다 관측된
 동작을 따르는 편이 divergence를 줄인다.
 
-> ⚠️ `skills/seed/SKILL.md`가 동점을 규정하는지는 **미확인**이다. 관측은 1회
-> 실행의 판단일 수 있다. 확인 항목은
-> [SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md) §11에 있다.
+> 2026-08-08 소스 확인 완료: `skills/seed/SKILL.md:113`은 "Track the
+> highest-scoring seed across all iterations"까지만 말하고 **동점 규칙이
+> 없다.** 따라서 upstream에 성문 규칙은 없고, 관측된 실행의 판단이 유일한
+> 근거이며 우리는 그것을 채택했다.
 
 ### 6. 루프 종료 조건
 
@@ -163,9 +164,15 @@ Blueprint는 방향이고 승인 이후 불변이다
 불가능해진다. 임계값이 함께 있으면 `accepted_below_threshold`가 기록 자체로
 검증된다 — 실제로 model validator가 둘의 일관성을 강제한다.
 
-upstream이 seed metadata에 같은 성격의 값을 남기는 것을 관측했으나(§12), 그
-키들이 `SeedMetadata`에 선언된 것인지는 미확인이다. **산출물 형태가 아니라
-필요성**을 채택했고, 담는 위치는 우리 승인 모델을 따른다.
+upstream이 seed metadata에 같은 성격의 값을 남기는 것을 관측했다(§12).
+2026-08-08 소스 확인 결과 그 키들은 `SeedMetadata`에 **선언되어 있지 않다**
+(`core/seed.py:367-416` — 선언 필드는 seed_id, version, created_at,
+ambiguity_score, interview_id, parent_seed_id, generation_mode, degraded,
+unresolved_slots, recovery_reason, decision_provenance). 즉 세션이
+`extra="allow"`로 임의로 붙인 것이며, upstream에도 QA 결과의 선언된 자리는
+없다. **산출물 형태가 아니라 필요성**을 채택했고, 담는 위치는 우리 승인
+모델을 따른다 — 이 확인으로 "선언된 자리를 만든다"는 이 결정이 upstream
+형태의 복사가 아니라 upstream에 없는 것의 신설임이 확정됐다.
 
 ## Consequences
 

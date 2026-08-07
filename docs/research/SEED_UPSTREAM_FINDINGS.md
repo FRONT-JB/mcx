@@ -343,15 +343,18 @@ goal/criteria가 참조하는 모든 엔티티를 덮는 ontology_schema, 필드
 - Seed revision lineage와 `parent_seed`의 의미
 - `GradeGate`가 등급을 실제로 어떻게 소비하는지 (A만 통과인지, B도 조건부인지)
 - `SeedRepairer.converge`의 bounded stop 조건 (횟수인지 등급 정체인지)
-- `SeedMetadata`가 보존하는 항목 전체 — 특히 §12가 관측한 `qa_best_score`,
-  `qa_threshold`, `qa_iterations`, `qa_accepted_below_threshold`가 선언된
-  필드인지 `extra="allow"`로 붙은 것인지
+- ~~`SeedMetadata`가 보존하는 항목 전체~~ **2026-08-08 해소.** 선언 필드는
+  `core/seed.py:367-416`의 11개(seed_id, version, created_at, ambiguity_score,
+  interview_id, parent_seed_id, generation_mode, degraded, unresolved_slots,
+  recovery_reason, decision_provenance). §12가 관측한 `qa_*` 키는 **선언되지
+  않았다** — 세션이 `extra="allow"`로 붙인 것. ADR-0019 §8에 반영
 - `InvestmentSpec`의 용도
 - ~~`agents/seed-closer.md` — §12가 관측한 Seed 직전 closure 감사~~
   **2026-08-08 해소 → §13.** 여섯 축은 규정이며, 위치는 Seed 생성이 아니라
   interview 종료 gate다
-- `skills/seed/SKILL.md`의 best attempt 추적 문구 전문 — 동점 규칙이 실제로
-  없는지 (§12가 관측한 동점 처리의 근거 확인)
+- ~~`skills/seed/SKILL.md`의 best attempt 추적 문구 전문~~ **2026-08-08
+  해소.** `:113` "Track the highest-scoring seed across all iterations" —
+  동점 규칙 없음 확정. ADR-0019 §5에 반영
 - 2,637줄 파싱 계층이 방어하는 실패 목록 (구조화 출력을 쓰는 우리에게 어디까지
   해당하는지)
 - `ooo seed` 진입이 interview score를 다시 강제하는지
@@ -419,11 +422,10 @@ qa_iterations: 5
 qa_accepted_below_threshold: true
 ```
 
-> ⚠️ **미확인.** `Seed.model_config`가 `extra="allow"`이므로(§2) 이 키들이
-> `SeedMetadata`에 선언된 것인지, 세션이 임의로 붙인 것인지 확인하지 못했다.
-> §11의 "`SeedMetadata`가 보존하는 항목 전체"가 이 항목이다. Mission Control은
-> **이 산출물 형태가 아니라 필요성**을 채택했다 — 어디에 담을지는
-> [ADR-0019](../adr/0019-blueprint-qa-loop.md) §8이 별도로 정한다.
+> 2026-08-08 소스 확인: 이 키들은 `SeedMetadata`에 **선언되어 있지 않다**
+> (`core/seed.py:367-416`). 세션이 `extra="allow"`(§2)로 임의로 붙인 것이다.
+> Mission Control은 **이 산출물 형태가 아니라 필요성**을 채택했다 — 어디에
+> 담을지는 [ADR-0019](../adr/0019-blueprint-qa-loop.md) §8이 정한다.
 
 **Seed 생성 직전에 closure 감사가 있다.** 여섯 축(소유권/SSoT, lifecycle·복구,
 마이그레이션, cross-client, API 계약, 검증)을 점검하고 1건이 blocking으로 걸려
