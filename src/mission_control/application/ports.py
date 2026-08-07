@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict
 from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import QaAssessment, QaFinding
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
+from mission_control.domain.blueprint.state import BlueprintState
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityDimension
 from mission_control.domain.brief.closure import (
     AdvisoryLane,
@@ -49,6 +50,32 @@ class BriefRepository(Protocol):
 
     async def save(self, state: BriefState) -> None:
         """Brief를 durable하게 기록한다.
+
+        저장이 성공적으로 끝나기 전에는 호출자가 전이 완료를 보고해서는 안 된다.
+        """
+        ...
+
+
+class BlueprintRepository(Protocol):
+    """Blueprint 상태의 durable 저장소.
+
+    :class:`BriefRepository`와 같은 보장을 요구한다 — 부분 기록된 상태가 읽히지
+    않고, 저장된 것보다 앞서지 않는 쓰기를 거부하며
+    (:class:`~mission_control.domain.errors.StaleWriteError`), 저장 실패를
+    성공으로 가장하지 않는다.
+
+    revision·QA 기록·승인이 한 문서에 함께 저장되어야 한다. 나뉘어 있으면
+    "Seed는 저장되고 approval만 유실"된 상태가 가능해지고, 그 상태를 ``CLEAR``로
+    오인하지 않는다는 보장을 저장 계층이 줄 수 없다
+    (``docs/06_BLUEPRINT.md`` §12, ADR-0021 §1).
+    """
+
+    async def load(self, mission_id: str) -> BlueprintState | None:
+        """저장된 Blueprint 상태를 반환한다. 없으면 ``None``."""
+        ...
+
+    async def save(self, state: BlueprintState) -> None:
+        """Blueprint 상태를 durable하게 기록한다.
 
         저장이 성공적으로 끝나기 전에는 호출자가 전이 완료를 보고해서는 안 된다.
         """

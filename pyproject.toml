@@ -41,6 +41,9 @@ dev = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
+# brief/와 blueprint/가 같은 이름의 테스트 모듈(test_state.py 등)을 가지므로
+# 경로 기반 import가 필요하다. __init__.py 없는 flat 레이아웃을 유지한다.
+addopts = ["--import-mode=importlib"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
