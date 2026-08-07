@@ -105,6 +105,33 @@ replaced criterion gets a new key when materialized from its changed contract."
 `expected_artifacts`만 있는 AC를 어떻게 취급하는지는 확인하지 못했다
 (`Evidence level: Verified`이나 의도는 `Inferred` 이하).
 
+## 3.2 성공 계약 작성 지침 — exit code는 runner가 따로 본다
+
+생성 프롬프트는 `agents/seed-architect.md`다 (`seed_generator.py:2198-2200`이
+`load_agent_prompt("seed-architect")`로 불러온다). AC 계약 작성에 대한 지침이
+명시적이다 (`:71-78`).
+
+**`output_assertion`(프롬프트에서는 `expect`)**
+
+- 오직 **출력에 그대로 나타나는 문자열**에만 쓴다. 예: `OK`, `5 passed`.
+- 조건·상태·종료코드 서술을 **절대 쓰지 않는다** — `exit code 0`, `returns 0`,
+  `success`, `no errors`, `passed` 같은 것들을 명시적으로 금지한다.
+- 구별되는 출력 문자열이 없으면 `expect: NONE`으로 둔다.
+  **"Exit-code 0 is already verified separately by the runner."**
+
+**`expected_artifacts`**
+
+- 정확한 경로를 모르면 `artifacts: NONE`으로 두고 구체적인 `verify` 명령을 대신
+  제공한다 (`:71`).
+- **"File or directory existence can be a complete contract."** 다만 대기·차단
+  상태가 있을 수 있는 산출물이면 의미적 상태를 확인하는 `verify` 명령도 함께
+  둔다 (`:72`).
+
+이것이 §3.1에서 미확인으로 남긴 "왜 `has_success_contract`가 `verify_command`만
+보는가"의 답이다. **명령이 있으면 종료코드 검사가 자동으로 따라오므로 명령 자체가
+완결된 계약**이다. `output_assertion`은 그 위에 얹는 선택적 추가 검사이고, 억지로
+채우면 오히려 취약해진다(테스트 하나 추가하면 `3 passed`가 `4 passed`가 된다).
+
 ## 4. 조사했으나 v1에서 다루지 않기로 한 것
 
 `core/seed.py`에는 산출물 경로 검증 장치가 상당량 있다 (`:41-253`).

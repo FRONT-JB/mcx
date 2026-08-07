@@ -114,17 +114,23 @@ upstream은 이를 스키마 검증기(`core/seed.py:480-497`,
 (`orchestrator/parallel_executor.py:9651-9657`) 두 곳에서 강제한다. Mission
 Control은 스키마 단계에서 강제한다.
 
-### 7. 미확인 — "success contract 보유"의 판정 기준
+### 7. "success contract 보유"의 판정 기준 — 셋 중 하나
 
 upstream `orchestrator/shadow_replay.py:622`는
 `has_success_contract = bool(ac_spec.verify_command)`로 **`verify_command`만**
 본다. Mission Control의 `is_mechanically_verifiable`은 셋 중 하나라도 있으면
 참이다.
 
-`expected_artifacts`만 있어도 "파일이 존재하는가"라는 관찰 가능한 증거가 나오므로
-셋 중 하나 기준이 근거 없는 것은 아니지만, upstream이 왜 `verify_command`만
-보는지는 확인하지 못했다. Execute/Verify가 이 판정을 실제로 소비할 때
-재확인한다 (`upstream 미확인`).
+**2026-08-07 해소.** 생성 프롬프트 `agents/seed-architect.md:77`이 이유를
+밝힌다 — "Exit-code 0 is already verified separately by the runner." 명령이
+있으면 종료코드 검사가 자동으로 따라오므로 **명령 자체가 완결된 계약**이다.
+같은 프롬프트가 "File or directory existence can be a complete contract"(`:72`)
+라고도 하므로 `expected_artifacts`만 있는 경우도 완결된 계약이다.
+
+따라서 셋 중 하나 기준은 유지한다. 다만 Mission Control에는 아직 **"명령의
+종료코드를 검사한다"는 개념 자체가 없다.** Verify(Phase 4)가 verify_command를
+실제로 실행할 때 종료코드 검사를 기본 동작으로 넣어야 하며, 그 전까지
+`is_mechanically_verifiable`은 "확인 수단이 적혀 있다"까지만 뜻한다.
 
 ## Consequences
 
