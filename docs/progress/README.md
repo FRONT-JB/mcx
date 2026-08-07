@@ -304,6 +304,43 @@ revision에 묶이며, Execute 진입 Gate가 승인된 revision을 요구한다
   강제는 application use case 계층에서 다룬다.
 - 시각(timestamp)을 다루지 않는다. Clock port 도입 시 함께 추가한다.
 
+## Phase 종료 검토
+
+Phase를 완료로 선언하기 전에 아래 여섯 질문에 답하고, 답을 그 phase의
+progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관행의 기록이다 —
+지금까지의 이탈은 전부 사후 감사(사용자 질문, 도그푸딩 대조, 완료 당일
+감사)에서 잡혔고, 이 목록은 그 감사를 운이 아니라 절차로 만든다.
+
+각 질문은 예/아니오가 아니라 **증거**를 요구한다. 근거 없는 체크 표시는
+거짓 안심이므로, 답할 수 없는 항목은 답하지 못했다고 그대로 기록한다.
+
+1. **구조 검사** — 이 phase가 만든 방어 각각에 대해 "어떤 결함을 막는가"를
+   한 문장으로 말할 수 있는가? 산문·프롬프트로만 막고 있는 계약은
+   "강제되지 않는 것" 류의 표에 올라갔는가?
+2. **부품/단계 구분** — end-to-end로 도는가(결정적 fake로라도)? 미조립
+   부품을 완료로 기록하지 않았는가?
+3. **미등록 이탈** — upstream과 다른 곳 중 ADR/divergence register에 없는
+   것이 있는가? *(실례: quality bar 한국어 번역 — ADR-0019 §4로 소급 등록)*
+4. **표시 없는 보류** — 보류·미확인이 문서의 그 자리에 표시되어 있는가?
+   *(실례: verify_command 한 줄 규칙 보류 — ADR-0017 Cost로 소급 기록)*
+5. **계약 문장 원문 여부** — 문장이 곧 계약인 곳에 번역·의역이 없는가?
+   *(재발 방지 사례: closure 계약 문장은 영어 원문 — ADR-0020 §4)*
+6. **관측 대조** — 도그푸딩·런타임 관측과 모순되는 규칙이 없는가?
+   *(실례: QA 동점 규칙이 관측과 반대 — ADR-0019 §5로 개정)*
+
+최종 목표인 Phase 7까지 모든 구현 phase가 이 검토를 거친다. Phase 0은 문서
+기반이라 대상이 아니다.
+
+| Phase | 검토 상태 | 기록 |
+|---|---|---|
+| Phase 1 — Brief | 소급 충족 — 완료 당일 감사(ADR-0015·0016), 관측 대조에 따른 closure 소급(ADR-0020), 등록된 이탈은 ADR-0011과 ADR-0020 §5 | [progress 0001](./0001_BRIEF_VERTICAL_SLICE.md) |
+| Phase 2 — Blueprint | 대기 — 완료 선언 전 수행 | — |
+| Phase 3 — Execute | 대기 | — |
+| Phase 4 — Verify/Recover | 대기 | — |
+| Phase 5 — Runtime adapters | 대기 | — |
+| Phase 6 — `mcx` CLI | 대기 | — |
+| Phase 7 — MCP control surface | 대기 | — |
+
 ## Update protocol
 
 작업이 끝날 때마다 이 문서를 다음처럼 갱신한다.
@@ -313,3 +350,5 @@ revision에 묶이며, Execute 진입 Gate가 승인된 revision을 요구한다
 3. 현재 HOLD/CLEAR 이유를 갱신한다.
 4. 다음 한 개의 검증 가능한 목표를 지정한다.
 5. Stage Guide와 구현이 다르면 차이를 숨기지 않는다.
+6. Phase 완료를 선언하려면 먼저 위의 Phase 종료 검토를 수행하고 결과를
+   progress record에 남긴다.
