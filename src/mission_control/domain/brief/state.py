@@ -38,6 +38,21 @@ class BriefApproval(BaseModel):
     statement: str
 
 
+class UnresolvedItem(BaseModel):
+    """아직 해소되지 않은 결정, 충돌, 또는 확인되지 않은 가정.
+
+    ``is_material``은 이 항목이 다음 Stage의 판단을 실제로 바꾸는지를 나타낸다.
+    material한 항목이 남아 있으면 clarity 점수가 아무리 좋아도 ``CLEAR``하지
+    않는다 (``docs/05_BRIEF.md`` §11.5). 점수는 "얼마나 명확해 보이는가"를
+    측정할 뿐, 아직 아무도 답하지 않은 질문이 있다는 사실을 대신하지 못한다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    description: str
+    is_material: bool
+
+
 class BriefRevisionSnapshot(BaseModel):
     """한 revision 시점의 round 구성.
 
@@ -61,7 +76,12 @@ class BriefState(BaseModel):
     revision: int = 1
     rounds: tuple[BriefRound, ...] = ()
     approval: BriefApproval | None = None
+    unresolved_items: tuple[UnresolvedItem, ...] = ()
     history: tuple[BriefRevisionSnapshot, ...] = Field(default=())
+
+    @property
+    def material_unresolved_items(self) -> tuple[UnresolvedItem, ...]:
+        return tuple(item for item in self.unresolved_items if item.is_material)
 
     @classmethod
     def start(cls, *, mission_id: str, initial_intent: str) -> BriefState:
@@ -105,6 +125,21 @@ class BriefState(BaseModel):
             update={
                 "revision": self.revision + 1,
                 "rounds": (*self.rounds, recorded),
+                "history": (*self.history, self._current_snapshot()),
+            }
+        )
+
+    def note_unresolved(self, *, description: str, is_material: bool) -> BriefState:
+        """미해결 항목을 기록하고 revision을 올린다.
+
+        미해결 항목의 추가는 material 변경이다. 승인 이후에 발견된 항목이 기존
+        승인을 그대로 통과시키면, 사용자가 보지 못한 gap을 승인한 것이 된다.
+        """
+        item = UnresolvedItem(description=description, is_material=is_material)
+        return self.model_copy(
+            update={
+                "revision": self.revision + 1,
+                "unresolved_items": (*self.unresolved_items, item),
                 "history": (*self.history, self._current_snapshot()),
             }
         )
