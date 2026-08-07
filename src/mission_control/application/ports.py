@@ -16,7 +16,11 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict
 
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityDimension
-from mission_control.domain.brief.state import BriefState, UnresolvedItem
+from mission_control.domain.brief.requirement import (
+    CandidateResolution,
+    RequirementSection,
+)
+from mission_control.domain.brief.state import BriefState
 
 
 class BriefRepository(Protocol):
@@ -57,6 +61,22 @@ class AskedRound(BaseModel):
     answer: str | None
 
 
+class OpenRequirement(BaseModel):
+    """아직 확정되지 않은 요구사항 후보.
+
+    위임 역할이 "무엇이 아직 열려 있는가"를 알아야 다음 질문을 겨냥할 수 있다.
+    확인 권위는 전달하지 않는다 — 그것은 승격 판정의 재료이지 질문의 재료가
+    아니며, 알려 주면 그것을 근거로 스스로 확정했다고 판단할 여지가 생긴다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    section: RequirementSection
+    text: str
+    resolution: CandidateResolution
+    required: bool
+
+
 class QuestionRequest(BaseModel):
     """질문 하나를 생성하기 위해 필요한 최소 context.
 
@@ -69,7 +89,7 @@ class QuestionRequest(BaseModel):
 
     initial_intent: str
     previous_rounds: tuple[AskedRound, ...]
-    unresolved_items: tuple[UnresolvedItem, ...]
+    open_requirements: tuple[OpenRequirement, ...]
 
 
 class GeneratedQuestion(BaseModel):
@@ -116,7 +136,7 @@ class AssessmentRequest(BaseModel):
 
     initial_intent: str
     previous_rounds: tuple[AskedRound, ...]
-    unresolved_items: tuple[UnresolvedItem, ...]
+    open_requirements: tuple[OpenRequirement, ...]
     dimensions: tuple[ClarityDimension, ...]
 
 

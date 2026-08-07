@@ -34,6 +34,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0012](./0012-python-toolchain-and-layout.md) | Python 3.12 + uv + pydantic + pytest를 사용하고, 실행 모델은 upstream처럼 도메인 동기 / use case·port async로 나눈다. | Accepted |
 | [0013](./0013-brief-durable-state-baseline.md) | Brief durable state는 revision 이력을 포함한 단일 JSON 문서로 시작한다. | Accepted |
 | [0014](./0014-brief-concurrent-write-protection.md) | stale write 거부를 유지하고 내용 버전과 쓰기 순서를 두 축으로 나눈다. | Accepted |
+| [0015](./0015-requirement-candidate-model.md) | Non-goal·충돌·가정·미해결을 하나의 요구사항 후보 모델로 다룬다. | Accepted |
 
 ## Template
 

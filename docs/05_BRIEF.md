@@ -23,7 +23,7 @@ Constitution과 충돌하면 Constitution이 우선한다.
 |---|---|
 | 목적 | 목표·제약·비범위·성공 조건의 결정적 모호함을 질문과 근거로 제거한다. |
 | 입력 | 초기 의도, 허용된 조사 범위, 기존 Brief state, 재진입 사유가 있다면 해당 Telemetry |
-| 주요 상태 | 질문·답변, 관찰 사실, 제품 결정, 가정, 미해결 항목, clarity 평가, 승인 |
+| 주요 상태 | 질문·답변, 관찰 사실, 요구사항 후보(Non-goal·가정·충돌·미해결을 축으로 구분), clarity 평가, 승인 |
 | 산출물 | 출처가 연결된 Brief handoff와 Gate decision |
 | 성공 Gate | `CLEAR — Clear for Blueprint` |
 | 보류 Gate | `HOLD — Brief 유지`와 이유·부족한 조건·다음 행동 |
@@ -340,10 +340,13 @@ Python class나 저장 schema가 아니다.
     │   └─ provenance: authority + source
     ├─ clarity stability signal (연속 통과 횟수)
     ├─ observed facts with source locators
-    ├─ user/product decisions
-    ├─ assumptions
-    ├─ conflicts
-    ├─ unresolved items
+    ├─ requirement candidates
+    │   ├─ section (goal / constraint / non_goal / ... )
+    │   ├─ text
+    │   ├─ content source (user_stated / model_inferred / repo_observed / ... )
+    │   ├─ resolution (confirmed / needs_confirmation / unknown / conflicting)
+    │   ├─ confirmation authority (user / repo_evidence / none)
+    │   └─ required
     ├─ clarity assessments and policy versions
     ├─ user approvals
     └─ Gate decisions and Telemetry references
@@ -656,8 +659,9 @@ Brief Gate는 다음 조건을 모두 만족할 때만 `CLEAR`할 수 있다.
 - 적용 가능한 Constraints가 기록되어 있다.
 - 중요한 Non-goals 또는 의도적 제외가 기록되어 있다.
 - 성공 조건이 Blueprint에서 검증 가능한 AC로 정제될 수 있다.
-- material unresolved decision과 conflict가 없다.
-- material assumption이 해결되었거나 사용자에게 명시적으로 승인되었다.
+- 승격할 수 없는 요구사항 후보가 없다. 충돌은 `required` 여부와 무관하게 막고,
+  미해결·미확인·권위 부족은 `required`인 후보에서 막는다
+  ([ADR-0015](./adr/0015-requirement-candidate-model.md)).
 - clarity policy의 종료 후보 조건 네 가지를 모두 만족한다 (§11.1).
 - 중요한 사실과 결정에 provenance가 있다.
 - 사용자가 정확한 Brief revision의 진행을 승인했다.
@@ -856,10 +860,10 @@ CLI는 Gate를 자체 계산하지 않고 Core application boundary의 결과를
 | B-003 | Generator가 여러 질문 반환 | 결과를 계약 위반으로 거부하고 state를 손상시키지 않는다. |
 | B-004 | 현재 코드에서 확인 가능한 사실 | 사용자에게 묻기 전에 제한된 Fact Resolver가 읽기 근거를 반환한다. |
 | B-005 | 미래 제품 정책 결정 | code fact로 자동 답하지 않고 사용자에게 질문한다. |
-| B-006 | 모델이 만든 추정 | assumption으로 저장하고 fact/decision으로 승격하지 않는다. |
-| B-007 | material assumption이 남음 | score가 좋아도 Gate는 HOLD다. |
+| B-006 | 모델이 만든 추정 (`content_source=model_inferred`) | 사용자 확인 없이는 요구사항 칸으로 승격되지 않는다. |
+| B-007 | `required`인 후보가 미해결·미확인으로 남음 | score가 좋아도 Gate는 HOLD다. 선택 후보는 이유와 함께 생략된다. |
 | B-008 | 중요한 답변 저장 | question, answer, source, knowledge kind, revision이 연결된다. |
-| B-009 | code fact와 사용자 설명 충돌 | conflict를 보존하고 해결 전 HOLD한다. |
+| B-009 | code fact와 사용자 설명 충돌 (`resolution=conflicting`) | `required` 여부와 무관하게 HOLD한다. tradeoff는 사용자만 고른다. |
 | B-010 | scoring policy 주입 | threshold나 weight가 prompt magic number가 아니라 versioned policy로 적용된다. |
 | B-011 | assessment 결과 파싱 실패 | CLEAR하지 않고 오류 Telemetry와 HOLD/재시도 경로를 따른다. |
 | B-012 | score 조건 충족, unresolved decision 존재 | HOLD한다. |

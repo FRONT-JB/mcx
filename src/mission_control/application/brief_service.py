@@ -22,12 +22,19 @@ from mission_control.application.ports import (
     BriefRepository,
     ClarityAssessor,
     GeneratedQuestion,
+    OpenRequirement,
     QuestionGenerator,
     QuestionRequest,
 )
 from mission_control.domain.brief.clarity import ClarityPolicy
 from mission_control.domain.brief.gate import BriefGateDecision, evaluate_brief_gate
 from mission_control.domain.brief.provenance import AnswerAuthority
+from mission_control.domain.brief.requirement import (
+    CandidateContentSource,
+    CandidateResolution,
+    ConfirmationAuthority,
+    RequirementSection,
+)
 from mission_control.domain.brief.state import BriefState
 
 
@@ -130,6 +137,53 @@ class BriefService:
         await self.repository.save(updated)
         return updated
 
+    async def record_candidate(
+        self,
+        *,
+        mission_id: str,
+        section: RequirementSection,
+        text: str,
+        content_source: CandidateContentSource,
+        resolution: CandidateResolution = CandidateResolution.NEEDS_CONFIRMATION,
+        confirmation_authority: ConfirmationAuthority = ConfirmationAuthority.NONE,
+        required: bool = False,
+    ) -> BriefState:
+        """요구사항 후보를 기록하고 저장한다.
+
+        Non-goal, 충돌, 가정, 미해결이 모두 이 경로로 들어온다. 별도 진입점을
+        만들지 않는 이유는 넷이 서로 다른 종류의 물건이 아니라 같은 후보의 다른
+        축이기 때문이다 (``docs/adr/0015-requirement-candidate-model.md``).
+        """
+        state = await self._require(mission_id)
+        updated = state.record_candidate(
+            section=section,
+            text=text,
+            content_source=content_source,
+            resolution=resolution,
+            confirmation_authority=confirmation_authority,
+            required=required,
+        )
+        await self.repository.save(updated)
+        return updated
+
+    async def resolve_candidate(
+        self,
+        *,
+        mission_id: str,
+        number: int,
+        resolution: CandidateResolution,
+        confirmation_authority: ConfirmationAuthority,
+    ) -> BriefState:
+        """후보의 확정 상태와 확인 권위를 갱신하고 저장한다."""
+        state = await self._require(mission_id)
+        updated = state.resolve_candidate(
+            number=number,
+            resolution=resolution,
+            confirmation_authority=confirmation_authority,
+        )
+        await self.repository.save(updated)
+        return updated
+
     async def approve(self, *, mission_id: str, statement: str) -> BriefState:
         """현재 revision에 대한 사용자 승인을 기록하고 저장한다.
 
@@ -194,7 +248,7 @@ class BriefService:
         return QuestionRequest(
             initial_intent=state.initial_intent,
             previous_rounds=BriefService._asked_rounds(state),
-            unresolved_items=state.unresolved_items,
+            open_requirements=BriefService._open_requirements(state),
         )
 
     def _assessment_request(self, state: BriefState) -> AssessmentRequest:
@@ -206,7 +260,7 @@ class BriefService:
         return AssessmentRequest(
             initial_intent=state.initial_intent,
             previous_rounds=BriefService._asked_rounds(state),
-            unresolved_items=state.unresolved_items,
+            open_requirements=BriefService._open_requirements(state),
             dimensions=tuple(self.policy.weights),
         )
 
@@ -214,4 +268,22 @@ class BriefService:
     def _asked_rounds(state: BriefState) -> tuple[AskedRound, ...]:
         return tuple(
             AskedRound(question=item.question, answer=item.answer) for item in state.rounds
+        )
+
+    @staticmethod
+    def _open_requirements(state: BriefState) -> tuple[OpenRequirement, ...]:
+        """아직 확정되지 않은 후보만 투영한다.
+
+        확정된 후보는 더 물을 것이 없으므로 전달하지 않는다. 확인 권위와 내용
+        출처도 전달하지 않는다 — 승격 판정의 재료이지 다음 질문의 재료가 아니다.
+        """
+        return tuple(
+            OpenRequirement(
+                section=item.section,
+                text=item.text,
+                resolution=item.resolution,
+                required=item.required,
+            )
+            for item in state.candidates
+            if item.resolution is not CandidateResolution.CONFIRMED
         )

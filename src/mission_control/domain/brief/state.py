@@ -24,6 +24,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityPolicy
 from mission_control.domain.brief.provenance import AnswerAuthority, BriefRound
+from mission_control.domain.brief.requirement import (
+    CandidateContentSource,
+    CandidateResolution,
+    ConfirmationAuthority,
+    PromotionResult,
+    RequirementCandidate,
+    RequirementSection,
+    evaluate_promotion,
+)
 
 
 class BriefApproval(BaseModel):
@@ -37,21 +46,6 @@ class BriefApproval(BaseModel):
 
     revision: int
     statement: str
-
-
-class UnresolvedItem(BaseModel):
-    """아직 해소되지 않은 결정, 충돌, 또는 확인되지 않은 가정.
-
-    ``is_material``은 이 항목이 다음 Stage의 판단을 실제로 바꾸는지를 나타낸다.
-    material한 항목이 남아 있으면 clarity 점수가 아무리 좋아도 ``CLEAR``하지
-    않는다 (``docs/05_BRIEF.md`` §11.5). 점수는 "얼마나 명확해 보이는가"를
-    측정할 뿐, 아직 아무도 답하지 않은 질문이 있다는 사실을 대신하지 못한다.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    description: str
-    is_material: bool
 
 
 class BriefRevisionSnapshot(BaseModel):
@@ -83,7 +77,9 @@ class BriefState(BaseModel):
     sequence: int = 1
     rounds: tuple[BriefRound, ...] = ()
     approval: BriefApproval | None = None
-    unresolved_items: tuple[UnresolvedItem, ...] = ()
+    #: 대화에서 자란 요구사항 후보. Non-goal, 충돌, 가정, 미해결이 별도 목록이
+    #: 아니라 이 하나의 목록 안에서 축으로 구분된다.
+    candidates: tuple[RequirementCandidate, ...] = ()
     #: 현재 revision에 대한 clarity 평가. ``None``은 "평가하지 않았다"이며
     #: "평가했으나 통과하지 못했다"와 다르다 (``docs/05_BRIEF.md`` §10 Step 8).
     assessment: ClarityAssessment | None = None
@@ -92,8 +88,16 @@ class BriefState(BaseModel):
     history: tuple[BriefRevisionSnapshot, ...] = Field(default=())
 
     @property
-    def material_unresolved_items(self) -> tuple[UnresolvedItem, ...]:
-        return tuple(item for item in self.unresolved_items if item.is_material)
+    def promotion(self) -> PromotionResult:
+        """후보 목록에 대한 결정적 승격 판정.
+
+        clarity 점수와 무관한 두 번째 관문이다. 점수가 통과 범위여도 여기에
+        blocker가 있으면 진행하지 않는다 (``docs/05_BRIEF.md`` §11.5).
+        """
+        return evaluate_promotion(self.candidates)
+
+    def candidates_in(self, section: RequirementSection) -> tuple[RequirementCandidate, ...]:
+        return tuple(item for item in self.candidates if item.section is section)
 
     @classmethod
     def start(cls, *, mission_id: str, initial_intent: str) -> BriefState:
@@ -197,18 +201,79 @@ class BriefState(BaseModel):
             }
         )
 
-    def note_unresolved(self, *, description: str, is_material: bool) -> BriefState:
-        """미해결 항목을 기록하고 revision을 올린다.
+    def record_candidate(
+        self,
+        *,
+        section: RequirementSection,
+        text: str,
+        content_source: CandidateContentSource,
+        resolution: CandidateResolution = CandidateResolution.NEEDS_CONFIRMATION,
+        confirmation_authority: ConfirmationAuthority = ConfirmationAuthority.NONE,
+        required: bool = False,
+    ) -> BriefState:
+        """요구사항 후보를 기록하고 revision을 올린다.
 
-        미해결 항목의 추가는 material 변경이다. 승인 이후에 발견된 항목이 기존
+        후보의 추가는 material 변경이다. 승인 이후에 발견된 미해결 후보가 기존
         승인을 그대로 통과시키면, 사용자가 보지 못한 gap을 승인한 것이 된다.
+
+        기본값은 "아직 확인되지 않았고 권위가 없음"이다. 확인은 별도의 사건이며
+        기록과 동시에 일어나지 않는다.
         """
-        item = UnresolvedItem(description=description, is_material=is_material)
+        if not text.strip():
+            raise ValueError("candidate text must not be empty")
+
+        candidate = RequirementCandidate(
+            number=len(self.candidates) + 1,
+            section=section,
+            text=text,
+            content_source=content_source,
+            resolution=resolution,
+            confirmation_authority=confirmation_authority,
+            required=required,
+        )
         return self.model_copy(
             update={
                 "revision": self.revision + 1,
                 "sequence": self.sequence + 1,
-                "unresolved_items": (*self.unresolved_items, item),
+                "candidates": (*self.candidates, candidate),
+                "assessment": None,
+                "stability_signal": 0,
+                "history": (*self.history, self._current_snapshot()),
+            }
+        )
+
+    def resolve_candidate(
+        self,
+        *,
+        number: int,
+        resolution: CandidateResolution,
+        confirmation_authority: ConfirmationAuthority,
+    ) -> BriefState:
+        """후보의 확정 상태와 확인 권위를 갱신한다.
+
+        내용이 아니라 상태가 바뀌는 것이지만 material 변경이다. 미해결이던 후보가
+        확정되면 Gate 판정이 달라지므로 기존 승인과 평가를 그대로 둘 수 없다.
+        """
+        matched = [item for item in self.candidates if item.number == number]
+        if not matched:
+            raise ValueError(f"no requirement candidate numbered {number}")
+
+        updated = tuple(
+            item.model_copy(
+                update={
+                    "resolution": resolution,
+                    "confirmation_authority": confirmation_authority,
+                }
+            )
+            if item.number == number
+            else item
+            for item in self.candidates
+        )
+        return self.model_copy(
+            update={
+                "revision": self.revision + 1,
+                "sequence": self.sequence + 1,
+                "candidates": updated,
                 "assessment": None,
                 "stability_signal": 0,
                 "history": (*self.history, self._current_snapshot()),

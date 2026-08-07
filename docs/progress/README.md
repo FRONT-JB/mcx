@@ -192,18 +192,19 @@ Blueprint가 그것만 읽도록 만든다. 이것이 Phase 2의 첫 작업이�
 
 | 조건 | 상태 |
 |---|---|
-| 중요한 Non-goals가 기록되어 있다 | 코드에 개념이 없다. L-B01이 검사하려는 HOLD를 만들 수 있는 경로가 없다 |
-| 적용 가능한 Constraints가 기록되어 있다 | LLM의 `constraint` 명확도 점수가 대신하고 있을 뿐, 기록 여부를 확인하지 않는다 |
+| 중요한 Non-goals가 기록되어 있다 | `non_goal` section은 생겼으나 **기록 여부를 검사하지 않는다.** upstream도 core gate가 아니라 auto driver의 grading에서만 확인한다 |
+| 적용 가능한 Constraints가 기록되어 있다 | 위와 같다. LLM의 `constraint` 명확도 점수가 대신하고 있을 뿐이다 |
 | Goal이 재해석 없이 충분히 명확하다 | `goal` dimension floor로만 근사한다 |
-| material conflict가 없다 | conflict를 모델링하지 않는다 |
-| material assumption이 해결/승인되었다 | assumption을 모델링하지 않는다 |
-| 중요한 사실과 결정에 provenance가 있다 | `authority`는 타입으로 강제되나 `source`가 없고 존재 여부도 검사하지 않는다 |
+| 중요한 사실과 결정에 provenance가 있다 | `confirmation_authority`가 승격 판정에 쓰이나 `source` locator가 없고 존재 여부도 검사하지 않는다 |
 | state와 approval이 durable하게 보존되었다 | Gate는 순수 함수라 확인할 수 없다. `decide_gate`가 저장소에서 읽기 때문에 우연히 성립할 뿐이다 |
 | Gate decision이 판단 근거를 참조한다 | policy version만 있고 evidence reference가 없다 |
 
-또한 미해결 항목은 승인 외 유일한 Gate 차단 사유인데 **application 경계에
-진입점이 없다.** `note_unresolved`는 도메인에만 있고 `BriefService`가 호출하지
-않아, 실제 사용 경로로는 이 차단을 발생시킬 수 없다.
+2026-08-07 [ADR-0015](../adr/0015-requirement-candidate-model.md)로 다음 두 조건이
+강제 상태가 되었다 — **material conflict 부재**(`resolution=conflicting`은
+`required`와 무관하게 차단)와 **material assumption 해결**(`model_inferred` 내용은
+사용자 확인 없이 승격되지 않음). 미해결 후보를 만들 application 진입점
+(`record_candidate` / `resolve_candidate`)도 함께 생겨, 승인 외 Gate 차단 사유가
+실제 사용 경로에서 도달 가능해졌다.
 
 ### 현재 구현의 알려진 한계
 

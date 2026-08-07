@@ -104,6 +104,8 @@ clarity), 그리고 인터뷰 이전의 read-only 코드베이스 탐색 단계�
 | **assumption 축**을 별도로 유지 | `user`/`observation` 이진 분류만 존재 | [ADR-0010](./0010-answer-provenance-and-requirement-authority.md) §4 |
 | 수정 시 **revision 증가와 감사 이력**, 승인의 revision 바인딩 | interview state에 revision 축 없음 | [ADR-0013](./0013-brief-durable-state-baseline.md) |
 | **stale write 거부**와 내용 버전/쓰기 순서 두 축 | 동시 쓰기 보호 없음 (last-write-wins) | [ADR-0014](./0014-brief-concurrent-write-protection.md) |
+| 요구사항 후보를 **파생 read model이 아니라 primary state**로 기록 | LLM이 대화에서 distill해 캐시로 보관 | [ADR-0015](./0015-requirement-candidate-model.md) §4 |
+| **evidence lineage 검사 없음** — 승격 정책의 첫 단계를 재현하지 않음 | `validate_candidate_lineage`로 근거 유효성 검사 | [ADR-0015](./0015-requirement-candidate-model.md) §5 |
 | **dimension floor 회귀 테스트** 추가 | floor는 코드에만 있고 테스트 없음 | 차이가 아니라 검증 보강 ([findings](../research/INTERVIEW_UPSTREAM_FINDINGS.md) §8.5) |
 
 toolchain 차이(mypy strict, 의존성, pytest-xdist)는 Brief 동작이 아니라 개발

@@ -7,8 +7,10 @@ Gate는 boolean 성공 플래그보다 풍부한 결정이다. ``HOLD``는 실�
 이 모듈이 강제하는 두 방향의 불충분성이 있다.
 
 **점수만으로는 부족하다.** clarity 조건을 모두 만족해도 사용자 승인이 없거나
-material 미해결 항목이 남아 있으면 ``HOLD``다. 점수는 "얼마나 명확해 보이는가"를
-측정할 뿐 아직 아무도 답하지 않은 질문이 있다는 사실을 대신하지 못한다.
+승격할 수 없는 요구사항 후보가 남아 있으면 ``HOLD``다. 점수는 "얼마나 명확해
+보이는가"를 측정할 뿐 아직 아무도 답하지 않은 질문이 있다는 사실을 대신하지
+못한다. 후보 판정은 모델을 부르지 않는 결정적 정책이므로 점수와 독립적으로
+성립한다 (:func:`~mission_control.domain.brief.requirement.evaluate_promotion`).
 
 **승인만으로도 부족하다.** 사용자가 승인해도 검증할 수 없는 성공 조건이 남아
 있으면 ``HOLD``다. 승인은 필요조건이지 만능 override가 아니다. 이것이 없으면
@@ -42,7 +44,7 @@ class GateBlockingCondition(StrEnum):
 
     APPROVAL_MISSING = "approval_missing"
     APPROVAL_STALE = "approval_stale"
-    MATERIAL_UNRESOLVED_ITEM = "material_unresolved_item"
+    UNPROMOTABLE_REQUIREMENT = "unpromotable_requirement"
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,11 +119,14 @@ def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGat
             )
         )
 
-    for item in state.material_unresolved_items:
+    for decision in state.promotion.blockers:
         gate_blockers.append(
             GateBlocker(
-                condition=GateBlockingCondition.MATERIAL_UNRESOLVED_ITEM,
-                detail=f"material unresolved item: {item.description}",
+                condition=GateBlockingCondition.UNPROMOTABLE_REQUIREMENT,
+                detail=(
+                    f"{decision.reason.value} — "
+                    f"[{decision.candidate.section.value}] {decision.candidate.text}"
+                ),
             )
         )
 

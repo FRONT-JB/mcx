@@ -10,6 +10,11 @@ import stat
 import pytest
 
 from mission_control.adapters.persistence.file_brief_repository import FileBriefRepository
+from mission_control.domain.brief.requirement import (
+    CandidateContentSource,
+    CandidateResolution,
+    RequirementSection,
+)
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.errors import StaleWriteError
 
@@ -46,13 +51,17 @@ class TestRoundTrip:
         assert restored.rounds[0].question == "댓글은 누가 쓸 수 있나요?"
         assert restored.rounds[0].authority == "decision"
 
-    async def test_approval_and_unresolved_items_survive(
-        self, repository: FileBriefRepository
-    ) -> None:
+    async def test_approval_and_candidates_survive(self, repository: FileBriefRepository) -> None:
         state = (
             _brief()
             .record_answer(question="q", answer="a", authority="decision")
-            .note_unresolved(description="비로그인 정책 미정", is_material=True)
+            .record_candidate(
+                section=RequirementSection.CONSTRAINT,
+                text="비로그인 정책 미정",
+                content_source=CandidateContentSource.USER_STATED,
+                resolution=CandidateResolution.UNKNOWN,
+                required=True,
+            )
             .approve(statement="이대로 진행")
         )
         await repository.save(state)
@@ -62,7 +71,9 @@ class TestRoundTrip:
         assert restored is not None
         assert restored.approval is not None
         assert restored.approval.revision == state.approval.revision  # type: ignore[union-attr]
-        assert len(restored.material_unresolved_items) == 1
+        assert len(restored.candidates) == 1
+        assert restored.candidates[0].resolution is CandidateResolution.UNKNOWN
+        assert restored.promotion.blockers != ()
 
     async def test_revision_history_survives(self, repository: FileBriefRepository) -> None:
         state = (

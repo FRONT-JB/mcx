@@ -136,6 +136,59 @@ layer에서 Acceptance Guard + Restate 사용자 확인이 겹겹이 결정한�
   이후에는 필드로만 읽는다. surface마다 마커를 재해석하다 생긴 drift가
   이 설계의 동기다 (upstream #1755, `interview.py:441-479`).
 
+## 5.5 Non-goal, 충돌, 미해결, 가정은 upstream에서 **하나의 모델**이다
+
+> 2026-08-07 재조사. Non-goal과 미해결 항목을 구현하기 전에 확인했다.
+
+Mission Control 문서는 이 넷을 서로 다른 개념으로 다룬다 —
+[Brief Guide](../05_BRIEF.md) §13.1의 CLEAR 조건이 Non-goals, conflict,
+assumption, unresolved decision을 각각 별도 항목으로 나열한다. **upstream은 넷을
+하나의 `RequirementCandidate`로 표현한다.**
+
+`core/requirement_candidate.py:114-125`:
+
+| 필드 | 값 |
+|---|---|
+| `section` | `goal`, `constraint`, `existing_constraint`, `acceptance_criterion`, `ontology`, `evaluation_principle`, `exit_condition`, **`non_goal`**, `context` (`:52-62`) |
+| `resolution` | `confirmed`, `needs_confirmation`, **`unknown`**, **`conflicting`** (`:34-40`) |
+| `content_source` | `user_stated`, `reference_derived`, **`model_inferred`**, `repo_observed` (`:25-32`) |
+| `confirmation_authority` | `user`, `repo_evidence`, `none` (`:42-48`) |
+| `required` | bool — material 여부에 해당 (`:125`) |
+
+즉 Non-goal은 별도 목록이 아니라 **section 값 하나**이고, 충돌은
+`resolution=conflicting`, 미해결은 `resolution=unknown`, 가정은
+`content_source=model_inferred`다.
+
+**Seed 자체에는 `non_goals` 필드가 없다** (`core/seed.py:648-750`의 필드는 goal,
+task_type, brownfield_context, constraints, acceptance_criteria,
+ontology_schema, evaluation_principles, exit_conditions, metadata). Non-goal은
+Seed 이전 단계에서 범위를 좁히는 데 쓰이고 Seed에 직접 실리지 않는다.
+
+### 별도의 결정적 gate가 하나 더 있다
+
+`evaluate_promotion(distillation)` (`requirement_candidate.py:338-380`)은
+ambiguity score와 **무관하게** Seed 생성을 막는다.
+
+- `resolution=conflicting` → 무조건 `BLOCK` (`reason="conflict_requires_tradeoff"`)
+- `resolution=unknown` + `required=True` → `BLOCK` (`required_unknown`)
+- `resolution=unknown` + `required=False` → `OMIT` (`optional_unknown`)
+- evidence lineage 무효 → required면 `BLOCK`, 아니면 `OMIT`
+
+`mcp/tools/authoring_handlers.py:1469-1474`가 seed 생성 직전에 호출한다. 점수가
+통과해도 blocker가 있으면 진행하지 않는다. 이는 Brief Guide §11.5의 "score 단독
+종료 금지"와 같은 취지이며, upstream이 그것을 별도 함수로 구현한 자리다.
+
+### 이 모델은 primary state가 아니라 파생 read model이다
+
+`RequirementDistillation`은 `InterviewState`에 캐시로 얹힌다. 내용 지문과
+`requirement_input_revision`이 맞아야 유효하고(`:269-275`), 맞지 않으면 load 시
+폐기된다(`interview.py:344-356`). 즉 사용자가 Non-goal을 목록에 직접 적어 넣는
+것이 아니라 **대화에서 distill된다.**
+
+Mission Control의 `unresolved_items`는 손으로 유지하는 primary 목록이므로 이
+지점에서 구조가 다르다. 대응 방식은 결정이 필요하며
+[Open Questions](./OPEN_QUESTIONS.md)에서 다룬다.
+
 ## 6. LICENSE
 
 baseline `LICENSE`는 MIT, copyright (c) 2025 Q00. 코드 복사·상당한 포팅

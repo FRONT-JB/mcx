@@ -23,6 +23,12 @@ from mission_control.domain.brief.clarity import (
     ClarityPolicy,
     DimensionScore,
 )
+from mission_control.domain.brief.requirement import (
+    CandidateContentSource,
+    CandidateResolution,
+    ConfirmationAuthority,
+    RequirementSection,
+)
 from mission_control.domain.brief.state import BriefState
 
 POLICY = ClarityPolicy.greenfield_v1()
@@ -178,7 +184,7 @@ class TestQuestionDispatch:
         assert set(request.model_dump()) == {
             "initial_intent",
             "previous_rounds",
-            "unresolved_items",
+            "open_requirements",
         }
 
     async def test_request_does_not_expose_authority_or_revision(
@@ -410,7 +416,7 @@ class TestAssessmentRequest:
         assert set(assessor.requests[0].model_dump()) == {
             "initial_intent",
             "previous_rounds",
-            "unresolved_items",
+            "open_requirements",
             "dimensions",
         }
 
@@ -496,18 +502,119 @@ class TestMaterialChangeInvalidatesAssessment:
         assert "assessment_missing" in conditions
         assert any("approval" in blocker.condition.value for blocker in decision.gate_blockers)
 
-    async def test_unresolved_item_resets_both(
-        self, service: BriefService, repository: InMemoryBriefRepository
-    ) -> None:
+    async def test_recording_a_candidate_resets_both(self, service: BriefService) -> None:
         await _answered(service)
         await service.assess_clarity(mission_id="m-1")
-        assessed = await repository.load("m-1")
-        assert assessed is not None
 
-        state = assessed.note_unresolved(description="비로그인 정책 미정", is_material=True)
+        state = await service.record_candidate(
+            mission_id="m-1",
+            section=RequirementSection.CONSTRAINT,
+            text="비로그인 정책 미정",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.UNKNOWN,
+            required=True,
+        )
 
         assert state.assessment is None
         assert state.stability_signal == 0
+
+    async def test_resolving_a_candidate_resets_both(self, service: BriefService) -> None:
+        """미해결이던 후보가 확정되면 Gate 판정이 달라지므로 재평가가 필요하다."""
+        await _answered(service)
+        await service.record_candidate(
+            mission_id="m-1",
+            section=RequirementSection.CONSTRAINT,
+            text="비로그인 정책",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.UNKNOWN,
+            required=True,
+        )
+        await service.assess_clarity(mission_id="m-1")
+
+        state = await service.resolve_candidate(
+            mission_id="m-1",
+            number=1,
+            resolution=CandidateResolution.CONFIRMED,
+            confirmation_authority=ConfirmationAuthority.USER,
+        )
+
+        assert state.assessment is None
+        assert state.stability_signal == 0
+
+
+class TestCandidateEntryPoint:
+    """미해결 후보를 application 경계에서 만들 수 있어야 Gate가 실제로 막힌다."""
+
+    async def test_required_unknown_candidate_blocks_the_gate(self, service: BriefService) -> None:
+        await _answered(service)
+        await service.record_candidate(
+            mission_id="m-1",
+            section=RequirementSection.NON_GOAL,
+            text="수정·삭제를 이번 범위에 넣을지 미정",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.UNKNOWN,
+            required=True,
+        )
+        await service.assess_clarity(mission_id="m-1")
+        await service.assess_clarity(mission_id="m-1")
+        await service.approve(mission_id="m-1", statement="그래도 진행")
+
+        decision = await service.decide_gate(mission_id="m-1")
+
+        assert decision.outcome == "HOLD"
+        assert any(
+            blocker.condition.value == "unpromotable_requirement"
+            for blocker in decision.gate_blockers
+        )
+
+    async def test_confirming_the_candidate_clears_the_gate(self, service: BriefService) -> None:
+        await _answered(service)
+        await service.record_candidate(
+            mission_id="m-1",
+            section=RequirementSection.NON_GOAL,
+            text="수정·삭제는 이번 범위가 아니다",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.UNKNOWN,
+            required=True,
+        )
+        await service.resolve_candidate(
+            mission_id="m-1",
+            number=1,
+            resolution=CandidateResolution.CONFIRMED,
+            confirmation_authority=ConfirmationAuthority.USER,
+        )
+        await service.assess_clarity(mission_id="m-1")
+        await service.assess_clarity(mission_id="m-1")
+        await service.approve(mission_id="m-1", statement="진행")
+
+        decision = await service.decide_gate(mission_id="m-1")
+
+        assert decision.outcome == "CLEAR"
+
+    async def test_confirmed_candidates_are_not_sent_as_open(
+        self, service: BriefService, generator: ScriptedQuestionGenerator
+    ) -> None:
+        await _answered(service)
+        await service.record_candidate(
+            mission_id="m-1",
+            section=RequirementSection.CONSTRAINT,
+            text="로그인 사용자만 작성",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.CONFIRMED,
+            confirmation_authority=ConfirmationAuthority.USER,
+        )
+        await service.record_candidate(
+            mission_id="m-1",
+            section=RequirementSection.NON_GOAL,
+            text="알림을 보낼지 미정",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.UNKNOWN,
+        )
+
+        await service.ask_next_question(mission_id="m-1")
+
+        open_texts = [item.text for item in generator.requests[-1].open_requirements]
+        assert open_texts == ["알림을 보낼지 미정"]
 
 
 class TestAssessmentFailure:

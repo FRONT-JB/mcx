@@ -10,6 +10,12 @@ from mission_control.domain.brief.clarity import (
     DimensionScore,
 )
 from mission_control.domain.brief.gate import GateBlockingCondition, evaluate_brief_gate
+from mission_control.domain.brief.requirement import (
+    CandidateContentSource,
+    CandidateResolution,
+    ConfirmationAuthority,
+    RequirementSection,
+)
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.stage import Stage
 
@@ -126,10 +132,14 @@ class TestApprovalIsNecessary:
 class TestApprovalIsNotSufficient:
     """§11.5 — 승인은 필요조건이지 만능 override가 아니다."""
 
-    def test_material_unresolved_item_holds_despite_approval(self) -> None:
+    def test_required_unresolved_candidate_holds_despite_approval(self) -> None:
         """B-012 — 점수와 승인이 있어도 미해결 결정이 남아 있으면 HOLD."""
-        state = _answered_brief().note_unresolved(
-            description="비로그인 사용자 정책 미정", is_material=True
+        state = _answered_brief().record_candidate(
+            section=RequirementSection.CONSTRAINT,
+            text="비로그인 사용자 정책 미정",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.UNKNOWN,
+            required=True,
         )
         state = _assessed(state, _assessment(), times=POLICY.required_stability)
         state = state.approve(statement="그래도 진행")
@@ -137,16 +147,57 @@ class TestApprovalIsNotSufficient:
         decision = evaluate_brief_gate(state=state, policy=POLICY)
 
         assert decision.outcome == "HOLD"
-        assert GateBlockingCondition.MATERIAL_UNRESOLVED_ITEM in _conditions(decision)
+        assert GateBlockingCondition.UNPROMOTABLE_REQUIREMENT in _conditions(decision)
 
-    def test_non_material_unresolved_item_does_not_hold(self) -> None:
-        state = _answered_brief().note_unresolved(description="버튼 색상 미정", is_material=False)
+    def test_optional_unresolved_candidate_does_not_hold(self) -> None:
+        state = _answered_brief().record_candidate(
+            section=RequirementSection.CONSTRAINT,
+            text="버튼 색상 미정",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.UNKNOWN,
+            required=False,
+        )
         state = _assessed(state, _assessment(), times=POLICY.required_stability)
         state = state.approve(statement="진행")
 
         decision = evaluate_brief_gate(state=state, policy=POLICY)
 
         assert decision.outcome == "CLEAR"
+
+    def test_conflicting_candidate_holds_even_when_optional(self) -> None:
+        """충돌은 required 여부와 무관하다. tradeoff는 사용자만 고를 수 있다."""
+        state = _answered_brief().record_candidate(
+            section=RequirementSection.CONSTRAINT,
+            text="비로그인 허용과 로그인 전용이 함께 언급됨",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.CONFLICTING,
+            required=False,
+        )
+        state = _assessed(state, _assessment(), times=POLICY.required_stability)
+        state = state.approve(statement="진행")
+
+        decision = evaluate_brief_gate(state=state, policy=POLICY)
+
+        assert decision.outcome == "HOLD"
+        assert GateBlockingCondition.UNPROMOTABLE_REQUIREMENT in _conditions(decision)
+
+    def test_observation_alone_cannot_confirm_a_non_goal(self) -> None:
+        """저장소에서 읽은 사실만으로는 요구사항 칸을 채울 수 없다 (ADR-0010)."""
+        state = _answered_brief().record_candidate(
+            section=RequirementSection.NON_GOAL,
+            text="현재 코드에 삭제 경로가 없으므로 이번 범위가 아니다",
+            content_source=CandidateContentSource.REPO_OBSERVED,
+            resolution=CandidateResolution.CONFIRMED,
+            confirmation_authority=ConfirmationAuthority.REPO_EVIDENCE,
+            required=True,
+        )
+        state = _assessed(state, _assessment(), times=POLICY.required_stability)
+        state = state.approve(statement="진행")
+
+        decision = evaluate_brief_gate(state=state, policy=POLICY)
+
+        assert decision.outcome == "HOLD"
+        assert GateBlockingCondition.UNPROMOTABLE_REQUIREMENT in _conditions(decision)
 
     def test_unverifiable_success_criteria_holds_despite_approval(self) -> None:
         """B-025 — 승인했어도 성공 조건을 검증할 수 없으면 진행하지 않는다."""
