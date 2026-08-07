@@ -73,7 +73,13 @@ class BriefState(BaseModel):
 
     mission_id: str
     initial_intent: str
+    #: 내용 버전. 요구사항에 영향을 주는 변경에서만 올라가며, 승인이 여전히
+    #: 유효한지 판정하는 기준이다.
     revision: int = 1
+    #: 쓰기 순서. 상태가 바뀌는 모든 경우에 올라간다. 질문을 던지는 것처럼
+    #: 요구사항을 바꾸지 않는 변경도 저장은 되어야 하므로 revision과 분리한다.
+    #: 저장소는 이 값으로 덮어쓰기를 판정한다.
+    sequence: int = 1
     rounds: tuple[BriefRound, ...] = ()
     approval: BriefApproval | None = None
     unresolved_items: tuple[UnresolvedItem, ...] = ()
@@ -97,16 +103,58 @@ class BriefState(BaseModel):
         """
         return self.approval is not None and self.approval.revision == self.revision
 
+    @property
+    def pending_question(self) -> BriefRound | None:
+        """아직 답변되지 않은 마지막 질문. 없으면 ``None``."""
+        if self.rounds and self.rounds[-1].answer is None:
+            return self.rounds[-1]
+        return None
+
+    @property
+    def answered_rounds(self) -> tuple[BriefRound, ...]:
+        return tuple(item for item in self.rounds if item.answer is not None)
+
+    def pose_question(self, *, question: str) -> BriefState:
+        """답변을 기다리는 질문을 기록한다.
+
+        질문 생성 직후 세션이 끊겨도 같은 질문으로 재개할 수 있어야 하므로 답변을
+        받기 전에 저장한다 (``docs/05_BRIEF.md`` §14.1). 답변 슬롯은 비어 있으므로
+        미답변 질문이 답변된 것처럼 다뤄지지 않는다 (§8.1 규칙 5).
+
+        revision을 올리지 않는다. 답변 없는 질문은 요구사항을 바꾸지 않으므로
+        기존 승인의 의미도 바꾸지 않는다. revision은 내용이 실제로 달라지는
+        시점에만 올린다.
+
+        이미 대기 중인 질문이 있으면 거부한다. 두 질문을 동시에 열어 두면 도착한
+        답변이 어느 질문의 것인지 알 수 없다.
+        """
+        if not question.strip():
+            raise ValueError("question must not be empty")
+        if self.pending_question is not None:
+            raise ValueError("a question is already awaiting an answer")
+
+        posed = BriefRound(
+            number=len(self.rounds) + 1,
+            question=question,
+            answer=None,
+            authority="decision",
+        )
+        return self.model_copy(
+            update={"sequence": self.sequence + 1, "rounds": (*self.rounds, posed)}
+        )
+
     def record_answer(
         self,
         *,
-        question: str,
         answer: str,
         authority: AnswerAuthority,
+        question: str | None = None,
     ) -> BriefState:
-        """답변을 새 round로 기록하고 revision을 올린다.
+        """답변을 기록하고 revision을 올린다.
 
-        authority는 여기서 한 번 결정되어 저장되고, 이후 소비자는 저장된 값을 읽는다
+        대기 중인 질문이 있으면 그 round를 채우고, 없으면 ``question``과 함께 새
+        round를 만든다. 두 경로가 하나의 메서드로 모이는 이유는 authority가
+        결정되는 지점을 하나로 유지하기 위해서다
         (``docs/adr/0010-answer-provenance-and-requirement-authority.md``).
 
         빈 답변은 거부한다. 미답변 질문을 답변된 것처럼 저장하면 이후 clarity 평가와
@@ -115,16 +163,28 @@ class BriefState(BaseModel):
         if not answer.strip():
             raise ValueError("answer must not be empty; an unanswered round is not a recorded one")
 
-        recorded = BriefRound(
-            number=len(self.rounds) + 1,
-            question=question,
-            answer=answer,
-            authority=authority,
-        )
+        pending = self.pending_question
+        if pending is not None:
+            filled = pending.model_copy(update={"answer": answer, "authority": authority})
+            rounds = (*self.rounds[:-1], filled)
+        else:
+            if question is None:
+                raise ValueError("no pending question; question is required to record an answer")
+            rounds = (
+                *self.rounds,
+                BriefRound(
+                    number=len(self.rounds) + 1,
+                    question=question,
+                    answer=answer,
+                    authority=authority,
+                ),
+            )
+
         return self.model_copy(
             update={
                 "revision": self.revision + 1,
-                "rounds": (*self.rounds, recorded),
+                "sequence": self.sequence + 1,
+                "rounds": rounds,
                 "history": (*self.history, self._current_snapshot()),
             }
         )
@@ -139,6 +199,7 @@ class BriefState(BaseModel):
         return self.model_copy(
             update={
                 "revision": self.revision + 1,
+                "sequence": self.sequence + 1,
                 "unresolved_items": (*self.unresolved_items, item),
                 "history": (*self.history, self._current_snapshot()),
             }
@@ -151,7 +212,10 @@ class BriefState(BaseModel):
         ``HOLD``다 (``docs/05_BRIEF.md`` §11.5).
         """
         return self.model_copy(
-            update={"approval": BriefApproval(revision=self.revision, statement=statement)}
+            update={
+                "sequence": self.sequence + 1,
+                "approval": BriefApproval(revision=self.revision, statement=statement),
+            }
         )
 
     def snapshot_at(self, *, revision: int) -> BriefRevisionSnapshot | None:

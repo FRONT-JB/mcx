@@ -11,19 +11,23 @@ class MissionControlError(Exception):
     """Mission Control 도메인 예외의 최상위 타입."""
 
 
-class StaleRevisionError(MissionControlError):
-    """이미 지나간 revision을 기준으로 상태를 갱신하려 했다.
+class StaleWriteError(MissionControlError):
+    """저장된 것보다 앞서지 않는 상태를 쓰려 했다.
 
     두 경로가 같은 상태를 읽고 각자 변경한 뒤 저장하면, 나중 쓰기가 먼저 쓰기를
     조용히 덮어쓴다. 그 결과 사용자의 답변 하나가 흔적 없이 사라진다. 덮어쓰기
     대신 실패시켜 호출자가 최신 상태를 다시 읽도록 강제한다.
+
+    판정 기준은 ``revision``이 아니라 ``sequence``다. 질문을 던지는 것처럼
+    요구사항을 바꾸지 않는 변경도 저장은 되어야 하므로, 내용 버전과 쓰기 순서를
+    나눠서 다룬다.
     """
 
-    def __init__(self, *, mission_id: str, stored_revision: int, incoming_revision: int) -> None:
+    def __init__(self, *, mission_id: str, stored_sequence: int, incoming_sequence: int) -> None:
         super().__init__(
             f"refusing stale write for mission {mission_id}: "
-            f"stored revision is {stored_revision}, incoming revision is {incoming_revision}"
+            f"stored sequence is {stored_sequence}, incoming sequence is {incoming_sequence}"
         )
         self.mission_id = mission_id
-        self.stored_revision = stored_revision
-        self.incoming_revision = incoming_revision
+        self.stored_sequence = stored_sequence
+        self.incoming_sequence = incoming_sequence

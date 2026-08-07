@@ -72,6 +72,73 @@ class TestRoundAccumulation:
         assert original.revision == 1
 
 
+class TestPendingQuestion:
+    """§14.1 — 질문 생성 직후 세션이 끊겨도 같은 질문으로 재개할 수 있어야 한다."""
+
+    def test_posed_question_awaits_an_answer(self) -> None:
+        state = _started().pose_question(question="댓글은 누가 쓸 수 있나요?")
+
+        assert state.pending_question is not None
+        assert state.pending_question.question == "댓글은 누가 쓸 수 있나요?"
+        assert state.pending_question.answer is None
+
+    def test_posing_does_not_advance_revision(self) -> None:
+        """답변 없는 질문은 요구사항을 바꾸지 않으므로 승인의 의미도 바꾸지 않는다."""
+        state = _started()
+
+        posed = state.pose_question(question="q")
+
+        assert posed.revision == state.revision
+
+    def test_posed_question_is_not_counted_as_answered(self) -> None:
+        state = _started().pose_question(question="q")
+
+        assert state.answered_rounds == ()
+
+    def test_answer_fills_the_pending_round(self) -> None:
+        state = _started().pose_question(question="댓글은 누가 쓸 수 있나요?")
+
+        answered = state.record_answer(answer="로그인 사용자만", authority="decision")
+
+        assert len(answered.rounds) == 1
+        assert answered.rounds[0].question == "댓글은 누가 쓸 수 있나요?"
+        assert answered.rounds[0].answer == "로그인 사용자만"
+        assert answered.pending_question is None
+
+    def test_answer_fills_before_appending(self) -> None:
+        state = (
+            _started()
+            .record_answer(question="q1", answer="a1", authority="decision")
+            .pose_question(question="q2")
+            .record_answer(answer="a2", authority="decision")
+        )
+
+        assert len(state.rounds) == 2
+        assert state.rounds[1].question == "q2"
+
+    def test_two_open_questions_are_rejected(self) -> None:
+        """답변이 어느 질문의 것인지 알 수 없게 된다."""
+        state = _started().pose_question(question="q1")
+
+        with pytest.raises(ValueError, match="already awaiting"):
+            state.pose_question(question="q2")
+
+    def test_empty_question_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="question"):
+            _started().pose_question(question="  ")
+
+    def test_answer_without_pending_question_requires_a_question(self) -> None:
+        with pytest.raises(ValueError, match="question is required"):
+            _started().record_answer(answer="a", authority="decision")
+
+    def test_authority_of_a_posed_round_is_settled_by_the_answer(self) -> None:
+        state = _started().pose_question(question="현재 인증 방식은?")
+
+        answered = state.record_answer(answer="JWT 사용 중", authority="observation")
+
+        assert answered.rounds[0].authority == "observation"
+
+
 class TestApprovalBindsToRevision:
     """B-014 — 승인은 특정 revision을 참조하고, 내용이 바뀌면 무효가 된다."""
 

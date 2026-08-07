@@ -11,7 +11,7 @@ import pytest
 
 from mission_control.adapters.persistence.file_brief_repository import FileBriefRepository
 from mission_control.domain.brief.state import BriefState
-from mission_control.domain.errors import StaleRevisionError
+from mission_control.domain.errors import StaleWriteError
 
 
 @pytest.fixture
@@ -92,13 +92,28 @@ class TestRoundTrip:
 
 
 class TestStaleWriteRejection:
-    """B-017 — 지난 revision 기반 갱신이 최신 상태를 덮어쓰지 않는다."""
+    """B-017 — 지난 상태 기반 갱신이 최신 상태를 덮어쓰지 않는다."""
 
-    async def test_same_revision_is_rejected(self, repository: FileBriefRepository) -> None:
+    async def test_posing_a_question_advances_without_changing_revision(
+        self, repository: FileBriefRepository
+    ) -> None:
+        """요구사항을 바꾸지 않는 변경도 저장은 되어야 한다."""
+        state = _brief()
+        await repository.save(state)
+
+        posed = state.pose_question(question="댓글은 누가 쓸 수 있나요?")
+        await repository.save(posed)
+
+        restored = await repository.load("m-1")
+        assert restored is not None
+        assert restored.revision == state.revision
+        assert restored.pending_question is not None
+
+    async def test_same_state_is_rejected(self, repository: FileBriefRepository) -> None:
         state = _brief().record_answer(question="q", answer="a", authority="decision")
         await repository.save(state)
 
-        with pytest.raises(StaleRevisionError):
+        with pytest.raises(StaleWriteError):
             await repository.save(state)
 
     async def test_older_revision_is_rejected(self, repository: FileBriefRepository) -> None:
@@ -106,7 +121,7 @@ class TestStaleWriteRejection:
         second = first.record_answer(question="q2", answer="a2", authority="decision")
         await repository.save(second)
 
-        with pytest.raises(StaleRevisionError):
+        with pytest.raises(StaleWriteError):
             await repository.save(first)
 
     async def test_rejected_write_leaves_stored_state_intact(
@@ -116,7 +131,7 @@ class TestStaleWriteRejection:
         second = first.record_answer(question="q2", answer="a2", authority="decision")
         await repository.save(second)
 
-        with pytest.raises(StaleRevisionError):
+        with pytest.raises(StaleWriteError):
             await repository.save(first)
 
         restored = await repository.load("m-1")

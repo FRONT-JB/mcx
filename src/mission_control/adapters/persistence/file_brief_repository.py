@@ -9,9 +9,11 @@ Phase 1의 durable state baseline이다. 외부 의존성 없이
 죽어도 독자는 이전의 완전한 문서를 보거나 아무것도 보지 못한다. 반쯤 쓰인 JSON을
 읽는 일은 없다.
 
-**조용한 덮어쓰기** — 저장된 revision보다 앞서지 않는 쓰기를 거부한다. 두 경로가
-같은 상태에서 출발해 각자 답변을 기록하면, 거부가 없을 때 나중 쓰기가 먼저 쓰기를
-삼켜 사용자의 답변 하나가 흔적 없이 사라진다.
+**조용한 덮어쓰기** — 저장된 것보다 앞서지 않는 쓰기를 거부한다. 두 경로가 같은
+상태에서 출발해 각자 답변을 기록하면, 거부가 없을 때 나중 쓰기가 먼저 쓰기를 삼켜
+사용자의 답변 하나가 흔적 없이 사라진다. 판정 기준은 ``revision``이 아니라
+``sequence``다. 질문을 던지는 것처럼 요구사항을 바꾸지 않는 변경도 저장은 되어야
+하기 때문이다.
 
 **경로 조작** — mission id를 파일명에 넣으므로 경로 구분자나 상위 참조가 든 id를
 거부한다. id는 CLI 인자나 MCP 요청으로 들어올 수 있다.
@@ -31,7 +33,7 @@ import re
 import tempfile
 
 from mission_control.domain.brief.state import BriefState
-from mission_control.domain.errors import StaleRevisionError
+from mission_control.domain.errors import StaleWriteError
 
 #: 파일명에 그대로 넣어도 안전한 형태만 허용한다. 경로 구분자, 상위 참조, 공백,
 #: 확장자로 오인될 점(.)을 배제한다.
@@ -63,11 +65,11 @@ class FileBriefRepository:
         self._root.mkdir(parents=True, exist_ok=True)
 
         stored = await self.load(state.mission_id)
-        if stored is not None and state.revision <= stored.revision:
-            raise StaleRevisionError(
+        if stored is not None and state.sequence <= stored.sequence:
+            raise StaleWriteError(
                 mission_id=state.mission_id,
-                stored_revision=stored.revision,
-                incoming_revision=state.revision,
+                stored_sequence=stored.sequence,
+                incoming_sequence=state.sequence,
             )
 
         self._write_atomically(path, state.model_dump_json(indent=2))

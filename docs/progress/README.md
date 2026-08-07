@@ -7,8 +7,8 @@
 | Project phase | Phase 1 — Brief vertical slice 구현 중 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 진행 중 |
-| Source code | `domain/brief/` (provenance, state, clarity, gate), `application/ports.py`, `adapters/persistence/` |
-| Automated tests | 81 passed |
+| Source code | `domain/brief/`, `domain/errors.py`, `application/` (ports, brief_service), `adapters/persistence/` |
+| Automated tests | 111 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice |
 | Updated | 2026-08-07 |
 
@@ -79,7 +79,7 @@
 - [x] Interview revision, round, answer provenance
   - [x] answer authority와 requirement input 투영 (B-031·B-032·B-033)
   - [x] round 축적, revision 증가, 승인 revision 바인딩과 stale 처리 (B-008·B-014)
-- [ ] one-question tool-less text backend contract와 deterministic fake
+- [x] one-question tool-less text backend contract와 deterministic fake (B-002, B-003)
 - [-] ambiguity/clarity policy와 user approval
   - [x] 종료 후보 네 조건과 경계값, stability signal 전이 (B-027~B-030, B-035)
   - [x] 승인의 revision 바인딩 (B-014)
@@ -166,10 +166,10 @@ Test Matrix는 B-039까지 확장되었다.
 선행 결정은 ADR-0012(toolchain·실행 모델)와 ADR-0013(durable state)으로
 확정했고, 첫 코드가 들어왔다.
 
-다음 검증 가능한 목표 한 개: **답변 기록 use case를 구현한다.** 상태를 읽고
-질문 생성 backend를 호출하고 답변을 기록한 뒤 저장까지 조율하며, 저장에
-실패하면 `CLEAR`를 기록하지 않음을 테스트로 고정한다 (B-016, B-002, B-003).
-질문 생성 backend는 one-turn/no-tool 계약과 deterministic fake로 정의한다.
+다음 검증 가능한 목표 한 개: **clarity 평가 port를 붙여 Gate까지의 흐름을
+닫는다.** 평가 결과와 stability signal을 상태에 저장하고, material 변경 시
+둘을 함께 무효화하며(§8.1 규칙 10, B-034), 최소 round 전에는 평가를 호출하지
+않는다(B-029). 그 뒤 Brief 허용/금지 전이 테스트로 Phase 1을 닫는다.
 
 ### 현재 구현의 알려진 한계
 
@@ -177,6 +177,9 @@ Test Matrix는 B-039까지 확장되었다.
 
 - 승인 이력이 최신 하나만 유지된다. “rev2를 승인했다가 rev4에서 재승인”의
   흐름은 Gate decision과 Telemetry가 들어올 때 보존 방식을 정한다.
+- 질문 생성기가 한 문자열 안에 여러 질문을 담는 경우를 탐지하지 않는다. 반환
+  타입이 질문 하나만 담도록 구조적으로 제한하며, 문장 단위 탐지는 신뢰할 만한
+  방법이 없어 프롬프트와 출력 스키마의 문제로 남긴다.
 - `mission_id`와 `initial_intent`의 빈 값 검증이 없다. Entry Contract(§6)
   강제는 application use case 계층에서 다룬다.
 - 시각(timestamp)을 다루지 않는다. Clock port 도입 시 함께 추가한다.

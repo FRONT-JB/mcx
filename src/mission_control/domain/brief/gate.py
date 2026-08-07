@@ -96,7 +96,7 @@ def evaluate_brief_gate(
     """
     candidacy = policy.assess_completion(
         assessment=assessment,
-        answered_rounds=len(state.rounds),
+        answered_rounds=len(state.answered_rounds),
         stability_signal=stability_signal,
     )
 
