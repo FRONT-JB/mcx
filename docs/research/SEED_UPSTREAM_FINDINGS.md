@@ -134,6 +134,9 @@ replaced criterion gets a new key when materialized from its changed contract."
 
 ## 3.3 Granularity contract — 결과인가 수단인가
 
+> 이 규칙의 실제 강제 경로는 §10을 함께 볼 것. 프롬프트 지시일 뿐 아니라 QA
+> quality bar의 채점 항목이다.
+
 `agents/seed-architect.md:79-85`. 프롬프트가 스스로 "read carefully"라고 표시한
 섹션이며, 문구가 아니라 **AC 품질의 판정 규칙**이다.
 
@@ -166,7 +169,7 @@ that goal, discovered by making this judgment."
 
 Mission Control은 이 판정을 아직 구현하지 않았다. `check_scope`는 AC의 **존재
 여부**만 보고 종류를 보지 않는다. Phase 2의 "AC quality validation" 항목이 이것에
-해당한다.
+해당하며, upstream의 대응 위치는 QA judge의 quality bar다 (§10).
 
 ## 3.4 생성기가 대화 원문을 읽을 때 필요한 규칙
 
@@ -228,7 +231,7 @@ Mission Control은 handoff가 이미 칸별로 나뉘어 있으므로(§2, ADR-0
 남는 일이 upstream보다 작다. 결정은
 [ADR-0018](../adr/0018-blueprint-generation-contract.md)에 있다.
 
-## 7. Seed 승인 — 존재하지 않는다
+## 7. Seed 승인 — Python core에는 없다 (§9에서 정정)
 
 `SeedApproval`, `approve_seed`, `seed_approved` 계열 심볼이 저장소 전체에 **하나도
 없다.**
@@ -245,52 +248,94 @@ Mission Control은 handoff가 이미 칸별로 나뉘어 있으므로(§2, ADR-0
 ([ADR-0011](../adr/0011-brief-deliberate-divergences.md) Divergence 2가 이미
 Brief에 대해 기록한 차이가 Seed에서도 그대로 성립한다).
 
-## 8. QA/repair 루프 — core가 아니라 `auto/`에 있다
+## 8. QA 루프 — 일반 경로에서 **필수**이며 skill 계층에 있다
 
-Seed 품질 검사와 수리는 **자율 드라이버(`ooo auto`) 전용**이다.
+> **2026-08-07 정정.** 최초 조사에서 `bigbang/`·`core/`·`auto/`만 확인하고
+> `skills/`를 보지 않아 "QA는 auto 전용"이라고 잘못 기록했다. 사용자가 실제
+> 도그푸딩 화면(`QA 반복 3/5 — 0.88 / 0.90 REVISE`)을 제시해 확인했다. Brief
+> 조사에서 이미 `skills/interview/SKILL.md`를 인용해 놓고도 Seed에서 같은 계층을
+> 확인하지 않은 것이 원인이다.
 
-- `auto/grading.py` — `SeedGrade(A/B/C)`, `GradeFinding`, `GradeResult`,
-  `GradeGate` (`:27-121`)
-- `auto/seed_repairer.py` — 모듈 docstring이 "Bounded repair loop for
-  auto-generated Seeds"다. `SeedRepairer`는 "Deterministically repair common
-  A-grade failures"이며, `converge`가 "Review/repair until A-grade or bounded
-  stop" (`:88-263`). 취소 신호를 관측하면 `RepairCancelled`를 올린다.
+`skills/seed/SKILL.md:105-113` — **"QA Refinement Loop (Required after
+generation)"**.
 
-즉 `ooo seed`로 만든 Seed는 **검사도 수리도 거치지 않는다.**
+- 생성 직후 **"do not present it as final yet"**. QA가 PASS하거나 사용자가
+  임계값 미달 결과를 명시적으로 수락하기 전에는 최종본으로 제시하지 않는다
+  (`:87`, `:103`).
+- **`pass_threshold: 0.90`** — 기본 0.80보다 엄격하다. 이유가 명시되어 있다 —
+  "seeds are structural specs and must be precise".
+- **Max iterations 5.** 반복마다 최고 점수 seed를 "best attempt"로 추적한다.
+- 5회 후에도 PASS가 아니면 사용자에게 세 선택지를 준다 — 그대로 수락 /
+  최종 수정 하나만 적용하고 임계값 미달 수락 / `ooo interview`·`ooo unstuck`으로
+  에스컬레이션. 6회째 반복은 금지된다.
 
-이는 [INTERVIEW_UPSTREAM_FINDINGS](./INTERVIEW_UPSTREAM_FINDINGS.md) §2에서
-확인한 CLI/MCP 비대칭이 Seed 경계에서 **세 번째로** 반복되는 것이다 —
-(1) interview 종료 gate, (2) seed 진입 gate(§6 대비 `authoring_handlers`),
-(3) seed 품질 gate. Mission Control이 surface 간 동일 Gate를 채택한
-[ADR-0011](../adr/0011-brief-deliberate-divergences.md) Divergence 1의 근거가
-그만큼 강화된다.
+**첫 생성은 정확히 한 번이고, 이후 수정은 재생성이 아니라 직접 편집이다**
+(`:109`) — "do not call `ouroboros_generate_seed` again. It does not accept
+revision hints, and re-running it would discard the established ontology."
 
-## 9. AC 품질 판정 방법 — heuristic이며 granularity는 검사하지 않는다
+판정 등급은 `skills/qa/SKILL.md:29-35`.
 
-`auto/grading.py`의 판정은 문자열 heuristic이다.
+| 점수 | 판정 | 루프 동작 |
+|---|---|---|
+| ≥ 0.80 | PASS | done |
+| 0.40–0.79 | REVISE | continue |
+| < 0.40 | FAIL | escalate |
 
-**모호한 표현 목록** (`VAGUE_TERMS`, `:36-45`) — `easy`, `intuitive`, `robust`,
-`scalable`, `better`, `improve`, `optimized`, `user-friendly`, `seamless`.
+평가 축은 Correctness, Completeness, Quality, Intent Alignment, Domain-Specific
+(`skills/qa/SKILL.md:25`).
 
-**관찰 가능성** (`_is_observable`, `:550-574`) —
+`auto/grading.py`와 `auto/seed_repairer.py`는 **이것과 별개**로 자율 모드가 쓰는
+등급·수리 장치다. 즉 QA는 두 곳에 있고, 사람이 쓰는 경로는 skill 계층이다.
 
-1. `verify_command`나 `expected_artifacts`가 있으면 **즉시 참**이다. 이는
-   §3.2의 "둘 중 하나만으로도 완결된 계약"과 일치한다.
-2. 없으면 description을 본다. `_OBSERVABLE_HINTS` 22개 키워드(`command`, `exit`,
-   `prints`, `file`, `test`, `http`, `200` …) 중 하나가 있어야 하고, 이어서
-   12개 정규식 중 하나에 걸려야 한다 — 예:
-   `\b(cli|command|process)\b.+\b(exits|returns)\b\s+(with\s+)?(exit\s+code\s+)?0\b`.
+Python core(`ooo seed` CLI)만 QA가 없다. 이는 Brief에서 확인한 CLI/MCP/skill
+3층 구조가 Seed에서도 그대로라는 뜻이며
+([INTERVIEW_UPSTREAM_FINDINGS](./INTERVIEW_UPSTREAM_FINDINGS.md) §2), 사람이 쓰는
+경로에서 가장 강한 관문은 항상 skill 계층에 있다.
 
-**중요: granularity(결과 vs 수단)를 코드에서 검사하지 않는다.** `grading.py`와
-`seed_repairer.py` 어디에도 해당 검사가 없다. §3.3이 "missing requirement와 같은
-심각도의 결함"이라고 규정한 항목이 **프롬프트 지시로만 존재한다.**
+## 9. Seed 승인 — skill 계층의 User Adoption Gate
 
-**수리 시 identity 처리** — `_repair_criterion_description` (`:319-323`)은
-"Rewrite a criterion's description, refreshing only auto-derived identity"다.
-명시적으로 부여된 key는 보존하고 파생된 key만 갱신한다
-([ADR-0017](../adr/0017-blueprint-schema-baseline.md) §2와 정합).
+> **2026-08-07 정정.** "Seed 승인이 존재하지 않는다"고 기록했으나 Python 심볼에
+> 한정된 이야기였다. skill 계층에는 명시적 사용자 채택 관문이 있다.
 
-## 5. 아직 조사하지 않은 것
+`skills/seed/SKILL.md:159` — **"Revisions must NEVER be auto-applied by the main
+session alone — *'No candidate is accepted by default.'* (Symposium User
+Adoption Gate)"**
+
+- 각 수정 후보를 사용자가 선택한다. 충돌 그룹마다 상호 배타적 해소안을 선택지로
+  제시하고 "Leave unchanged"를 포함한다 (`:243`).
+- 배치 단위 skip 선택지도 항상 포함한다 (`:246`). 다만 이것을 임계값 미달 수락으로
+  취급하지 않는다 — 그것은 별도의 명시적 선택이어야 한다.
+- 확장 제안과 수렴 제안의 비율을 사용자에게 정보로 보여 준다 (`:233`,
+  `Balance: 4 expand / 2 sharpen / 1 remove`). 경고가 아니라 정보이며 "both
+  directions are legitimate; the user decides what mix to accept".
+
+Python core에 approval 객체가 없다는 §7의 관찰은 여전히 사실이다. 승인의 실체가
+skill 계층의 절차로만 존재하고 상태로 남지 않는다는 점이, Mission Control이 승인을
+1급 상태로 만든 [ADR-0011](../adr/0011-brief-deliberate-divergences.md)
+Divergence 2의 근거를 Seed에서도 반복 확인해 준다.
+
+## 10. Granularity는 QA quality bar에 들어 있다
+
+> **2026-08-07 정정.** §3.3에서 "코드에서 검사하지 않고 프롬프트 지시로만
+> 존재한다"고 기록했으나, 실제 강제 경로를 놓친 서술이었다.
+
+`skills/seed/SKILL.md:130`의 `quality_bar` 문자열이 §3.3의 granularity contract를
+**그대로 포함한다.**
+
+> "acceptance_criteria must also be parsimonious in the ontological sense: a
+> criterion names a state of the finished work a user can see is true, while an
+> implementation step names a means of reaching it, and only the first belongs in
+> the list. Read each criterion beside its siblings — one intelligible only as a
+> move toward a sibling is that sibling's means and belongs merged into the
+> outcome it serves, and **flagging that is as important as flagging a missing
+> piece**, since it commits the seed to an unverified path."
+
+즉 판정 주체는 Python 코드가 아니라 **QA judge**이며, 매 반복마다 이 기준으로
+채점된다. 같은 quality bar가 요구하는 다른 항목도 함께 있다 — 내부 일관성,
+측정·테스트 가능한 acceptance_criteria, 모호한 표현 없는 구체적 constraints,
+goal/criteria가 참조하는 모든 엔티티를 덮는 ontology_schema, 필드 간 모순 없음.
+
+## 11. 아직 조사하지 않은 것
 
 추출 프롬프트(`agents/seed-architect.md`)는 2026-08-07에 전문을 읽었다(§3.2·§3.3·
 §3.4). 남은 항목은 다음과 같다.
