@@ -7,8 +7,8 @@
 | Project phase | Phase 1 — Brief vertical slice 구현 중 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 진행 중 |
-| Source code | `src/mission_control/domain/brief/` (provenance, state, clarity, gate) |
-| Automated tests | 63 passed (`tests/unit/domain/brief/`) |
+| Source code | `domain/brief/` (provenance, state, clarity, gate), `application/ports.py`, `adapters/persistence/` |
+| Automated tests | 81 passed |
 | First implementation target | Brief domain/state/Gate vertical slice |
 | Updated | 2026-08-07 |
 
@@ -84,7 +84,7 @@
   - [x] 종료 후보 네 조건과 경계값, stability signal 전이 (B-027~B-030, B-035)
   - [x] 승인의 revision 바인딩 (B-014)
   - [x] 상태·정책·승인을 묶는 Gate 판정 (B-012, B-013, B-025, B-030)
-- [ ] 최소 durable state 방식 ADR와 repository
+- [x] 최소 durable state 방식 ADR와 repository (ADR-0013, B-017·B-019)
 - [ ] Brief 허용/금지 Stage transition tests
 
 ### Phase 2 — Blueprint vertical slice
@@ -166,10 +166,10 @@ Test Matrix는 B-039까지 확장되었다.
 선행 결정은 ADR-0012(toolchain·실행 모델)와 ADR-0013(durable state)으로
 확정했고, 첫 코드가 들어왔다.
 
-다음 검증 가능한 목표 한 개: **Brief 상태를 파일로 저장하고 다시 읽는
-repository를 구현한다** (ADR-0013). port를 `async`로 정의하고, 원자적 교체와
-stale revision 거부, 저장 실패 시 전이 차단을 테스트로 고정한다
-(B-016, B-017, B-019).
+다음 검증 가능한 목표 한 개: **답변 기록 use case를 구현한다.** 상태를 읽고
+질문 생성 backend를 호출하고 답변을 기록한 뒤 저장까지 조율하며, 저장에
+실패하면 `CLEAR`를 기록하지 않음을 테스트로 고정한다 (B-016, B-002, B-003).
+질문 생성 backend는 one-turn/no-tool 계약과 deterministic fake로 정의한다.
 
 ### 현재 구현의 알려진 한계
 
