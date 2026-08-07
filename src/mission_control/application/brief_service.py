@@ -1,4 +1,4 @@
-"""Brief use case — 상태 로드, 질문 생성, 답변 기록, 승인의 조율.
+"""Brief use case — 질문, 답변, 승인, clarity 평가, Gate 판정의 조율.
 
 도메인 규칙은 여기에 두지 않는다. 이 계층은 **순서와 경계**를 담당한다. 무엇을
 읽고, 누구에게 무엇을 위임하고, 언제 저장하고, 무엇을 호출자에게 돌려줄지를
@@ -18,11 +18,15 @@ from dataclasses import dataclass
 
 from mission_control.application.ports import (
     AskedRound,
+    AssessmentRequest,
     BriefRepository,
+    ClarityAssessor,
     GeneratedQuestion,
     QuestionGenerator,
     QuestionRequest,
 )
+from mission_control.domain.brief.clarity import ClarityPolicy
+from mission_control.domain.brief.gate import BriefGateDecision, evaluate_brief_gate
 from mission_control.domain.brief.provenance import AnswerAuthority
 from mission_control.domain.brief.state import BriefState
 
@@ -54,12 +58,27 @@ class QuestionContractError(RuntimeError):
     """
 
 
+class ClarityAssessmentError(RuntimeError):
+    """clarity 평가가 결과를 만들어 내지 못했다.
+
+    평가 실패를 낮은 점수나 높은 점수 어느 쪽으로도 해석하지 않는다. 저장된
+    평가와 stability signal은 초기화되고, 호출자는 이번 턴에 종료 후보 판단이
+    없었던 것으로 처리한다 (``docs/05_BRIEF.md`` §11.3).
+    """
+
+    def __init__(self, mission_id: str) -> None:
+        super().__init__(f"clarity assessment produced no result for mission {mission_id}")
+        self.mission_id = mission_id
+
+
 @dataclass(frozen=True, slots=True)
 class BriefService:
     """Brief Stage의 application 경계."""
 
     repository: BriefRepository
     question_generator: QuestionGenerator
+    clarity_assessor: ClarityAssessor
+    policy: ClarityPolicy
 
     async def start(self, *, mission_id: str, initial_intent: str) -> BriefState:
         """새 Brief를 시작하고 저장한다."""
@@ -122,6 +141,42 @@ class BriefService:
         await self.repository.save(approved)
         return approved
 
+    async def assess_clarity(self, *, mission_id: str) -> BriefState:
+        """현재 Brief의 clarity를 평가하고 결과와 signal을 저장한다.
+
+        최소 round에 도달하기 전에는 평가를 **수행하지 않는다**. 그 구간에서는
+        어떤 점수가 나와도 종료 후보가 될 수 없으므로 호출이 순수 낭비다. 평가를
+        생략한 구간은 상태에 결과가 없는 것으로 남아 "평가했으나 통과하지 못한"
+        구간과 구분된다 (``docs/05_BRIEF.md`` §10 Step 8).
+
+        평가가 실패하면 저장된 평가와 signal을 초기화한 뒤
+        :class:`ClarityAssessmentError`를 올린다. 초기화를 저장하지 않으면 이전의
+        통과 결과가 남아 다음 Gate가 그것으로 ``CLEAR``할 수 있다.
+        """
+        state = await self._require(mission_id)
+        if len(state.answered_rounds) < self.policy.minimum_rounds:
+            return state
+
+        try:
+            assessment = await self.clarity_assessor.assess(self._assessment_request(state))
+            assessed = state.record_assessment(assessment=assessment, policy=self.policy)
+        except Exception as error:
+            await self.repository.save(state.record_assessment(assessment=None, policy=self.policy))
+            raise ClarityAssessmentError(mission_id) from error
+
+        await self.repository.save(assessed)
+        return assessed
+
+    async def decide_gate(self, *, mission_id: str) -> BriefGateDecision:
+        """저장된 상태로 Gate를 판정한다.
+
+        평가를 다시 수행하지 않고 signal도 건드리지 않는다. Gate 조회가 signal을
+        올리면 판정을 한 번 더 요청하는 것만으로 종료 조건이 충족되어, 평가
+        하나당 한 번이라는 규칙이 우회된다 (§11.4).
+        """
+        state = await self._require(mission_id)
+        return evaluate_brief_gate(state=state, policy=self.policy)
+
     async def _require(self, mission_id: str) -> BriefState:
         state = await self.repository.load(mission_id)
         if state is None:
@@ -138,8 +193,25 @@ class BriefService:
         """
         return QuestionRequest(
             initial_intent=state.initial_intent,
-            previous_rounds=tuple(
-                AskedRound(question=item.question, answer=item.answer) for item in state.rounds
-            ),
+            previous_rounds=BriefService._asked_rounds(state),
             unresolved_items=state.unresolved_items,
+        )
+
+    def _assessment_request(self, state: BriefState) -> AssessmentRequest:
+        """평가자에게 전달할 최소 context를 구성한다.
+
+        채점 대상 축은 정책에서 가져온다. 평가자가 축 목록을 스스로 정하면 누락된
+        축이 조용히 집계에서 빠진다.
+        """
+        return AssessmentRequest(
+            initial_intent=state.initial_intent,
+            previous_rounds=BriefService._asked_rounds(state),
+            unresolved_items=state.unresolved_items,
+            dimensions=tuple(self.policy.weights),
+        )
+
+    @staticmethod
+    def _asked_rounds(state: BriefState) -> tuple[AskedRound, ...]:
+        return tuple(
+            AskedRound(question=item.question, answer=item.answer) for item in state.rounds
         )

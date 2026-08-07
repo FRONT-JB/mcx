@@ -11,13 +11,18 @@ from pathlib import Path
 
 from mission_control.adapters.persistence.file_brief_repository import FileBriefRepository
 from mission_control.application.brief_service import BriefService
-from mission_control.application.ports import GeneratedQuestion, QuestionRequest
+from mission_control.application.ports import (
+    AssessmentRequest,
+    GeneratedQuestion,
+    QuestionRequest,
+)
 from mission_control.domain.brief.clarity import (
     ClarityAssessment,
     ClarityPolicy,
     DimensionScore,
 )
-from mission_control.domain.brief.gate import evaluate_brief_gate
+from mission_control.domain.brief.gate import next_stage_after_brief
+from mission_control.domain.stage import Stage
 
 POLICY = ClarityPolicy.greenfield_v1()
 
@@ -38,44 +43,71 @@ class SequentialQuestionGenerator:
         return GeneratedQuestion(question=question, targeted_gap="scope")
 
 
+class ClearingAssessor:
+    """네 조건을 통과하는 점수를 반환한다."""
+
+    async def assess(self, request: AssessmentRequest) -> ClarityAssessment:
+        return ClarityAssessment(
+            scores=(
+                DimensionScore(
+                    dimension="goal", clarity=0.9, justification="목표가 한 문장으로 정리됨"
+                ),
+                DimensionScore(
+                    dimension="constraint", clarity=0.85, justification="권한 제약 확정"
+                ),
+                DimensionScore(
+                    dimension="success_criteria", clarity=0.8, justification="확인 방법 합의"
+                ),
+            ),
+            policy_version=POLICY.version,
+        )
+
+
 def _service(root: Path) -> BriefService:
     return BriefService(
         repository=FileBriefRepository(root=root),
         question_generator=SequentialQuestionGenerator(),
+        clarity_assessor=ClearingAssessor(),
+        policy=POLICY,
     )
 
 
-def _clear_assessment() -> ClarityAssessment:
-    return ClarityAssessment(
-        scores=(
-            DimensionScore(
-                dimension="goal", clarity=0.9, justification="목표가 한 문장으로 정리됨"
-            ),
-            DimensionScore(dimension="constraint", clarity=0.85, justification="권한 제약 확정"),
-            DimensionScore(
-                dimension="success_criteria", clarity=0.8, justification="확인 방법 합의"
-            ),
-        ),
-        policy_version=POLICY.version,
-    )
+async def _answer_the_minimum_rounds(service: BriefService) -> None:
+    for answer in ("로그인 사용자만", "이번에는 작성과 조회만", "목록에 새 댓글이 보이면 완료"):
+        await service.ask_next_question(mission_id="m-1")
+        await service.record_answer(mission_id="m-1", answer=answer, authority="decision")
+        await service.assess_clarity(mission_id="m-1")
 
 
 async def test_brief_reaches_clear_after_answers_and_approval(tmp_path: Path) -> None:
     service = _service(tmp_path)
     await service.start(mission_id="m-1", initial_intent="기존 서비스에 댓글 기능을 추가하고 싶다")
 
-    for answer in ("로그인 사용자만", "이번에는 작성과 조회만", "목록에 새 댓글이 보이면 완료"):
-        await service.ask_next_question(mission_id="m-1")
-        await service.record_answer(mission_id="m-1", answer=answer, authority="decision")
-
+    await _answer_the_minimum_rounds(service)
+    # 최소 round 이전의 평가는 생략되므로 통과한 평가는 아직 한 번뿐이다.
+    await service.assess_clarity(mission_id="m-1")
     state = await service.approve(mission_id="m-1", statement="이대로 진행해 주세요")
 
-    decision = evaluate_brief_gate(
-        state=state, assessment=_clear_assessment(), policy=POLICY, stability_signal=2
-    )
+    decision = await service.decide_gate(mission_id="m-1")
 
     assert decision.outcome == "CLEAR"
-    assert decision.next_destination == "blueprint"
+    assert next_stage_after_brief(state=state, decision=decision) is Stage.BLUEPRINT
+
+
+async def test_clear_needs_a_second_qualifying_assessment(tmp_path: Path) -> None:
+    """단발성으로 통과한 평가 하나로는 진행하지 않는다 (B-028)."""
+    service = _service(tmp_path)
+    await service.start(mission_id="m-1", initial_intent="댓글 기능을 추가하고 싶다")
+    await _answer_the_minimum_rounds(service)
+    await service.approve(mission_id="m-1", statement="진행")
+
+    decision = await service.decide_gate(mission_id="m-1")
+
+    assert decision.outcome == "HOLD"
+    assert any(
+        blocker.condition.value == "stability_not_established"
+        for blocker in decision.clarity_blockers
+    )
 
 
 async def test_interview_resumes_in_a_fresh_process(tmp_path: Path) -> None:
@@ -97,6 +129,19 @@ async def test_interview_resumes_in_a_fresh_process(tmp_path: Path) -> None:
     )
     assert len(state.answered_rounds) == 2
     assert state.rounds[0].answer == "로그인 사용자만"
+
+
+async def test_stored_assessment_survives_a_fresh_process(tmp_path: Path) -> None:
+    """평가와 signal도 durable해야 재개한 세션이 처음부터 다시 쌓지 않는다."""
+    first = _service(tmp_path)
+    await first.start(mission_id="m-1", initial_intent="댓글 기능을 추가하고 싶다")
+    await _answer_the_minimum_rounds(first)
+
+    second = _service(tmp_path)
+    state = await second.assess_clarity(mission_id="m-1")
+
+    assert state.assessment is not None
+    assert state.stability_signal == POLICY.required_stability
 
 
 async def test_observation_never_becomes_a_requirement(tmp_path: Path) -> None:
@@ -129,20 +174,18 @@ async def test_observation_never_becomes_a_requirement(tmp_path: Path) -> None:
 async def test_gate_holds_until_approval_is_current(tmp_path: Path) -> None:
     service = _service(tmp_path)
     await service.start(mission_id="m-1", initial_intent="댓글 기능을 추가하고 싶다")
-    for answer in ("로그인 사용자만", "작성과 조회만", "목록에 보이면 완료"):
-        await service.ask_next_question(mission_id="m-1")
-        await service.record_answer(mission_id="m-1", answer=answer, authority="decision")
+    await _answer_the_minimum_rounds(service)
+    await service.assess_clarity(mission_id="m-1")
     await service.approve(mission_id="m-1", statement="진행")
+    assert (await service.decide_gate(mission_id="m-1")).outcome == "CLEAR"
 
     # 승인 후 답변이 하나 더 들어오면 그 승인으로는 진행할 수 없다.
     await service.ask_next_question(mission_id="m-1")
-    state = await service.record_answer(
+    await service.record_answer(
         mission_id="m-1", answer="비로그인 사용자는 조회만", authority="decision"
     )
 
-    decision = evaluate_brief_gate(
-        state=state, assessment=_clear_assessment(), policy=POLICY, stability_signal=2
-    )
+    decision = await service.decide_gate(mission_id="m-1")
 
     assert decision.outcome == "HOLD"
     assert any("approval" in blocker.condition.value for blocker in decision.gate_blockers)

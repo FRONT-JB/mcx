@@ -15,6 +15,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
 
+from mission_control.domain.brief.clarity import ClarityAssessment, ClarityDimension
 from mission_control.domain.brief.state import BriefState, UnresolvedItem
 
 
@@ -24,8 +25,8 @@ class BriefRepository(Protocol):
     구현은 다음을 보장해야 한다.
 
     - 부분 기록된 상태가 읽히지 않는다.
-    - 이미 지난 revision으로의 갱신을 거부한다
-      (:class:`~mission_control.domain.errors.StaleRevisionError`).
+    - 저장된 것보다 앞서지 않는 쓰기를 거부한다
+      (:class:`~mission_control.domain.errors.StaleWriteError`).
     - 저장 실패를 성공으로 가장하지 않는다. 실패는 예외로 드러나며, 호출자는
       이를 전이 실패로 처리한다 (``docs/05_BRIEF.md`` §15).
     """
@@ -43,10 +44,11 @@ class BriefRepository(Protocol):
 
 
 class AskedRound(BaseModel):
-    """질문 생성기에 전달하는 이전 대화 한 턴.
+    """위임 역할에 전달하는 이전 대화 한 턴.
 
-    저장된 ``BriefRound``를 그대로 넘기지 않는다. 생성기는 답변의 authority나
-    revision 이력을 알 필요가 없고, 알면 그것을 근거로 요구사항을 지어낼 수 있다.
+    저장된 ``BriefRound``를 그대로 넘기지 않는다. 위임받은 역할은 답변의
+    authority나 revision 이력을 알 필요가 없고, 알면 그것을 근거로 요구사항을
+    지어낼 수 있다.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -96,4 +98,39 @@ class QuestionGenerator(Protocol):
 
     async def generate(self, request: QuestionRequest) -> GeneratedQuestion:
         """질문 하나를 반환한다. 호출자는 dispatch당 한 번만 호출한다."""
+        ...
+
+
+class AssessmentRequest(BaseModel):
+    """clarity를 평가하기 위해 필요한 최소 context.
+
+    ``dimensions``는 현재 정책이 가중치를 부여한 축이다. 평가자가 임의의 축을
+    고르면 집계가 성립하지 않으므로 무엇을 채점해야 하는지 명시한다.
+
+    threshold, floor, weight는 전달하지 않는다. 평가자의 일은 채점이지 판정이
+    아니고, 통과 기준을 알려 주면 그 기준에 맞춰 점수를 조정할 여지가 생긴다.
+    판정은 :class:`~mission_control.domain.brief.clarity.ClarityPolicy`가 한다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    initial_intent: str
+    previous_rounds: tuple[AskedRound, ...]
+    unresolved_items: tuple[UnresolvedItem, ...]
+    dimensions: tuple[ClarityDimension, ...]
+
+
+class ClarityAssessor(Protocol):
+    """현재 Brief의 축별 clarity를 채점하는 제한된 역할.
+
+    질문 생성과 분리된 port인 이유는 두 역할이 서로를 정당화하지 못하게 하기
+    위해서다. 같은 호출이 질문을 만들고 그 결과를 채점하면 "충분히 물었다"는
+    판단을 자기 자신이 내린다 (``docs/adr/0004-stage-scoped-minimum-capability.md``).
+
+    평가 실패는 낮은 점수가 아니라 결과 없음이다. 구현은 결과를 추측해 반환하지
+    말고 예외를 올린다 (``docs/05_BRIEF.md`` §11.3).
+    """
+
+    async def assess(self, request: AssessmentRequest) -> ClarityAssessment:
+        """요청된 모든 dimension의 clarity 점수를 반환한다."""
         ...

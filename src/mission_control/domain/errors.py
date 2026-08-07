@@ -31,3 +31,22 @@ class StaleWriteError(MissionControlError):
         self.mission_id = mission_id
         self.stored_sequence = stored_sequence
         self.incoming_sequence = incoming_sequence
+
+
+class StaleGateDecisionError(MissionControlError):
+    """이미 지난 revision에 대한 Gate decision으로 Stage를 옮기려 했다.
+
+    Gate decision은 평가한 정확한 revision을 참조한다 (``docs/05_BRIEF.md``
+    §8.1 규칙 7). 판정과 전이 사이에 내용이 바뀌었다면 그 판정은 지금의 Brief를
+    본 적이 없다. 그대로 적용하면 사용자가 승인하지 않은 revision이 ``CLEAR``된
+    것으로 다음 Stage에 넘어간다.
+    """
+
+    def __init__(self, *, mission_id: str, decision_revision: int, current_revision: int) -> None:
+        super().__init__(
+            f"gate decision for mission {mission_id} evaluated revision {decision_revision} "
+            f"but the current revision is {current_revision}"
+        )
+        self.mission_id = mission_id
+        self.decision_revision = decision_revision
+        self.current_revision = current_revision

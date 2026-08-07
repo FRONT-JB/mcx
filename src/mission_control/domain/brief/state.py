@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from mission_control.domain.brief.clarity import ClarityAssessment, ClarityPolicy
 from mission_control.domain.brief.provenance import AnswerAuthority, BriefRound
 
 
@@ -83,6 +84,11 @@ class BriefState(BaseModel):
     rounds: tuple[BriefRound, ...] = ()
     approval: BriefApproval | None = None
     unresolved_items: tuple[UnresolvedItem, ...] = ()
+    #: 현재 revision에 대한 clarity 평가. ``None``은 "평가하지 않았다"이며
+    #: "평가했으나 통과하지 못했다"와 다르다 (``docs/05_BRIEF.md`` §10 Step 8).
+    assessment: ClarityAssessment | None = None
+    #: 종료 조건을 연속으로 만족한 횟수. 평가와 짝이며 따로 살아남지 않는다.
+    stability_signal: int = 0
     history: tuple[BriefRevisionSnapshot, ...] = Field(default=())
 
     @property
@@ -185,6 +191,8 @@ class BriefState(BaseModel):
                 "revision": self.revision + 1,
                 "sequence": self.sequence + 1,
                 "rounds": rounds,
+                "assessment": None,
+                "stability_signal": 0,
                 "history": (*self.history, self._current_snapshot()),
             }
         )
@@ -201,7 +209,37 @@ class BriefState(BaseModel):
                 "revision": self.revision + 1,
                 "sequence": self.sequence + 1,
                 "unresolved_items": (*self.unresolved_items, item),
+                "assessment": None,
+                "stability_signal": 0,
                 "history": (*self.history, self._current_snapshot()),
+            }
+        )
+
+    def record_assessment(
+        self, *, assessment: ClarityAssessment | None, policy: ClarityPolicy
+    ) -> BriefState:
+        """clarity 평가 결과와 그에 따른 stability signal을 기록한다.
+
+        revision을 올리지 않는다. 평가는 요구사항을 바꾸지 않으므로 기존 승인의
+        의미도 바꾸지 않는다. 반대 방향은 성립한다 — 요구사항이 바뀌면 평가와
+        signal이 함께 무효화된다 (``docs/05_BRIEF.md`` §8.1 규칙 10).
+
+        signal을 인자로 받지 않고 정책에서 직접 계산하는 이유는 갱신 지점을 하나로
+        유지하기 위해서다. 호출자가 값을 정할 수 있으면 한 턴에 두 번 올라 단일
+        평가로 종료되는 회귀가 다시 열린다 (upstream #405).
+
+        ``assessment``가 ``None``이면 "결과 없음"이다. 평가 실패를 낮은 점수나
+        높은 점수 어느 쪽으로도 해석하지 않고 signal만 초기화한다 (§11.3).
+        """
+        return self.model_copy(
+            update={
+                "sequence": self.sequence + 1,
+                "assessment": assessment,
+                "stability_signal": policy.next_stability_signal(
+                    current=self.stability_signal,
+                    assessment=assessment,
+                    answered_rounds=len(self.answered_rounds),
+                ),
             }
         )
 

@@ -1,7 +1,7 @@
 """Brief use case의 조율과 실패 처리.
 
 계약: docs/05_BRIEF.md §4.2, §10, §14.1
-Test Matrix: B-002, B-003, B-016
+Test Matrix: B-002, B-003, B-016, B-029, B-034, B-035, B-036
 """
 
 import pytest
@@ -10,10 +10,22 @@ from mission_control.application.brief_service import (
     BriefAlreadyExistsError,
     BriefNotFoundError,
     BriefService,
+    ClarityAssessmentError,
     QuestionContractError,
 )
-from mission_control.application.ports import GeneratedQuestion, QuestionRequest
+from mission_control.application.ports import (
+    AssessmentRequest,
+    GeneratedQuestion,
+    QuestionRequest,
+)
+from mission_control.domain.brief.clarity import (
+    ClarityAssessment,
+    ClarityPolicy,
+    DimensionScore,
+)
 from mission_control.domain.brief.state import BriefState
+
+POLICY = ClarityPolicy.greenfield_v1()
 
 
 class InMemoryBriefRepository:
@@ -52,6 +64,34 @@ class ScriptedQuestionGenerator:
         return GeneratedQuestion(question=self.questions[index], targeted_gap="scope")
 
 
+class ScriptedClarityAssessor:
+    """고정된 점수를 반환하고 호출을 기록한다. 실패도 재현할 수 있다."""
+
+    def __init__(self, *, goal: float = 0.9, constraint: float = 0.9, success: float = 0.9) -> None:
+        self.scores = (goal, constraint, success)
+        self.requests: list[AssessmentRequest] = []
+        self.fail_next = False
+
+    @property
+    def call_count(self) -> int:
+        return len(self.requests)
+
+    async def assess(self, request: AssessmentRequest) -> ClarityAssessment:
+        self.requests.append(request)
+        if self.fail_next:
+            self.fail_next = False
+            raise ValueError("assessor returned unparseable output")
+        goal, constraint, success = self.scores
+        return ClarityAssessment(
+            scores=(
+                DimensionScore(dimension="goal", clarity=goal, justification="t"),
+                DimensionScore(dimension="constraint", clarity=constraint, justification="t"),
+                DimensionScore(dimension="success_criteria", clarity=success, justification="t"),
+            ),
+            policy_version=POLICY.version,
+        )
+
+
 @pytest.fixture
 def repository() -> InMemoryBriefRepository:
     return InMemoryBriefRepository()
@@ -63,14 +103,36 @@ def generator() -> ScriptedQuestionGenerator:
 
 
 @pytest.fixture
+def assessor() -> ScriptedClarityAssessor:
+    return ScriptedClarityAssessor()
+
+
+@pytest.fixture
 def service(
-    repository: InMemoryBriefRepository, generator: ScriptedQuestionGenerator
+    repository: InMemoryBriefRepository,
+    generator: ScriptedQuestionGenerator,
+    assessor: ScriptedClarityAssessor,
 ) -> BriefService:
-    return BriefService(repository=repository, question_generator=generator)
+    return BriefService(
+        repository=repository,
+        question_generator=generator,
+        clarity_assessor=assessor,
+        policy=POLICY,
+    )
 
 
 async def _started(service: BriefService) -> BriefState:
     return await service.start(mission_id="m-1", initial_intent="댓글 기능을 추가하고 싶다")
+
+
+async def _answered(service: BriefService, rounds: int = 3) -> BriefState:
+    """최소 round를 채운 Brief를 만든다."""
+    state = await _started(service)
+    for index in range(rounds):
+        state = await service.record_answer(
+            mission_id="m-1", answer=f"a{index}", authority="decision", question=f"q{index}"
+        )
+    return state
 
 
 class TestStart:
@@ -163,7 +225,10 @@ class TestQuestionContractViolation:
 
     async def test_empty_question_is_rejected(self, repository: InMemoryBriefRepository) -> None:
         service = BriefService(
-            repository=repository, question_generator=ScriptedQuestionGenerator("   ")
+            repository=repository,
+            question_generator=ScriptedQuestionGenerator("   "),
+            clarity_assessor=ScriptedClarityAssessor(),
+            policy=POLICY,
         )
         await _started(service)
 
@@ -174,7 +239,10 @@ class TestQuestionContractViolation:
         self, repository: InMemoryBriefRepository
     ) -> None:
         service = BriefService(
-            repository=repository, question_generator=ScriptedQuestionGenerator("")
+            repository=repository,
+            question_generator=ScriptedQuestionGenerator(""),
+            clarity_assessor=ScriptedClarityAssessor(),
+            policy=POLICY,
         )
         await _started(service)
 
@@ -269,3 +337,256 @@ class TestAnswerFlow:
         assert approved.approval is not None
         assert approved.approval.revision == recorded.revision
         assert approved.has_current_approval is True
+
+
+class TestAssessmentIsSkippedBeforeMinimumRounds:
+    """B-029 — 최소 round 전에는 평가하지 않고, 미평가가 미통과와 구분된다."""
+
+    async def test_assessor_is_not_called(
+        self, service: BriefService, assessor: ScriptedClarityAssessor
+    ) -> None:
+        await _answered(service, rounds=POLICY.minimum_rounds - 1)
+
+        await service.assess_clarity(mission_id="m-1")
+
+        assert assessor.call_count == 0
+
+    async def test_state_is_untouched(
+        self, service: BriefService, repository: InMemoryBriefRepository
+    ) -> None:
+        before = await _answered(service, rounds=POLICY.minimum_rounds - 1)
+        saves = repository.save_calls
+
+        await service.assess_clarity(mission_id="m-1")
+
+        stored = await repository.load("m-1")
+        assert stored is not None
+        assert stored.sequence == before.sequence
+        assert repository.save_calls == saves
+
+    async def test_unassessed_is_distinguished_from_not_qualifying(
+        self, service: BriefService
+    ) -> None:
+        """둘 다 HOLD지만 다음 행동이 다르므로 이유가 달라야 한다."""
+        await _answered(service, rounds=POLICY.minimum_rounds - 1)
+        await service.assess_clarity(mission_id="m-1")
+
+        decision = await service.decide_gate(mission_id="m-1")
+
+        conditions = {blocker.condition.value for blocker in decision.clarity_blockers}
+        assert "assessment_missing" in conditions
+        assert "ambiguity_above_threshold" not in conditions
+
+    async def test_assessor_runs_once_the_minimum_is_reached(
+        self, service: BriefService, assessor: ScriptedClarityAssessor
+    ) -> None:
+        await _answered(service, rounds=POLICY.minimum_rounds)
+
+        state = await service.assess_clarity(mission_id="m-1")
+
+        assert assessor.call_count == 1
+        assert state.assessment is not None
+
+
+class TestAssessmentRequest:
+    async def test_request_names_the_policy_dimensions(
+        self, service: BriefService, assessor: ScriptedClarityAssessor
+    ) -> None:
+        """평가자가 채점할 축을 스스로 고르면 누락된 축이 조용히 집계에서 빠진다."""
+        await _answered(service)
+
+        await service.assess_clarity(mission_id="m-1")
+
+        assert assessor.requests[0].dimensions == tuple(POLICY.weights)
+
+    async def test_request_does_not_carry_thresholds(
+        self, service: BriefService, assessor: ScriptedClarityAssessor
+    ) -> None:
+        """통과 기준을 알려 주면 그 기준에 맞춰 점수를 조정할 여지가 생긴다."""
+        await _answered(service)
+
+        await service.assess_clarity(mission_id="m-1")
+
+        assert set(assessor.requests[0].model_dump()) == {
+            "initial_intent",
+            "previous_rounds",
+            "unresolved_items",
+            "dimensions",
+        }
+
+
+class TestStabilitySignalAdvancesOncePerAssessment:
+    """§11.4 — 평가 하나당 정확히 한 번 갱신한다."""
+
+    async def test_each_assessment_advances_by_one(self, service: BriefService) -> None:
+        await _answered(service)
+
+        first = await service.assess_clarity(mission_id="m-1")
+        second = await service.assess_clarity(mission_id="m-1")
+
+        assert first.stability_signal == 1
+        assert second.stability_signal == 2
+
+    async def test_gate_decision_does_not_advance_the_signal(
+        self, service: BriefService, repository: InMemoryBriefRepository
+    ) -> None:
+        """판정을 다시 요청하는 것만으로 종료 조건이 충족되면 안 된다."""
+        await _answered(service)
+        await service.assess_clarity(mission_id="m-1")
+
+        for _ in range(3):
+            await service.decide_gate(mission_id="m-1")
+
+        stored = await repository.load("m-1")
+        assert stored is not None
+        assert stored.stability_signal == 1
+
+    async def test_non_qualifying_assessment_resets(
+        self, repository: InMemoryBriefRepository, generator: ScriptedQuestionGenerator
+    ) -> None:
+        assessor = ScriptedClarityAssessor()
+        service = BriefService(
+            repository=repository,
+            question_generator=generator,
+            clarity_assessor=assessor,
+            policy=POLICY,
+        )
+        await _answered(service)
+        await service.assess_clarity(mission_id="m-1")
+
+        assessor.scores = (0.9, 0.9, 0.4)
+        state = await service.assess_clarity(mission_id="m-1")
+
+        assert state.stability_signal == 0
+
+
+class TestMaterialChangeInvalidatesAssessment:
+    """B-034 — CLEAR 이후 답변이 추가되면 평가와 signal이 함께 초기화된다."""
+
+    async def test_answer_resets_both(self, service: BriefService) -> None:
+        await _answered(service)
+        await service.assess_clarity(mission_id="m-1")
+        qualified = await service.assess_clarity(mission_id="m-1")
+        await service.approve(mission_id="m-1", statement="진행")
+        assert (await service.decide_gate(mission_id="m-1")).outcome == "CLEAR"
+        assert qualified.stability_signal == POLICY.required_stability
+
+        reopened = await service.record_answer(
+            mission_id="m-1", answer="비로그인은 조회만", authority="decision", question="추가"
+        )
+
+        assert reopened.assessment is None
+        assert reopened.stability_signal == 0
+
+    async def test_reopened_brief_requires_reapproval_and_reassessment(
+        self, service: BriefService
+    ) -> None:
+        await _answered(service)
+        await service.assess_clarity(mission_id="m-1")
+        await service.assess_clarity(mission_id="m-1")
+        await service.approve(mission_id="m-1", statement="진행")
+        await service.record_answer(
+            mission_id="m-1", answer="비로그인은 조회만", authority="decision", question="추가"
+        )
+
+        decision = await service.decide_gate(mission_id="m-1")
+
+        assert decision.outcome == "HOLD"
+        conditions = {blocker.condition.value for blocker in decision.clarity_blockers}
+        assert "assessment_missing" in conditions
+        assert any("approval" in blocker.condition.value for blocker in decision.gate_blockers)
+
+    async def test_unresolved_item_resets_both(
+        self, service: BriefService, repository: InMemoryBriefRepository
+    ) -> None:
+        await _answered(service)
+        await service.assess_clarity(mission_id="m-1")
+        assessed = await repository.load("m-1")
+        assert assessed is not None
+
+        state = assessed.note_unresolved(description="비로그인 정책 미정", is_material=True)
+
+        assert state.assessment is None
+        assert state.stability_signal == 0
+
+
+class TestAssessmentFailure:
+    """B-035, B-036 — 평가 실패를 점수로 해석하지 않는다."""
+
+    async def test_failure_is_not_reported_as_progress(
+        self, service: BriefService, assessor: ScriptedClarityAssessor
+    ) -> None:
+        await _answered(service)
+        assessor.fail_next = True
+
+        with pytest.raises(ClarityAssessmentError):
+            await service.assess_clarity(mission_id="m-1")
+
+    async def test_failure_resets_a_previously_qualifying_signal(
+        self,
+        service: BriefService,
+        assessor: ScriptedClarityAssessor,
+        repository: InMemoryBriefRepository,
+    ) -> None:
+        """초기화를 저장하지 않으면 이전 통과 결과로 다음 Gate가 CLEAR한다."""
+        await _answered(service)
+        await service.assess_clarity(mission_id="m-1")
+        assessor.fail_next = True
+
+        with pytest.raises(ClarityAssessmentError):
+            await service.assess_clarity(mission_id="m-1")
+
+        stored = await repository.load("m-1")
+        assert stored is not None
+        assert stored.assessment is None
+        assert stored.stability_signal == 0
+
+    async def test_incomplete_scores_are_treated_as_no_result(
+        self, repository: InMemoryBriefRepository, generator: ScriptedQuestionGenerator
+    ) -> None:
+        """가중치가 부여된 축이 빠진 결과는 높은 점수도 낮은 점수도 아니다."""
+
+        class PartialAssessor:
+            async def assess(self, request: AssessmentRequest) -> ClarityAssessment:
+                return ClarityAssessment(
+                    scores=(DimensionScore(dimension="goal", clarity=1.0, justification="t"),),
+                    policy_version=POLICY.version,
+                )
+
+        service = BriefService(
+            repository=repository,
+            question_generator=generator,
+            clarity_assessor=PartialAssessor(),
+            policy=POLICY,
+        )
+        await _answered(service)
+
+        with pytest.raises(ClarityAssessmentError):
+            await service.assess_clarity(mission_id="m-1")
+
+    async def test_reset_save_failure_surfaces(
+        self,
+        service: BriefService,
+        assessor: ScriptedClarityAssessor,
+        repository: InMemoryBriefRepository,
+    ) -> None:
+        """signal 저장이 실패하면 진행 가능 상태를 보고하지 않는다."""
+        await _answered(service)
+        assessor.fail_next = True
+        repository.fail_next_save = True
+
+        with pytest.raises(OSError):
+            await service.assess_clarity(mission_id="m-1")
+
+    async def test_assessment_is_not_stored_when_save_fails(
+        self, service: BriefService, repository: InMemoryBriefRepository
+    ) -> None:
+        await _answered(service)
+        repository.fail_next_save = True
+
+        with pytest.raises(OSError):
+            await service.assess_clarity(mission_id="m-1")
+
+        stored = await repository.load("m-1")
+        assert stored is not None
+        assert stored.assessment is None

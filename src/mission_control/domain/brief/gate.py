@@ -28,12 +28,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal
 
-from mission_control.domain.brief.clarity import (
-    ClarityAssessment,
-    ClarityPolicy,
-    CompletionBlocker,
-)
+from mission_control.domain.brief.clarity import ClarityPolicy, CompletionBlocker
 from mission_control.domain.brief.state import BriefState
+from mission_control.domain.errors import StaleGateDecisionError
+from mission_control.domain.stage import Stage
 
 #: Gate 판정 결과. ``NO-GO``는 사용하지 않는다 (``docs/00_MISSION_CONTROL.md`` §5).
 GateOutcome = Literal["CLEAR", "HOLD"]
@@ -66,7 +64,7 @@ class BriefGateDecision:
     policy_version: str
     clarity_blockers: tuple[CompletionBlocker, ...]
     gate_blockers: tuple[GateBlocker, ...]
-    next_destination: Literal["blueprint"] | None
+    next_destination: Stage | None
 
     @property
     def blocking_reasons(self) -> tuple[str, ...]:
@@ -77,27 +75,26 @@ class BriefGateDecision:
         )
 
 
-def evaluate_brief_gate(
-    *,
-    state: BriefState,
-    assessment: ClarityAssessment | None,
-    policy: ClarityPolicy,
-    stability_signal: int,
-) -> BriefGateDecision:
+def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGateDecision:
     """Brief가 Blueprint로 진행할 수 있는지 판정한다.
 
     Gate는 질문 루프의 종료 판정(:meth:`ClarityPolicy.assess_completion`)을
     입력으로 사용하되 그것과 동일하지 않다. 종료 후보 도달은 사용자에게 승인을
     물어볼 자격이고, ``CLEAR``는 승인을 받은 뒤에야 가능하다.
 
+    평가 결과와 stability signal을 인자로 받지 않고 상태에서 읽는다. 따로 받으면
+    호출자가 지난 revision의 평가를 현재 상태에 붙여 판정할 수 있고, 그것이
+    §8.1 규칙 7이 막으려는 상황이다. 상태에 함께 저장되어 있으므로 material
+    변경이 둘을 동시에 무효화한다.
+
     이 함수는 순수 함수다. 상태를 바꾸지 않으며 저장도 하지 않는다. persistence
     성공 여부는 호출하는 application 계층이 판단한다 — 저장에 실패했다면
     ``CLEAR``를 기록해서는 안 된다 (``docs/05_BRIEF.md`` §9.2).
     """
     candidacy = policy.assess_completion(
-        assessment=assessment,
+        assessment=state.assessment,
         answered_rounds=len(state.answered_rounds),
-        stability_signal=stability_signal,
+        stability_signal=state.stability_signal,
     )
 
     gate_blockers: list[GateBlocker] = []
@@ -135,5 +132,27 @@ def evaluate_brief_gate(
         policy_version=policy.version,
         clarity_blockers=candidacy.blockers,
         gate_blockers=tuple(gate_blockers),
-        next_destination="blueprint" if cleared else None,
+        next_destination=Stage.BLUEPRINT if cleared else None,
     )
+
+
+def next_stage_after_brief(*, state: BriefState, decision: BriefGateDecision) -> Stage:
+    """Gate decision을 실제 Stage 전이로 옮긴다.
+
+    Brief에서 나가는 정상 경로는 ``CLEAR`` 하나뿐이고 목적지는 Blueprint뿐이다.
+    ``HOLD``는 Stage exit가 아니라 Brief에 머무르는 판정이다
+    (``docs/05_BRIEF.md`` §9.2, ``docs/02_MISSION_LIFECYCLE.md`` §9).
+
+    Brief → Execute와 Brief → Verify는 금지 전이다 (Lifecycle §9.1). 이 함수는
+    그 두 값을 반환할 수 없으므로 금지가 검사 항목이 아니라 타입으로 성립한다.
+
+    판정과 전이 사이에 내용이 바뀌었으면 거부한다. Gate가 본 적 없는 revision을
+    승인된 것으로 넘기지 않기 위해서다.
+    """
+    if decision.revision != state.revision:
+        raise StaleGateDecisionError(
+            mission_id=state.mission_id,
+            decision_revision=decision.revision,
+            current_revision=state.revision,
+        )
+    return Stage.BLUEPRINT if decision.outcome == "CLEAR" else Stage.BRIEF

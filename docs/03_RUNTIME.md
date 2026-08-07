@@ -362,9 +362,7 @@ class TextGenerationRequest:
 @dataclass(frozen=True)
 class RuntimeResult:
     invocation_id: InvocationId
-    terminal_status: Literal[
-        "succeeded", "failed", "cancelled", "timed_out", "indeterminate"
-    ]
+    terminal_status: Literal["succeeded", "failed", "cancelled", "timed_out", "indeterminate"]
     output_artifacts: tuple[ArtifactRef, ...]
     events: tuple[CanonicalRuntimeEvent, ...]
     runtime_error: RuntimeError | None
