@@ -69,15 +69,23 @@ Codex CLI에 **도구 단위 allowlist 전달은 없다** — 경계는 sandbox 
   `STALL_TIMEOUT_SECONDS`, `evidence/runtime_metadata.py:76`) — 총 실행
   시간이 아니라 마지막 신호 이후 시간이다.
 
-## 6. MCP는 실행 통로가 아니라 제어 표면이다 — 방향 구분
+## 6. MCP의 방향 구분 — 주 경로는 제어 표면, 그러나 실행 통로도 실재한다
 
-도그푸딩에서 관찰되는 "MCP로 codex와 통신"은 **반대 방향**이다 — worker
-실행이 아니라 제어다. 세 경로를 구분해야 한다.
+> **2026-08-09 정정.** 원래 제목은 "MCP는 실행 통로가 **아니라** 제어
+> 표면이다"였고, 아래 1번은 "코어가 실행할 때는 MCP가 아니라 subprocess다"라고
+> 단정했다. **이 일반화는 거짓이다** — upstream은 코어가 MCP **클라이언트**가
+> 되어 worker를 구동하는 backend를 실제로 등록해두고 있다(`codex_mcp`). 조사
+> 당시 본 것은 `codex`/`claude` backend 두 개뿐이었고, 그 둘이 subprocess인 것을
+> backend 축 전체로 넓혀 쓴 것이 오류다. 아래 4번을 추가하고 전모는 §12에 쓴다.
 
-1. **코어 → worker (실행)**: Python 코어가 작업을 실행할 때는 MCP가 아니라
-   **subprocess**다 — `codex exec`를 직접 띄운다 (§3, §5.
+도그푸딩에서 관찰되는 "MCP로 codex와 통신"은 **기본 경로에서는 반대 방향**이다
+— worker 실행이 아니라 제어다. 네 경로를 구분해야 한다.
+
+1. **코어 → worker (실행, 기본)**: 기본 backend가 작업을 실행할 때는 MCP가
+   아니라 **subprocess**다 — `codex exec`를 직접 띄운다 (§3, §5.
    `codex_cli_adapter.py:3` "shells out to `codex exec`",
-   `codex_cli_runtime.py`).
+   `codex_cli_runtime.py`). 이는 `codex`·`claude`·`opencode` backend에 한해
+   참이며, backend 축 전체의 성질이 아니다 (4번).
 2. **host → 코어 (제어)**: 도그푸딩에서 보이는 MCP 통신 — host CLI 세션
    (Claude/Codex/OpenCode 안의 skill 계층)이 **ouroboros의 MCP 서버**
    (`ouroboros_evaluate` 등)를 호출한다. worker와의 통신이 아니라
@@ -87,11 +95,17 @@ Codex CLI에 **도구 단위 allowlist 전달은 없다** — 경계는 sandbox 
    **host가 자기 runtime으로 실행**하게 위임한다. 그 외 모든 runtime에서는
    "실제 in-process 실행 경로를 돌려야 한다"고 명시되어 있다
    (`mcp/tools/subagent.py:793-805`).
+4. **코어 → worker (실행, MCP)**: `codex_mcp` backend에서는 코어가 **MCP
+   클라이언트**가 되어 `codex mcp-server`의 `codex`/`codex-reply` 툴을 호출한다
+   — 1번과 방향이 같고 전송만 MCP다. 기본값이 아니며 별도 backend 이름으로
+   선택해야 한다. 상세는 §12.
 
 Mission Control 대응: 1은 [ADR-0033](../adr/0033-first-runtime-adapter-contract.md)
 (우리 Codex adapter — 같은 subprocess 축), 2는 Phase 7 MCP control surface
 ([ADR-0007](../adr/0007-mcp-is-control-surface.md) — 같은 배치), 3은
-[Open Questions §8](./OPEN_QUESTIONS.md)(host 직접 작업 경로)의 결정 재료다.
+[Open Questions §8](./OPEN_QUESTIONS.md)(host 직접 작업 경로), 4는
+[Open Questions §7](./OPEN_QUESTIONS.md)(leader-driven 실행 모델 채택 여부)의
+결정 재료다.
 
 ## 7. 완성(text) 경로 — `--output-schema`와 재시도 (2026-08-08 후속)
 
@@ -136,9 +150,15 @@ Mission Control 대응: 1은 [ADR-0033](../adr/0033-first-runtime-adapter-contra
 
 ## 9. 조사하지 않은 것
 
-- OpenCode runtime의 상세 계약 (`opencode_runtime.py`) — 두 번째 adapter
-  도입 시 조사한다.
+- ~~OpenCode runtime의 상세 계약 (`opencode_runtime.py`)~~ — **§11에서 조사
+  완료** (2026-08-08 후속). 이 줄은 2026-08-09까지 남아 있던 낡은 표기다.
 - `AgentMessage`의 정확한 필드와 이벤트 정규화 규칙 — 스트리밍 도입 시.
+- **`ClaudeAgentAdapter`의 전송 방식** (기본 `runtime_backend="claude"`가 쓰는
+  runtime) — §12.2 표에서 미조사로 남았다. 우리 텍스트 lane은 `claude -p`
+  단발이고(§10) 이 adapter는 실행 lane이라 축이 다르다.
+- **leader-driven worker pool의 상세 계약** — `LeaderDrivenWorkerRuntime`의
+  spawn/resume 계약, 세션 풀 수명, 실패 시 재배치 규칙. Open Questions §7의
+  실행 모델 결정이 이 조사를 요구하면 그때 수행한다 (§12.5).
 
 ## 10. Claude 텍스트 backend 조사 (2026-08-08 후속)
 
@@ -285,6 +305,80 @@ OpenCode를 Execute 하네스로 배치한다 (아래 "Mission Control 함의" �
   스모크 확인 대상: stdin 프롬프트 자동 감지, `--auto`의 실효(권한 프롬프트
   없이 완주), `--dangerously-skip-permissions` 수용 여부(기록용), `text`
   이벤트·`sessionID` 필드 형태의 1.18.15 실물.
+
+## 12. runtime × backend 두 축과 leader-driven worker pool (2026-08-09 후속)
+
+> Evidence level: **Verified** — 소스 확인. Baseline `9486c78`.<br>
+> 계기: "backend를 codex↔opencode로 바꾸는 게 MCP 기능이냐"는 질문. 확인 결과
+> §6의 일반화가 틀렸고 그 정정을 여기에 쓴다.
+
+### 12.1 축은 두 개다 — backend(무엇)와 runtime(어떻게 구동)
+
+`orchestrator/adapter.py:798-806` (`SubagentOrchestration` docstring):
+
+> "This is a property of the **(runtime × backend) PAIR** … NOT of the backend
+> name alone. The same backend can present different modes under different
+> runtimes: `codex` driven by `codex exec` is INTERNAL, but the same `codex`
+> driven as `codex mcp-server` … is EXTERNAL_LEADER_DRIVEN."
+
+### 12.2 등록된 이름은 vendor가 아니라 vendor×전송이다
+
+`backends/factory_registry.py`와 `orchestrator/runtime_factory.py:72-130`:
+
+| 등록 이름 | `llm_backend` | 실제 전송 | 계열 |
+|---|---|---|---|
+| `claude` (기본값) | `claude_code` | `ClaudeAgentAdapter` — **미조사** | — |
+| `codex` | `codex` | `codex exec` 서브프로세스 | INTERNAL |
+| **`codex_mcp`** | **없음** | **`codex mcp-server`를 MCP로 호출** | EXTERNAL_LEADER_DRIVEN |
+| `claude_mcp` | **없음** | `claude -p --resume` 서브프로세스 | EXTERNAL_LEADER_DRIVEN |
+| `opencode` | `opencode` | `opencode run --pure` 서브프로세스 | subprocess 고정 |
+
+두 가지를 함께 읽어야 한다.
+
+- `*_mcp` 접미사는 **전송 이름이 아니라 계열 이름**이다. `claude_mcp`의 전송은
+  MCP가 아니라 `claude -p --resume`다 (`runtime_factory.py:107-120`). 이 계열에서
+  실제로 MCP를 쓰는 것은 **`codex_mcp` 하나뿐**이다.
+- MCP 구동 변종에는 `llm_backend`가 **없다** — 텍스트 lane이 아니라 **실행
+  lane에만** 존재한다.
+
+### 12.3 재사용되는 것은 worker pool 골격이고 vendor마다 다른 것은 transport다
+
+`orchestrator/worker_runtime.py:1-15`:
+
+> "ouroboros is the LEADER and drives an addressable, resumable worker session
+> DIRECTLY — it spawns a session, holds its native id, and continues it across
+> turns. … a provider becomes a worker pool by supplying a thin
+> `LeaderDrivenWorkerTransport` (spawn + resume), not a bespoke runtime."
+
+codex의 transport가 MCP(`codex`/`codex-reply` + `threadId`), claude의 transport가
+`--resume`(`session_id`)다. 오케스트레이션 두뇌(ParallelExecutor / AgentProcess /
+EventStore)는 둘 다에서 그대로다.
+
+### 12.4 기본값과 한계 — MCP 구동은 기본도 아니고 완성형도 아니다
+
+- 기본 `runtime_backend`는 **`"claude"`**다. 해석 순서는 `OUROBOROS_AGENT_RUNTIME`
+  → `OUROBOROS_RUNTIME` → `config.yaml orchestrator.runtime_backend` → 하드코딩
+  `"claude"` (`config/loader.py:651-658`).
+- `codex mcp-server` 세션은 **프로세스 귀속**이다. 동시성 안전을 위해
+  spawn-per-call을 택했기 때문에 다른 프로세스의 `codex-reply`는 "Session not
+  found"를 돌려준다. 그래서 이 transport는 **단발 턴만** 네이티브로 지원하고,
+  견고한 다중 턴 resume은 영속 연결 풀이 필요한 **upstream 자신의 후속 과제**다
+  (`codex_mcp_runtime.py:1-26`, 2026-06-21 검증 기록).
+- 대조: `codex exec resume`과 `claude -p --resume`은 디스크 영속이라 프로세스를
+  넘겨 재개된다.
+
+### 12.5 Mission Control 함의
+
+- 우리 실행 모델은 **단발**이다 — `codex exec` 한 번이 AC 하나
+  ([ADR-0033](../adr/0033-first-runtime-adapter-contract.md)). upstream의 `codex`
+  backend와 같은 축이고, leader-driven / MCP 구동 변종의 **대응물은 없다**.
+- 실행 모델과 세션 재개 표현은 되돌리기 비싼 축이므로 "필요해지면 재평가"로
+  넘기지 않고 미결로 등록한다 → [Open Questions §7](./OPEN_QUESTIONS.md).
+- **backend 이름 축은 이미 정렬되어 있다.** 우리 `codex_cli`
+  (`ExecutionRuntime.backend`)는 vendor가 아니라 vendor×전송이며, upstream이
+  `codex`와 `codex_mcp`를 별개 키로 등록한 것과 같은 결이다.
+  [ADR-0039](../adr/0039-stage-runtime-routing-table.md)의 backend 키 공간은 이
+  근거 위에 선다.
 
 ## Mission Control 함의
 

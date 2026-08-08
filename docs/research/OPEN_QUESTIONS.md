@@ -325,6 +325,17 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       로컬 모델 성능이 실 하네스 검증 수준이 아니다). 구조는 Phase 6
       라우팅 테이블이 열어 두고, 실물 대상이 생길 때 결정한다.
       [RUNTIME_UPSTREAM_FINDINGS §6](./RUNTIME_UPSTREAM_FINDINGS.md) 미조사
+- [ ] **leader-driven 실행 모델(재개 가능한 worker 세션)을 채택할지 결정한다.**
+      (2026-08-09 등록) upstream은 단발 실행(`codex exec`, INTERNAL)과 나란히
+      **코어가 leader가 되어 addressable·resumable worker 세션을 직접 구동하는**
+      계열을 등록해 두고 있다 — codex는 `codex mcp-server`를 **MCP로** 호출하고
+      (`codex_mcp`), claude는 `claude -p --resume`를 쓴다(`claude_mcp`).
+      우리 대응물은 **없다**(단발만). 실행 모델과 세션 재개 표현은 되돌리기
+      비싼 축이므로 실수요를 기다리지 않고 여기 등록한다. 판단 재료: upstream
+      기본값은 여전히 단발 계열이고(`config/loader.py:651-658`),
+      `codex mcp-server` 세션은 프로세스 귀속이라 단발 턴만 네이티브 지원이며
+      다중 턴 resume은 upstream 자신의 미완 과제다.
+      → [RUNTIME_UPSTREAM_FINDINGS §12](./RUNTIME_UPSTREAM_FINDINGS.md)
 
 ## 8. MCP and CLI decisions
 

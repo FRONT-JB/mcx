@@ -754,6 +754,16 @@ verdict(충족·score·불확신·게이밍)다. 나머지는 **계약 미달**�
   라우팅 테이블 도입(닫힌 Stage enum 키, lane별 backend 쌍, 3단 해석,
   fail-fast), 설정 표면은 `config.toml`(ADR-0038 개정). **구현은 Phase 6
   잔여 작업이다.**
+- **leader-driven 실행 모델의 대응물이 없다 — 미결로 등록 (2026-08-09).**
+  우리 실행은 단발이다(`codex exec` 한 번 = AC 하나, ADR-0033). upstream은
+  그와 나란히 **코어가 leader가 되어 재개 가능한 worker 세션을 직접 구동하는**
+  계열을 등록해 두고 있고, codex의 전송은 **MCP**다(`codex mcp-server`).
+  이 발견으로 [RUNTIME findings §6](../research/RUNTIME_UPSTREAM_FINDINGS.md)의
+  *"코어의 실행은 MCP가 아니라 subprocess다"* 를 정정했다 — `codex`·`claude`·
+  `opencode` backend에 한해 참인 진술을 backend 축 전체로 넓혀 쓴 오류였다.
+  실행 모델은 되돌리기 비싼 축이므로
+  [Open Questions §7](../research/OPEN_QUESTIONS.md)에 미결로 등록했다.
+  전모는 [RUNTIME findings §12](../research/RUNTIME_UPSTREAM_FINDINGS.md).
 
 - **canonical Stage 저장이 아직 없다 — 처분 완료, 도입은 Phase 6.** Entry
   Contract들의 "현재 Stage가 X다" 조건은 전 Stage에서 미강제이며, 실질

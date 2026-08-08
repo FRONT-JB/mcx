@@ -15,7 +15,7 @@
 - [EVALUATE_UPSTREAM_FINDINGS.md](./EVALUATE_UPSTREAM_FINDINGS.md) — Evaluate 파이프라인·Telemetry 실물 조사
 - [VERIFY_UPSTREAM_FINDINGS.md](./VERIFY_UPSTREAM_FINDINGS.md) — mechanical 발견·allowlist·semantic verdict 조사
 - [REPAIR_UPSTREAM_FINDINGS.md](./REPAIR_UPSTREAM_FINDINGS.md) — failure taxonomy·retry budget·progress signal 조사
-- [RUNTIME_UPSTREAM_FINDINGS.md](./RUNTIME_UPSTREAM_FINDINGS.md) — LLMAdapter/AgentRuntime 분리, codex·claude·opencode 실행 계약 조사 (§10 Claude, §11 OpenCode 사용 시점)
+- [RUNTIME_UPSTREAM_FINDINGS.md](./RUNTIME_UPSTREAM_FINDINGS.md) — LLMAdapter/AgentRuntime 분리, codex·claude·opencode 실행 계약 조사 (§10 Claude, §11 OpenCode 사용 시점, §12 runtime×backend 두 축과 MCP 구동 worker — §6 정정)
 - [CLI_UPSTREAM_FINDINGS.md](./CLI_UPSTREAM_FINDINGS.md) — CLI 표면 두께·품질 루프의 거처·canonical phase 저장 조사 (Open Questions §8 선행 항목)
 - [DOGFOODING_0001.md](./DOGFOODING_0001.md) — 실 AI 도그푸딩 1차 (전부 codex) 관측 기록
 - [DOGFOODING_0002.md](./DOGFOODING_0002.md) — 실 AI 도그푸딩 2차 (claude+codex, Recover 경로) 관측 기록

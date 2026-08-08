@@ -4,7 +4,8 @@
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0003](./0003-runtime-abstraction.md) (Runtime 추상화),
   [ADR-0023](./0023-execute-entry-and-provenance.md) 미이행 약속 해소
-- Upstream evidence: [RUN_UPSTREAM_FINDINGS §1·§11.2](../research/RUN_UPSTREAM_FINDINGS.md)
+- Upstream evidence: [RUN_UPSTREAM_FINDINGS §1·§11.2](../research/RUN_UPSTREAM_FINDINGS.md),
+  [RUNTIME_UPSTREAM_FINDINGS §12](../research/RUNTIME_UPSTREAM_FINDINGS.md) (§7 보강)
 
 ## Context
 
@@ -102,6 +103,29 @@ Mission Control은 CLI/MCP가 같은 application service와 같은 composition�
 조회 지점은 늘지 않는다 — upstream이 3곳에서 같은 resolver를 부르는 것과 같은
 효과를 구조로 얻는다.
 
+### 7. backend 이름은 vendor가 아니라 vendor×전송이다 (2026-08-09 보강)
+
+레지스트리 키를 vendor 이름(`codex`)으로 둘지 전송까지 담은 이름(`codex_cli`)으로
+둘지는 되돌리기 비싼 명명 축이다. **upstream이 후자다** — 같은 codex 바이너리를
+`codex exec`로 구동하는 것과 `codex mcp-server`로 구동하는 것을 `codex`와
+`codex_mcp`라는 **별개 키**로 등록한다. 근거는 upstream 자신의 선언이다:
+
+> "This is a property of the **(runtime × backend) PAIR** … NOT of the backend
+> name alone." (`orchestrator/adapter.py:798-806`)
+
+따라서 우리 `codex_cli`(`ExecutionRuntime.backend`, [ADR-0033](./0033-first-runtime-adapter-contract.md) §1)는
+장식이 아니라 축을 담은 이름이며 그대로 유지한다 — 훗날 MCP 구동 변종이 들어와도
+키가 충돌하지 않는다.
+
+부수적으로, **한 backend가 lane 하나만 서비스할 수 있다**는 것도 upstream에서
+확인된다: `codex_mcp`/`claude_mcp` 항목에는 `runtime_backend`만 있고
+`llm_backend`가 없다(`backends/factory_registry.py`). 이는 §2가 등록한
+divergence(stage당 lane별 라우팅)를 해소하지는 않는다 — upstream의 것은 *backend가
+어떤 lane을 서비스하는가*이고 우리 것은 *stage를 lane별로 어디에 보내는가*다.
+축이 다르다는 사실을 여기 명시해 다음 대조가 둘을 혼동하지 않게 한다.
+
+근거: [RUNTIME_UPSTREAM_FINDINGS §12](../research/RUNTIME_UPSTREAM_FINDINGS.md).
+
 ## Consequences
 
 ### Positive
@@ -137,3 +161,6 @@ Mission Control은 CLI/MCP가 같은 application service와 같은 composition�
 - 설정 파일이 없으면 기본 조립(Claude 텍스트 + Codex 실행)이 쓰인다.
 - `stages[stage][lane]` → `default[lane]` → 기본 조립 순서가 지켜진다.
 - Stage가 쓰지 않는 lane을 조회하면 조용한 기본값이 아니라 오류다.
+- 레지스트리 키는 전송을 담은 이름이다 — 실행 lane의 등록 이름이 `codex`가 아니라
+  `codex_cli`이고, 이 이름이 provenance(`ExecuteState.runtime_backend`)와 원장
+  호출 계수 키에서 동일하다 (§7).
