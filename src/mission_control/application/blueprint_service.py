@@ -160,9 +160,7 @@ class BlueprintService:
                 current=handoff.revision,
             )
 
-        blueprint = assemble_blueprint(
-            draft=draft, handoff=handoff, revision=state.revision + 1
-        )
+        blueprint = assemble_blueprint(draft=draft, handoff=handoff, revision=state.revision + 1)
         revised = state.revise(blueprint=blueprint)
         await self.repository.save(revised)
         return revised

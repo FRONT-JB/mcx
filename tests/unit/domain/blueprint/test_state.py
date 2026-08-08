@@ -38,9 +38,7 @@ def _blueprint(*, revision: int = 1, goal: str = "댓글을 쓰고 볼 수 있�
 
 
 def _assessment(score: float, *, correctness: float | None = None) -> QaAssessment:
-    dimensions = (
-        ((QaDimension.CORRECTNESS, correctness),) if correctness is not None else ()
-    )
+    dimensions = ((QaDimension.CORRECTNESS, correctness),) if correctness is not None else ()
     return QaAssessment(score=score, dimension_scores=dimensions)
 
 

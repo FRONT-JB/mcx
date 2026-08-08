@@ -50,9 +50,7 @@ def repository(tmp_path: Path) -> FileBlueprintRepository:
 
 
 class TestRoundTrip:
-    async def test_load_returns_none_when_absent(
-        self, repository: FileBlueprintRepository
-    ) -> None:
+    async def test_load_returns_none_when_absent(self, repository: FileBlueprintRepository) -> None:
         assert await repository.load("m-1") is None
 
     async def test_revisions_qa_and_approval_survive_together(
@@ -80,9 +78,7 @@ class TestRoundTrip:
 
 
 class TestStaleWrites:
-    async def test_same_sequence_is_rejected(
-        self, repository: FileBlueprintRepository
-    ) -> None:
+    async def test_same_sequence_is_rejected(self, repository: FileBlueprintRepository) -> None:
         state = _approved_state()
         await repository.save(state)
         with pytest.raises(StaleWriteError):
@@ -111,9 +107,7 @@ class TestStaleWrites:
 
 
 class TestFileSafety:
-    async def test_unsafe_mission_id_is_rejected(
-        self, repository: FileBlueprintRepository
-    ) -> None:
+    async def test_unsafe_mission_id_is_rejected(self, repository: FileBlueprintRepository) -> None:
         with pytest.raises(ValueError, match="unsafe mission id"):
             await repository.load("../escape")
 

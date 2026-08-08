@@ -52,6 +52,7 @@ Blueprint Stage의 upstream 대비 차이를 다음 표로 등록한다.
 | 항목 | 내용 |
 |---|---|
 | FAIL 이후 루프 폐쇄 | `fail_threshold` 값은 upstream 것이나, FAIL 후 재채점·재편집을 금지하는 성문 규칙은 확인하지 못했다 ([ADR-0021](./0021-blueprint-state-and-revisions.md) §4) |
+| 직전 채점 지적의 전달 | `QaRequest.previous_findings`는 직전 채점의 지적만 다음 채점에 전달한다. upstream skill 루프는 대화 안에 있어 전체 이력이 암묵적으로 전달되는데, 성문 규정과 전달 범위는 확인하지 못했다 (Phase 2 종료 검토에서 발견, [progress 0002](../progress/0002_BLUEPRINT_VERTICAL_SLICE.md)) |
 | `ooo seed` 진입이 interview score를 다시 강제하는지 | [SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md) §11 미조사 항목 |
 | Seed revision lineage와 `parent_seed_id`의 정확한 의미 | §11 미조사 항목 — 저장 형태 차이(위 표)의 대조 정밀도에 영향 |
 

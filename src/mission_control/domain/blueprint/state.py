@@ -78,8 +78,7 @@ class QaEscalatedError(MissionControlError):
 
     def __init__(self, *, mission_id: str) -> None:
         super().__init__(
-            f"QA for mission {mission_id} escalated on a FAIL verdict; "
-            "the loop does not continue"
+            f"QA for mission {mission_id} escalated on a FAIL verdict; the loop does not continue"
         )
         self.mission_id = mission_id
 
@@ -266,9 +265,7 @@ class BlueprintState(BaseModel):
                 f"revision belongs to mission {blueprint.mission_id}, not {self.mission_id}"
             )
         if blueprint.revision != self.revision + 1:
-            raise ValueError(
-                f"expected revision {self.revision + 1}, got {blueprint.revision}"
-            )
+            raise ValueError(f"expected revision {self.revision + 1}, got {blueprint.revision}")
         return self.model_copy(
             update={
                 "sequence": self.sequence + 1,
@@ -313,6 +310,4 @@ class BlueprintState(BaseModel):
             qa_iterations=len(self.qa_records),
             accepted_below_threshold=accept_below_threshold,
         )
-        return self.model_copy(
-            update={"sequence": self.sequence + 1, "approval": approval}
-        )
+        return self.model_copy(update={"sequence": self.sequence + 1, "approval": approval})

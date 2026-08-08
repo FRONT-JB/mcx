@@ -71,9 +71,7 @@ class ScriptedJudge:
         self.calls += 1
         return QaAssessment(
             score=score,
-            findings=(
-                QaFinding(detail="확인 방법이 느슨하다", suggestion="출력 조건을 명시"),
-            ),
+            findings=(QaFinding(detail="확인 방법이 느슨하다", suggestion="출력 조건을 명시"),),
         )
 
 

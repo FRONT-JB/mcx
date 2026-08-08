@@ -59,9 +59,7 @@ class BlueprintGateDecision:
         return tuple(blocker.detail for blocker in self.gate_blockers)
 
 
-def evaluate_blueprint_gate(
-    *, state: BlueprintState, brief_revision: int
-) -> BlueprintGateDecision:
+def evaluate_blueprint_gate(*, state: BlueprintState, brief_revision: int) -> BlueprintGateDecision:
     """Blueprint가 Execute로 진행할 수 있는지 판정한다.
 
     ``brief_revision``은 호출자가 저장소에서 읽은 **현재** Brief revision이다.
@@ -115,9 +113,7 @@ def evaluate_blueprint_gate(
     )
 
 
-def next_stage_after_blueprint(
-    *, state: BlueprintState, decision: BlueprintGateDecision
-) -> Stage:
+def next_stage_after_blueprint(*, state: BlueprintState, decision: BlueprintGateDecision) -> Stage:
     """Gate decision을 실제 Stage 전이로 옮긴다.
 
     Blueprint에서 나가는 정상 경로는 ``CLEAR`` 하나뿐이고 목적지는 Execute뿐이다

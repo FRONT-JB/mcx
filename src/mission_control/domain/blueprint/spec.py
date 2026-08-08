@@ -128,9 +128,7 @@ class Blueprint(BaseModel):
         seen: set[str] = set()
         for item in self.acceptance_criteria:
             if item.key in seen:
-                raise ValueError(
-                    f"duplicate acceptance criterion contract: {item.description!r}"
-                )
+                raise ValueError(f"duplicate acceptance criterion contract: {item.description!r}")
             seen.add(item.key)
         return self
 
