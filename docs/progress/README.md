@@ -7,8 +7,8 @@
 | Project phase | Phase 3 — Execute vertical slice COMPLETE; Phase 4 준비 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 COMPLETE (2026-08-08, [종료 검토](./0002_BLUEPRINT_VERTICAL_SLICE.md)); Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)) |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner) |
-| Automated tests | 458 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner) |
+| Automated tests | 482 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -188,8 +188,14 @@ schema 시점, 고아 attempt, 재시도 정책)을 잡았다. `[-]` 항목은 v
   revision의 mechanical 증거 위에서만 기록, 재검증이 verdicts를 무효화
   (ADR-0030, commit 153f8d7, `test_verdict.py`·`test_gate.py`). 실제
   평가자는 Phase 5 — v1은 port + 결정적 fake
-- [ ] failure packet
-- [ ] Recover attempt history/budget
+- [x] failure packet — 저장된 기록에서 결정적 파생(원천 4종 + BLOCKED·STALL
+  분류), 파생이므로 저장하지 않음 (ADR-0031 §1~§3, commit 9424b4e,
+  `test_packet.py`)
+- [x] Recover attempt history/budget — AC당 교정 재시도 2회(revision 리셋),
+  실패 증거를 실은 교정(`ExecutionRequest.previous_failure`), 동일 오류 해시
+  3회 중단, 예산 소진·BLOCKED·STALL·escalation은 HOLD (ADR-0031 §4~§5,
+  `test_recover_service.py`·`test_recover_flow.py` — 실패→교정→재검증→
+  MISSION COMPLETE 전체 순환)
 - [x] MISSION COMPLETE Gate — ADR-0030 §4 네 조건(두 층 통과·불확신 없음·
   게이밍 의심 없음)으로 `CLEAR — MISSION COMPLETE` 도달 가능. 불확신은
   실패가 아니라 escalation 대기 HOLD (commit 153f8d7,
@@ -320,11 +326,16 @@ Recover 첫 slice 계약은 2026-08-08 고정되었다
 오류 해시 3회면 중단한다. 전부 upstream 값 채택이다. ADR-0025의 마지막
 미확인(실패 증거 전달)도 이 조사로 해소되었다.
 
-다음 검증 가능한 목표 한 개: **Recover 첫 vertical slice를 구현한다** —
-FailurePacket 파생(실행·mechanical·semantic 실패에서), 재시도 예산·동일 오류
-중단·BLOCKED 인식, `ExecutionRequest.previous_failure` 확장과 교정 재시도
-경로, Recover Gate(`CLEAR` → Verify 재검증)까지. 완료 시 다섯 Stage 전부가
-end-to-end로 이어지고 Phase 4 종료 검토에 들어갈 수 있다.
+Recover 첫 slice는 2026-08-08 구현되었다 (commit 9424b4e, 482 tests) — 실패
+packet이 기록에서 결정적으로 파생되고, 교정 재시도가 실패 증거를 가지고 가며
+(마지막 예산엔 접근 전환 신호), 예산·동일 오류·BLOCKED가 재시도를 중단한다.
+**다섯 Stage 전부가 파일 저장소를 거쳐 이어진다** — 실패 → 교정 → 재검증 →
+`MISSION COMPLETE`의 전체 순환이 실제 명령으로 검증되었다.
+
+다음 검증 가능한 목표 한 개: **Phase 4 종료 검토를 수행하고 progress record
+0004를 남긴다.** 여섯 질문에 더해 이번 특별 대조 항목: Verify·Recover Guide의
+Test Matrix 전 행과 Gate 조건들(08 §9·§12, 09 §5·§11~§12)을 assertion과
+대조하고, 검사되지 않는 조건을 "강제되지 않는 것" 표로 남긴다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
