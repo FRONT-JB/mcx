@@ -105,9 +105,12 @@ QA 8(성공 5 + `error_max_turns` 실패 2 + 진단 1), semantic 9.
 
 ## 5. 백로그로 등록한 관측 (구현 안 함 — OPEN_QUESTIONS §5·§8)
 
-1. **semantic 판정 병렬화 후보** — AC 9개 판정은 서로 독립인데 순차 12분.
-   감사 3-lane 병렬화(ADR-0035 §2)와 같은 축. upstream evaluate의 AC 병렬
-   여부 미확인 — 조사 후 처분.
+1. **semantic 판정 병렬화** — AC 9개 판정은 서로 독립인데 순차 12분.
+   → **같은 날 조사·처분 완료**: upstream은 semantic stage를 AC별
+   `asyncio.gather`로 병렬 실행 + 실패 시 전체 중단
+   (`mcp/tools/evaluation_handlers.py:877-955`). gather 정렬 구현,
+   Barrier 테스트 고정 (ADR-0030 정렬 note). 9-AC 기준 기대 wall-clock
+   ~12분 → 최장 AC 1건 수준(~2분).
 2. **verdict 일괄 저장 → 진행 가시성 0** — semantic 12분 동안 저장 상태로는
    진척을 알 수 없었다.
 3. **status 박스 (사용자 제안, 2026-08-09)** — 명령 단위 journal(명령·시작

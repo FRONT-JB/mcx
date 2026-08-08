@@ -348,6 +348,27 @@ class TestAssessSemantics:
         assert by_key[COMMANDED.key].mechanical_run is not None
         assert by_key[PROSE.key].mechanical_run is None
 
+    async def test_criteria_are_judged_in_parallel(self) -> None:
+        """AC 판정은 병렬이다 — 순차라면 barrier에서 영원히 기다린다.
+
+        upstream 정렬: semantic stage는 AC별 ``asyncio.gather``
+        (``mcp/tools/evaluation_handlers.py:951``, ADR-0030 note).
+        """
+        import asyncio
+
+        barrier = asyncio.Barrier(3)
+
+        class BarrierEvaluator(ScriptedEvaluator):
+            async def assess(self, request: SemanticEvaluationRequest) -> CriterionVerdict:
+                await asyncio.wait_for(barrier.wait(), timeout=2.0)
+                return await super().assess(request)
+
+        service, _, _, _, _ = _service(evaluator=BarrierEvaluator())
+        await service.run_mechanical(mission_id="m-1")
+        state = await service.assess_semantics(mission_id="m-1")
+        assert state.verdicts is not None
+        assert len(state.verdicts.verdicts) == 3
+
     async def test_a_mislabeled_verdict_is_rejected(self) -> None:
         """평가자가 다른 AC의 verdict를 돌려주면 기록되지 않는다."""
         wrong = CriterionVerdict(

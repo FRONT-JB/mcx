@@ -25,6 +25,15 @@ upstream 사실 ([VERIFY_UPSTREAM_FINDINGS](../research/VERIFY_UPSTREAM_FINDINGS
 
 ## Decision
 
+> **정렬 note (2026-08-09, 도그푸딩 0003).** AC 판정 실행은 순차가 아니라
+> **AC별 병렬**이다 — upstream은 semantic stage(Stage 2+)를 AC별
+> `asyncio.gather`로 돌리고, 하나라도 실패하면 반쪽 평가를 집계하지 않고
+> 전체를 중단한다 (`mcp/tools/evaluation_handlers.py:877-955`, "#366").
+> 0003에서 AC 9개 순차 판정이 ~12분(AC당 ~80s)으로 실측되어 비용·속도
+> 요구사항(ADR-0035) 위반이었고, gather 정렬로 수정했다. 실패 시 전체 중단
+> 의미론은 gather의 기본 예외 전파와 전량 성공 후 일괄 저장이 그대로
+> 구현한다.
+
 ### 1. verdict는 AC 단위이고 필드는 upstream 스키마와 정렬한다
 
 ```text

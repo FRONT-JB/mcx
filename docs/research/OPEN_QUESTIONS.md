@@ -175,10 +175,12 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       채택 ([ADR-0030](../adr/0030-verify-semantic-verdict-contract.md),
       [VERIFY_UPSTREAM_FINDINGS §6](./VERIFY_UPSTREAM_FINDINGS.md))
 - [ ] UI/API/CLI observation adapter의 우선순위를 결정한다.
-- [ ] semantic 판정의 AC 병렬화를 결정한다. — 도그푸딩 0003에서 AC 9개
-      순차 판정에 ~12분 (AC당 ~80s, 서로 독립). 감사 3-lane 병렬화
-      (ADR-0035 §2)와 같은 축이나 **upstream evaluate의 AC 병렬 여부
-      미확인** — 조사 후 처분 ([DOGFOODING_0003 §5](./DOGFOODING_0003.md)).
+- [x] semantic 판정의 AC 병렬화를 결정한다. → **병렬로 정렬 (2026-08-09).**
+      upstream은 semantic stage를 AC별 `asyncio.gather`로 돌리고 하나라도
+      실패하면 전체 중단 (`mcp/tools/evaluation_handlers.py:877-955` —
+      Verified). 0003 실측(순차 ~12분)이 비용·속도 요구사항 위반이라 gather
+      정렬 + Barrier 테스트로 고정 (ADR-0030 정렬 note,
+      [DOGFOODING_0003 §5](./DOGFOODING_0003.md)).
 - [ ] semantic verdict의 일괄 저장을 유지할지 결정한다. — 진행 중 가시성이
       0이라 12분간 진척 확인 불가 (0003 §5). status 박스(§8)와 함께 처분.
 - [x] conditional consensus를 v1에 포함할지 결정한다. → 미포함 — escalation은

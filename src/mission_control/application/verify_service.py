@@ -16,6 +16,7 @@ Blueprint의 성공 계약을 읽어 runner에 넘기고, 그 결과만 기록�
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 
 from mission_control.application.blueprint_service import BlueprintNotFoundError
@@ -32,7 +33,7 @@ from mission_control.application.ports import (
     VerifyRepository,
 )
 from mission_control.domain.blueprint.gate import evaluate_blueprint_gate
-from mission_control.domain.blueprint.spec import Blueprint
+from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
 from mission_control.domain.errors import MissionControlError
 from mission_control.domain.execute.gate import evaluate_execute_gate
 from mission_control.domain.execute.state import AttemptStatus, ExecuteState
@@ -151,13 +152,19 @@ class VerifyService:
         판정은 mechanical 증거 위에서만 내려진다 — 현재 revision의 evidence가
         없으면 도메인이 기록을 거부한다 (``VerdictWithoutEvidenceError``).
         평가자의 verdict는 요청한 AC에 귀속되어야 하며 불일치는 거부한다.
+
+        AC 판정들은 서로 독립이라 **병렬**로 받는다 — upstream은 semantic
+        stage를 AC별 ``asyncio.gather``로 돌리고, 하나라도 실패하면 반쪽
+        평가를 집계하지 않고 전체를 중단한다
+        (``mcp/tools/evaluation_handlers.py:877-955``, ADR-0030 정렬 note).
+        gather의 기본 예외 전파가 그 중단 의미론이고, 저장은 전량 성공
+        후에만 일어난다.
         """
         blueprint, execute_state = await self._cleared_pipeline(mission_id)
         state = await self._state(mission_id)
         workspace = execute_state.attempts[-1].envelope.workspace
 
-        verdicts: list[CriterionVerdict] = []
-        for criterion in blueprint.acceptance_criteria:
+        async def _assess_one(criterion: AcceptanceCriterion) -> CriterionVerdict:
             verdict = await self.evaluator.assess(
                 SemanticEvaluationRequest(
                     goal=blueprint.goal,
@@ -174,7 +181,13 @@ class VerifyService:
             )
             if verdict.ac_key != criterion.key:
                 raise VerdictMismatchError(expected=criterion.key, received=verdict.ac_key)
-            verdicts.append(verdict)
+            return verdict
+
+        verdicts = list(
+            await asyncio.gather(
+                *(_assess_one(criterion) for criterion in blueprint.acceptance_criteria)
+            )
+        )
 
         assessment = SemanticAssessment(
             blueprint_revision=blueprint.revision,
