@@ -34,18 +34,30 @@ from pydantic import BaseModel, ConfigDict, Field
 #: granularity 항목이 이 기준의 핵심이다. 수단을 수용 기준에 남기면 아무도 그
 #: 경로가 옳은지 검증하기 전에 명세가 경로를 확정한다. upstream은 이것을 "빠진
 #: 조각을 지적하는 것만큼 중요하다"고 규정한다.
-BLUEPRINT_QUALITY_BAR = """\
-명세는 내부적으로 일관되어야 한다. 수용 기준은 측정하고 확인할 수 있어야 하고,
-제약은 모호한 표현 없이 구체적이어야 하며, 필드 사이에 모순이 없어야 한다.
-
-수용 기준은 존재론적으로 인색해야 한다. 하나의 기준은 **완성된 결과의 상태**를
-가리켜야 하며, 그 상태로 가는 **수단**은 기준이 아니다. 각 기준을 형제 항목
-옆에 놓고 읽어라 — 형제 항목으로 가는 이동으로만 이해되는 기준은 그 형제의
-수단이며 형제에 병합되어야 한다. 그것을 지적하는 일은 빠진 요구사항을 지적하는
-일만큼 중요하다. 수단을 남기면 명세가 검증되지 않은 경로를 확정해 버린다.
-
-목표 하나에 기준이 몇 개인지는 정해져 있지 않다. 위 판단에서 따라 나온다.\
-"""
+# upstream `skills/seed/SKILL.md` quality_bar의 영어 원문이다. 문장이 곧
+# 계약이므로 번역을 두지 않는다 — ADR-0019 §4가 등록한 위험(한국어 번역)은
+# 채점자 어댑터 도입 시점(2026-08-08)에 원문 채택으로 해소되었다. 원문 중
+# `ontology_schema` 절 하나만 제거했다 — 그 필드는 우리 스키마에 유예되어
+# 있어(ADR-0017) 채점자에게 존재하지 않는 것을 채점하라는 지시가 된다.
+#
+# 번역(참고용): 명세는 내부적으로 일관되어야 하고, 수용 기준은 측정·확인
+# 가능해야 하며, 제약은 구체적이어야 한다. 수용 기준은 존재론적으로 인색해야
+# 한다 — 기준은 완성된 결과의 상태이지 수단이 아니며, 형제로 가는 이동으로만
+# 이해되는 기준은 그 형제에 병합한다. 기준의 개수는 그 판단에서 따라 나온다.
+BLUEPRINT_QUALITY_BAR = (
+    "Seed must be internally consistent, acceptance_criteria must be measurable "
+    "and testable, constraints must be concrete (no vague terms), and there must "
+    "be no contradictions between fields. acceptance_criteria must also be "
+    "parsimonious in the ontological sense: a criterion names a state of the "
+    "finished work a user can see is true, while an implementation step names a "
+    "means of reaching it, and only the first belongs in the list. Read each "
+    "criterion beside its siblings — one intelligible only as a move toward a "
+    "sibling is that sibling's means and belongs merged into the outcome it "
+    "serves, and flagging that is as important as flagging a missing piece, "
+    "since it commits the seed to an unverified path. How many criteria a goal "
+    "has follows from that judgment, so weigh each criterion against its "
+    "siblings."
+)
 
 
 class QaVerdict(StrEnum):

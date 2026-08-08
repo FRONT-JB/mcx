@@ -35,9 +35,13 @@ class TestPolicyDefaults:
         assert POLICY.max_iterations == 5
 
     def test_quality_bar_carries_the_granularity_rule(self) -> None:
-        """수단을 수용 기준에 남기는 것을 잡는 문장이 기준에 들어 있어야 한다."""
-        assert "수단" in POLICY.quality_bar
-        assert "형제" in POLICY.quality_bar
+        """수단을 수용 기준에 남기는 것을 잡는 문장이 기준에 들어 있어야 한다.
+
+        2026-08-08부터 기준은 upstream 영어 원문이다 (ADR-0019 §4 재평가).
+        """
+        assert "a means of reaching it" in POLICY.quality_bar
+        assert "siblings" in POLICY.quality_bar
+        assert "parsimonious in the ontological sense" in POLICY.quality_bar
 
     def test_every_upstream_scoring_axis_is_present(self) -> None:
         """축을 줄이면 채점자가 무엇을 보는지가 우리 쪽에서 달라진다."""
