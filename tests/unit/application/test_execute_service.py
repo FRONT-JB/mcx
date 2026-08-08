@@ -32,6 +32,7 @@ from mission_control.domain.brief.closure import (
     ClosureSeverity,
 )
 from mission_control.domain.brief.state import BriefState
+from mission_control.domain.execute.gate import ExecuteGateBlockingCondition
 from mission_control.domain.execute.state import (
     AttemptStatus,
     CapabilityEnvelope,
@@ -302,6 +303,69 @@ class TestFailure:
 
         assert [item.criterion for item in runtime.requests] == [FIRST, FIRST]
         assert state.attempts[-1].status is AttemptStatus.EXECUTED_UNVERIFIED
+
+
+class SaveFailingRepository(InMemoryExecuteRepository):
+    """지정한 번째 save가 실패하는 저장소 — 저장 실패 경로 검증용."""
+
+    def __init__(self, *, failing_call: int) -> None:
+        super().__init__()
+        self.save_calls = 0
+        self.failing_call = failing_call
+
+    async def save(self, state: ExecuteState) -> None:
+        self.save_calls += 1
+        if self.save_calls == self.failing_call:
+            raise OSError("disk full")
+        await super().save(state)
+
+
+class TestPersistenceFailure:
+    def _service_with(
+        self, repository: InMemoryExecuteRepository
+    ) -> tuple[ExecuteService, ScriptedRuntime]:
+        briefs = InMemoryBriefRepository()
+        briefs.states["m-1"] = _cleared_brief()
+        blueprints = InMemoryBlueprintRepository()
+        blueprints.states["m-1"] = _approved_blueprint(briefs.states["m-1"].revision)
+        runtime = ScriptedRuntime(ExecutionOutcome(succeeded=True, result_summary="완료"))
+        service = ExecuteService(
+            briefs=briefs,
+            blueprints=blueprints,
+            repository=repository,
+            runtime=runtime,
+            envelope=ENVELOPE,
+        )
+        return service, runtime
+
+    async def test_a_failed_save_prevents_the_dispatch(self) -> None:
+        """dispatch 전 저장이 실패하면 Runtime은 호출되지 않는다 (ADR-0024 §4)."""
+        repository = SaveFailingRepository(failing_call=1)
+        service, runtime = self._service_with(repository)
+
+        with pytest.raises(OSError):
+            await service.dispatch_next(mission_id="m-1")
+
+        assert runtime.requests == []
+        assert repository.states == {}
+
+    async def test_a_lost_result_surfaces_as_an_open_attempt(self) -> None:
+        """결과 저장이 실패하면 attempt는 ``DISPATCHED``로 남고, Gate가 그것을
+        "결과 불명"으로 드러낸다 (docs/07_EXECUTE.md §13 Attempt 행)."""
+        repository = SaveFailingRepository(failing_call=2)
+        service, runtime = self._service_with(repository)
+
+        with pytest.raises(OSError):
+            await service.dispatch_next(mission_id="m-1")
+
+        assert runtime.requests != []  # 실행 자체는 일어났다
+        assert repository.states["m-1"].open_attempt is not None
+
+        decision = await service.decide_gate(mission_id="m-1")
+        assert decision.outcome == "HOLD"
+        assert ExecuteGateBlockingCondition.ATTEMPT_OPEN in tuple(
+            blocker.condition for blocker in decision.gate_blockers
+        )
 
 
 class TestGate:
