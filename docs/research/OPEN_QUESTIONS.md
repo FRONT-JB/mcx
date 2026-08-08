@@ -215,8 +215,12 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       오류 해시 3회(upstream SPINNING 채택, ADR-0031 §3). oscillation 등
       나머지 3패턴은 이력 축적 후
       ([ADR-0032](../adr/0032-recover-deliberate-divergences.md) 보류)
-- [ ] rollback 지원 범위를 결정한다. (Phase 5 workspace 관리와 함께 —
-      upstream `core/worktree.py` 조사 포함, ADR-0032 보류)
+- [ ] rollback 지원 범위를 결정한다. → **시한 재지정 (2026-08-09, 사용자
+      결정): Phase 8 실사용 진입** — brownfield·worktree 격리·AC별
+      checkpoint 커밋(upstream `AutoCommitPolicy`, 미등록이었음)과 한 묶음.
+      원래 시한 "Phase 5 workspace 관리와 함께"는 Phase 5가 단발 실행
+      계약만 확정하고 지나가 낡았다 (upstream `core/worktree.py` 조사 포함,
+      ADR-0032 보류 유지).
 - [-] blocked/cancelled/unrecoverable 상태를 결정한다. → `BLOCKED`는 결정적
       인식 + `HOLD`(ADR-0031 §3), unrecoverable은 예산 소진 `HOLD`.
       cancelled는 취소 경로(Phase 5)와 함께
@@ -317,10 +321,35 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
       생산자(스트리밍 adapter)와 함께 Phase 5, bundle은 Phase 4 semantic
       설계에서.
 - [-] retention, redaction, output-size 정책을 결정한다. → 발췌·출력 한도는
-      report 층 구현 시 upstream 상수와 대조(ADR-0027 §5). secret redaction은
-      Phase 5(Runtime 문서·Security ADR).
-- [ ] Mission replay와 resume의 최소 보장 수준을 결정한다. (Phase 5 —
-      resume 계약과 함께, ADR-0025 보류와 같은 시점)
+      report 층 구현 시 upstream 상수와 대조(ADR-0027 §5). secret
+      redaction은 **시한 재지정 (2026-08-09, 사용자 결정): Phase 7 진입
+      조건** — 상태·Telemetry가 MCP로 host 세션에 노출되기 전에 Security
+      ADR로 확정. 원래 시한(Phase 5)은 무처분 도과했다 — 로컬 단일 사용자
+      동안의 방어는 파일 권한 0600뿐임을 명시해 둔다.
+- [ ] Mission replay와 resume의 최소 보장 수준을 결정한다. → **시한 재지정
+      (2026-08-09, 사용자 결정): Phase 7** — 장기 실행 job 계약·취소와 한
+      묶음 (ADR-0033 §6 이연분 합류). 현 수준을 명시해 둔다: 명령 단위
+      재개는 파일 상태로 이미 보장되고(도그푸딩 3회 실증 — 매 명령이 독립
+      프로세스), 미보장은 명령 도중 중단의 뒷정리(DISPATCHED 잔해)와 장기
+      명령 취소다.
+
+---
+
+## 10. Reflect/Evolve decisions (Phase 9 — 사용자 결정 2026-08-09)
+
+2026-08-09 대조에서 **미등록 공백**으로 발견됐다: upstream의 stage 축은
+4개(interview/execute/evaluate/**reflect** — `orchestrator_stage.py`)이고
+`ooo evolve`의 mission 간 진화 루프("평가 결과가 다음 스펙을 개선")가
+제품 정체성의 절반인데, mcx에는 대응물도 제외 기록도 없었다. 사용자
+결정: 제외가 아니라 **전체 도입 조사 (Phase 9)**.
+
+- [ ] upstream `evolve_step` MCP tool과 evolution loop의 실제 동작을
+      조사한다 (`evolution/loop.py`).
+- [ ] reflect stage(Wonder·Reflect 페르소나, Hermes 담당 축)의 입력·출력·
+      저장을 조사한다.
+- [ ] mission 간 학습의 mcx 대응물을 결정한다 — 무엇이 다음 Brief/정책의
+      입력이 되는가 (도그푸딩 기록이 수동으로 하던 역할의 자동화).
+- [ ] 도입 ADR을 작성한다. 조사 결과가 부정적이면 제외 ADR로 기록한다.
 
 ---
 

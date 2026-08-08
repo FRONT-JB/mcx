@@ -127,7 +127,9 @@ CLEAR 경로 테스트 전부 감사 단계를 포함하도록 갱신했다.
   - [x] 루프의 durable 상태와 채점 허용 규칙 — 상한·FAIL 중단·통과 재채점
     금지가 재시작을 건너 유지된다 (ADR-0021 §4, `test_state.py`·
     `test_blueprint_flow.py`)
-  - [-] 수정 후보 제시와 사용자 채택 절차 → **Phase 6·7로 이관**
+  - [-] 수정 후보 제시와 사용자 채택 절차 → **Phase 7로 확정** (사용자 결정
+    2026-08-09): host 에이전트가 QA 지적으로부터 revision 초안을 제안하고
+    채택은 사용자 — upstream skill 계층 정렬. CLI 단독 사용의 공백은 수용
     ([progress 0002](./0002_BLUEPRINT_VERTICAL_SLICE.md) 처분). 채택된 수정이
     들어오는 application 진입점(`revise` — 범위 재검사, 새 revision)은 구현됨
 - [-] AC quality validation — 구조 검사(중복 계약·빈 goal·`output_assertion`
@@ -275,12 +277,41 @@ Verify Gate 미검사 조건)을 잡았다.
 
 목표: host가 CLI와 같은 Mission state/Gate 의미를 사용한다.
 
+**진입 조건 (사용자 결정 2026-08-09): secret redaction Security ADR** —
+상태·Telemetry가 host 세션으로 나가기 전에 upstream redaction 계층을
+조사해 확정한다 (OPEN_QUESTIONS §9).
+
 - [ ] read-only Mission query
 - [ ] Brief mutation
 - [ ] Blueprint approval
 - [ ] long-running Execute/Verify/Recover job contract
+- [ ] resume/cancel — 장기 job 계약과 함께 (사용자 결정 2026-08-09,
+  ADR-0033 §6 이연분 합류)
+- [ ] 수정 후보 제시 — host 에이전트가 QA 지적으로부터 revision 초안 제안,
+  채택은 사용자 (사용자 결정 2026-08-09, User Adoption Gate 유지)
+- [ ] HOLD 차단 질문의 AskUser 릴레이 — host가 사람에게 중계 (upstream
+  interview skill의 질문 블록 정렬)
 - [ ] CLI/MCP parity tests
 - [ ] recursion/security tests
+
+### Phase 8 — 실사용 진입: brownfield + 되돌리기 (사용자 결정 2026-08-09)
+
+목표: 기존 코드베이스에 안전하게 적용한다. Evolve보다 먼저 — 실사용
+데이터가 쌓여야 진화 루프가 의미를 갖는다.
+
+- [ ] brownfield 탐색·기존 제약 등록 (ADR-0011 유예 해제, upstream
+  `ooo brownfield` 대조)
+- [ ] worktree 격리 (upstream `core/worktree.py` 대조)
+- [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조)
+- [ ] rollback 범위 (ADR-0032 보류 해제)
+
+### Phase 9 — Reflect/Evolve (사용자 결정 2026-08-09)
+
+목표: mission 간 진화 루프의 도입 여부를 조사로 결정하고 도입한다.
+
+- [ ] upstream `evolve_step`·wonder·reflect(4번째 stage 축) 조사
+- [ ] 도입 ADR (조사 결과가 부정적이면 제외 ADR로 기록)
+- [ ] 구현
 
 ## Implementation HOLD
 
@@ -698,7 +729,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 6. **관측 대조** — 도그푸딩·런타임 관측과 모순되는 규칙이 없는가?
    *(실례: QA 동점 규칙이 관측과 반대 — ADR-0019 §5로 개정)*
 
-최종 목표인 Phase 7까지 모든 구현 phase가 이 검토를 거친다. Phase 0은 문서
+최종 목표인 Phase 9까지 모든 구현 phase가 이 검토를 거친다. Phase 0은 문서
 기반이라 대상이 아니다.
 
 | Phase | 검토 상태 | 기록 |
@@ -709,7 +740,9 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 4 — Verify/Recover | **충족 (2026-08-08)** — 예산 리셋 테스트 추가(0186450), directive 저장 vs 파생 충돌 해소, exit_conditions 유예 재평가, canonical Stage 저장 부재 등록, Verify Gate 미검사 조건 표 신설. Gate·Matrix 전수 대조 포함 | [progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) |
 | Phase 5 — Runtime adapters | **충족 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). 잔여 3항목은 OpenCode 사용 시점 조사 후 사용자 결정으로 실수요 이연 (ADR-0003 note 2) | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
 | Phase 6 — `mcx` CLI | 대기 (phase 진행 중 — 선행 조사 완료 2026-08-08, 표면 설계 ADR 대기) | [CLI findings](../research/CLI_UPSTREAM_FINDINGS.md), [ADR-0037](../adr/0037-mission-record-and-canonical-stage.md) |
-| Phase 7 — MCP control surface | 대기 | — |
+| Phase 7 — MCP control surface | 대기 (진입 조건: redaction Security ADR) | — |
+| Phase 8 — 실사용 진입 (brownfield·되돌리기) | 대기 | — |
+| Phase 9 — Reflect/Evolve | 대기 | — |
 
 ## Update protocol
 
