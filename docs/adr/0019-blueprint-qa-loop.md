@@ -69,6 +69,15 @@ upstream의 비대칭을 따르면 `mcx blueprint`로 만든 명세와 MCP로 �
 `QaRequest`에 통과 점수와 반복 상한을 전달하지 않는다. Brief의 clarity 평가와
 같은 이유다 — 통과선을 알려 주면 그 선에 맞춰 점수를 조정할 여지가 생긴다.
 
+> **개정 (2026-08-08, ADR-0035 §3).** 위 문단의 "통과 점수 비전달"은
+> upstream 미확인 상태에서 세운 규칙이었다. upstream `mcp/tools/qa.py`는
+> pass threshold와 이전 반복 궤적(iteration/score/verdict)을 판정자
+> 프롬프트에 렌더한다. 도그푸딩 0001에서 궤적 없는 판정자의 점수
+> 역행·정체가 관측되어 upstream 정렬로 개정한다 — `QaRequest`는
+> `pass_threshold`와 `previous_iterations`를 싣는다. 반복 상한은 여전히
+> 전달하지 않는다(upstream도 렌더하지 않는다). verdict를 채점자가 내리지
+> 않는 본 절의 원칙은 유지된다.
+
 `quality_bar`는 정책이 정한 문장으로 전달한다. 무엇이 좋은 명세인지를 채점자가
 정하면 기준과 점수가 같은 곳에서 나온다.
 

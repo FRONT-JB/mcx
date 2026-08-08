@@ -13,7 +13,11 @@ from mission_control.adapters.text.codex_blueprint_backends import (
     CodexBlueprintQaJudge,
 )
 from mission_control.adapters.text.codex_completion import CodexCompletion
-from mission_control.application.ports import BlueprintGenerationRequest, QaRequest
+from mission_control.application.ports import (
+    BlueprintGenerationRequest,
+    QaIteration,
+    QaRequest,
+)
 from mission_control.domain.blueprint.qa import BLUEPRINT_QUALITY_BAR, QaDimension, QaFinding
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
 
@@ -94,6 +98,8 @@ class TestQaJudge:
                 non_goals=(),
                 acceptance_criteria=(AcceptanceCriterion(description="목록에 댓글이 보인다"),),
                 quality_bar=BLUEPRINT_QUALITY_BAR,
+                pass_threshold=0.9,
+                previous_iterations=(QaIteration(iteration=1, score=0.79, verdict="revise"),),
                 previous_findings=(QaFinding(detail="확인 명령이 없다"),),
             )
         )
@@ -101,6 +107,29 @@ class TestQaJudge:
         assert "ontology_schema" not in prompt  # 유예 필드 절은 제거되었다
         assert "## Findings from the previous round" in prompt
         assert "- 확인 명령이 없다" in prompt
+
+    def test_threshold_trajectory_and_fixed_fields_follow_upstream(self, tmp_path: Path) -> None:
+        """upstream 프롬프트 자리 이름 정렬 + verbatim 잠금 보상 문장
+        (ADR-0035 §3~§4)."""
+        judge = CodexBlueprintQaJudge(completion=_engine(tmp_path, "j2", "{}"))
+        prompt = judge.render_prompt(
+            QaRequest(
+                goal="댓글 기능",
+                constraints=("로그인 사용자만",),
+                non_goals=(),
+                acceptance_criteria=(AcceptanceCriterion(description="목록에 댓글이 보인다"),),
+                quality_bar=BLUEPRINT_QUALITY_BAR,
+                pass_threshold=0.9,
+                previous_iterations=(
+                    QaIteration(iteration=1, score=0.79, verdict="revise"),
+                    QaIteration(iteration=2, score=0.74, verdict="revise"),
+                ),
+            )
+        )
+        assert "## Pass Threshold\n0.9" in prompt
+        assert "## Previous Iterations" in prompt
+        assert "Iteration 2: score=0.74, verdict=revise" in prompt
+        assert "Constraints and non-goals are FIXED inputs at this stage" in prompt
 
     async def test_the_assessment_round_trips(self, tmp_path: Path) -> None:
         judge = CodexBlueprintQaJudge(
@@ -120,6 +149,7 @@ class TestQaJudge:
                 non_goals=(),
                 acceptance_criteria=(AcceptanceCriterion(description="목록에 댓글이 보인다"),),
                 quality_bar=BLUEPRINT_QUALITY_BAR,
+                pass_threshold=0.9,
             )
         )
         assert assessment.score == 0.86

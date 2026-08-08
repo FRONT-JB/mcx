@@ -316,16 +316,24 @@ class TestAssessQa:
         assert state.qa_records[0].assessment.score == 0.85
         assert blueprints.states["m-1"] == state
 
-    async def test_the_judge_gets_the_quality_bar_but_no_thresholds(self) -> None:
-        judge = ScriptedJudge(0.85)
+    async def test_the_judge_gets_the_bar_threshold_and_trajectory(self) -> None:
+        """upstream QA 프롬프트 정렬 — threshold와 반복 궤적을 전달한다
+        (ADR-0019 §3 개정, ADR-0035 §3). 반복 상한은 여전히 전달하지 않는다.
+        """
+        judge = ScriptedJudge(0.85, 0.87)
         service, _, _ = _service(judge=judge)
         await service.generate(mission_id="m-1")
         await service.assess_qa(mission_id="m-1")
+        await service.assess_qa(mission_id="m-1")
 
-        request = judge.requests[0]
-        assert request.quality_bar == QA_POLICY.quality_bar
-        assert request.previous_findings == ()
-        assert not hasattr(request, "pass_threshold")
+        first, second = judge.requests
+        assert first.quality_bar == QA_POLICY.quality_bar
+        assert first.pass_threshold == QA_POLICY.pass_threshold
+        assert first.previous_iterations == ()
+        assert not hasattr(first, "max_iterations")
+        assert [
+            (item.iteration, item.score, item.verdict) for item in second.previous_iterations
+        ] == [(1, 0.85, "revise")]
 
     async def test_previous_findings_are_carried_into_the_next_round(self) -> None:
         judge = ScriptedJudge(0.85, 0.87)

@@ -28,6 +28,7 @@ from mission_control.application.ports import (
     BlueprintQaJudge,
     BlueprintRepository,
     BriefRepository,
+    QaIteration,
     QaRequest,
 )
 from mission_control.domain.blueprint.assembly import BlueprintDraft, assemble_blueprint
@@ -237,11 +238,12 @@ class BlueprintService:
         )
 
     def _qa_request(self, state: BlueprintState) -> QaRequest:
-        """채점자에게 전달할 최소 context를 구성한다.
+        """채점자에게 전달할 context를 구성한다.
 
-        품질 기준은 정책에서 가져오고 통과 점수·반복 상한은 전달하지 않는다
-        (ADR-0019 §3). 직전 채점의 지적을 함께 전달해 반복이 수렴하는지
-        채점자가 알 수 있게 한다.
+        품질 기준·통과 점수·이전 반복 궤적은 정책과 기록에서 가져온다 —
+        upstream QA 프롬프트 정렬이다 (ADR-0019 §3 개정, ADR-0035 §3). 반복
+        상한은 전달하지 않는다. 직전 채점의 지적을 함께 전달해 반복이
+        수렴하는지 채점자가 알 수 있게 한다.
         """
         current = state.current
         return QaRequest(
@@ -250,6 +252,15 @@ class BlueprintService:
             non_goals=current.non_goals,
             acceptance_criteria=current.acceptance_criteria,
             quality_bar=self.qa_policy.quality_bar,
+            pass_threshold=self.qa_policy.pass_threshold,
+            previous_iterations=tuple(
+                QaIteration(
+                    iteration=index + 1,
+                    score=record.assessment.score,
+                    verdict=self.qa_policy.verdict_for(record.assessment.score).value,
+                )
+                for index, record in enumerate(state.qa_records)
+            ),
             previous_findings=self._previous_findings(state),
         )
 

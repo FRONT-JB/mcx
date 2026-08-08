@@ -23,8 +23,8 @@ from mission_control.application.ports import (
     AssessmentRequest,
     CloserAuditRequest,
     ClosureChallengeRequest,
-    OpenRequirement,
     QuestionRequest,
+    RequirementView,
 )
 from mission_control.domain.brief.closure import AdvisoryLane, CloserVerdict, ClosureSeverity
 from mission_control.domain.brief.requirement import CandidateResolution, RequirementSection
@@ -54,7 +54,7 @@ def _engine(tmp_path: Path, name: str, response_json: str) -> CodexCompletion:
 
 ROUNDS = (AskedRound(question="누가 쓰나요?", answer="로그인 사용자"),)
 OPEN = (
-    OpenRequirement(
+    RequirementView(
         section=RequirementSection.NON_GOAL,
         text="댓글 수정은 범위 밖",
         resolution=CandidateResolution.NEEDS_CONFIRMATION,
@@ -68,7 +68,7 @@ class TestQuestionGenerator:
         generator = CodexQuestionGenerator(completion=_engine(tmp_path, "q", "{}"))
         prompt = generator.render_prompt(
             QuestionRequest(
-                initial_intent="댓글 기능", previous_rounds=ROUNDS, open_requirements=OPEN
+                initial_intent="댓글 기능", previous_rounds=ROUNDS, requirement_candidates=OPEN
             )
         )
         assert "You are ONLY an interviewer" in prompt
@@ -85,7 +85,9 @@ class TestQuestionGenerator:
             )
         )
         result = await generator.generate(
-            QuestionRequest(initial_intent="댓글 기능", previous_rounds=(), open_requirements=())
+            QuestionRequest(
+                initial_intent="댓글 기능", previous_rounds=(), requirement_candidates=()
+            )
         )
         assert result.question == "완료 확인은 무엇으로 하나요?"
         assert result.targeted_gap == "success_criteria"
@@ -106,7 +108,7 @@ class TestClarityAssessor:
             AssessmentRequest(
                 initial_intent="댓글 기능",
                 previous_rounds=(),
-                open_requirements=(),
+                requirement_candidates=(),
                 dimensions=("goal", "constraint"),
             )
         )
@@ -128,7 +130,7 @@ class TestClarityAssessor:
                 AssessmentRequest(
                     initial_intent="댓글 기능",
                     previous_rounds=(),
-                    open_requirements=(),
+                    requirement_candidates=(),
                     dimensions=("goal", "constraint"),
                 )
             )
@@ -148,7 +150,7 @@ class TestCloser:
             CloserAuditRequest(
                 initial_intent="댓글 기능",
                 previous_rounds=(),
-                open_requirements=(),
+                requirement_candidates=(),
                 gate_summary="no unresolved decisions that materially change implementation",
             )
         )
@@ -161,7 +163,7 @@ class TestCloser:
             CloserAuditRequest(
                 initial_intent="댓글 기능",
                 previous_rounds=(),
-                open_requirements=(),
+                requirement_candidates=(),
                 gate_summary="VERBATIM POLICY SENTENCE",
             )
         )
@@ -186,7 +188,7 @@ class TestChallenger:
                 severity_rule="high blocks closure",
                 initial_intent="댓글 기능",
                 previous_rounds=(),
-                open_requirements=(),
+                requirement_candidates=(),
             )
         )
         assert report.lane is AdvisoryLane.GAP_HUNTER

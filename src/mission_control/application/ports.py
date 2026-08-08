@@ -271,12 +271,18 @@ class AskedRound(BaseModel):
     answer: str | None
 
 
-class OpenRequirement(BaseModel):
-    """아직 확정되지 않은 요구사항 후보.
+class RequirementView(BaseModel):
+    """요구사항 후보 하나의 위임용 투영 — 확정 여부와 무관하게 전부 전달된다.
 
-    위임 역할이 "무엇이 아직 열려 있는가"를 알아야 다음 질문을 겨냥할 수 있다.
-    확인 권위는 전달하지 않는다 — 그것은 승격 판정의 재료이지 질문의 재료가
-    아니며, 알려 주면 그것을 근거로 스스로 확정했다고 판단할 여지가 생긴다.
+    미확정만 전달하던 초기 투영은 이미 결정된 사안을 위임 역할이 다시
+    차단하게 만들었다 (도그푸딩 0001 §3.1·§3.2). upstream 감사는 main 세션의
+    전체 관점에서 수행되므로 확정 결정이 보인다 — 같은 가시성을 준다
+    (ADR-0035 §1). 무엇이 열려 있고 무엇이 닫혔는지는 ``resolution``이
+    구분한다.
+
+    확인 권위는 여전히 전달하지 않는다 — 그것은 승격 판정의 재료이지 질문의
+    재료가 아니며, 알려 주면 그것을 근거로 스스로 확정했다고 판단할 여지가
+    생긴다 (ADR-0015).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -299,7 +305,7 @@ class QuestionRequest(BaseModel):
 
     initial_intent: str
     previous_rounds: tuple[AskedRound, ...]
-    open_requirements: tuple[OpenRequirement, ...]
+    requirement_candidates: tuple[RequirementView, ...]
 
 
 class GeneratedQuestion(BaseModel):
@@ -346,7 +352,7 @@ class AssessmentRequest(BaseModel):
 
     initial_intent: str
     previous_rounds: tuple[AskedRound, ...]
-    open_requirements: tuple[OpenRequirement, ...]
+    requirement_candidates: tuple[RequirementView, ...]
     dimensions: tuple[ClarityDimension, ...]
 
 
@@ -379,7 +385,7 @@ class CloserAuditRequest(BaseModel):
 
     initial_intent: str
     previous_rounds: tuple[AskedRound, ...]
-    open_requirements: tuple[OpenRequirement, ...]
+    requirement_candidates: tuple[RequirementView, ...]
     gate_summary: str
 
 
@@ -414,7 +420,7 @@ class ClosureChallengeRequest(BaseModel):
     severity_rule: str
     initial_intent: str
     previous_rounds: tuple[AskedRound, ...]
-    open_requirements: tuple[OpenRequirement, ...]
+    requirement_candidates: tuple[RequirementView, ...]
 
 
 class ClosureChallenger(Protocol):
@@ -473,15 +479,29 @@ class BlueprintGenerator(Protocol):
         ...
 
 
+class QaIteration(BaseModel):
+    """이전 채점 한 번의 궤적 — upstream QA 프롬프트의 Previous Iterations 행.
+
+    점수와 판정만 담는다. 판정은 정책이 이미 내린 결과의 기록이지 채점자에게
+    판정을 위임하는 것이 아니다 (ADR-0019 §3 개정, ADR-0035 §3).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    iteration: int
+    score: float
+    verdict: str
+
+
 class QaRequest(BaseModel):
     """Blueprint 초안 하나를 채점하기 위한 입력.
 
     ``quality_bar``는 정책이 정한 문장이며 채점자가 바꿀 수 없다. 무엇이 좋은
     명세인지를 채점자가 정하면 기준과 점수가 같은 곳에서 나온다.
 
-    통과 점수와 반복 상한은 전달하지 않는다. Brief의 clarity 평가와 같은 이유다
-    — 채점자의 일은 채점이고 판정은 정책이 한다. 몇 점이면 통과인지 알려 주면
-    그 선에 맞춰 점수를 조정할 여지가 생긴다.
+    ``pass_threshold``와 ``previous_iterations``는 upstream QA 프롬프트 정렬이다
+    (ADR-0035 §3) — 궤적 없는 채점자의 점수 역행·정체가 도그푸딩 0001에서
+    관측되었다. 반복 상한은 여전히 전달하지 않는다.
 
     ``previous_findings``는 직전 채점에서 지적된 항목이다. 같은 지적을 반복하는지,
     고쳐진 것을 다시 지적하는지 채점자가 알 수 있어야 반복이 수렴한다.
@@ -494,6 +514,8 @@ class QaRequest(BaseModel):
     non_goals: tuple[str, ...]
     acceptance_criteria: tuple[AcceptanceCriterion, ...]
     quality_bar: str
+    pass_threshold: float
+    previous_iterations: tuple[QaIteration, ...] = ()
     previous_findings: tuple[QaFinding, ...] = ()
 
 

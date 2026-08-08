@@ -69,15 +69,20 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       gate, advisory 두 lane은 HIGH만 차단, 합성은 결정적 도메인 코드.
       계약 문장은 upstream 원문, ambiguity 점수 비전달은 등록된 divergence.
 
-2026-08-08 도그푸딩 0001에서 등록
-([DOGFOODING_0001](./DOGFOODING_0001.md) §3.1·§3.2·§4):
+2026-08-08 도그푸딩 0001에서 등록, 같은 날 대조·처분
+([DOGFOODING_0001](./DOGFOODING_0001.md) §3,
+[ADR-0035](../adr/0035-dogfooding-cost-parity-dispositions.md)):
 
-- [ ] closure 감사 입력 투영이 확정 후보를 배제해 이미 결정된 사안을
-      재차단한다. upstream 감사가 requirement 상태 전체를 보는지 대조한다.
-- [ ] 폐기(superseded)된 후보가 open requirement로 영구 잔존해 감사가 폐기
-      규칙과의 충돌을 차단한다. upstream의 요구사항 폐기 수명을 대조한다.
-- [ ] closure 감사에 반복 상한이 없다. upstream interview 종료 루프의 상한
-      여부를 대조한다.
+- [x] closure 감사 입력 투영이 확정 후보를 배제해 이미 결정된 사안을
+      재차단한다. → upstream 가드는 main 세션 전체 관점에서 수행
+      (skills/interview step 8). 투영을 후보 전체 + resolution으로 수정
+      (ADR-0035 §1).
+- [x] 폐기(superseded)된 후보가 open requirement로 영구 잔존한다. →
+      upstream도 폐기 상태 없음 (동일 4-resolution) — 상태를 발명하지 않고
+      전체 가시성으로 해소 (ADR-0035 §1).
+- [x] closure 감사에 반복 상한이 없다. → upstream도 없음 (후보마다 재수행).
+      파리티로 유지, 비수렴 재관측 시 별도 ADR (ADR-0035 §5). lane 실행은
+      upstream 병렬 배치와 정렬해 병렬화 (§2).
 
 ## 3. Blueprint decisions
 
@@ -101,16 +106,18 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       (ontology_schema 등)는 v1 미포함으로 기록
       ([ADR-0017](../adr/0017-blueprint-schema-baseline.md) Cost)
 
-2026-08-08 도그푸딩 0001에서 등록
-([DOGFOODING_0001](./DOGFOODING_0001.md) §3.3·§3.4):
+2026-08-08 도그푸딩 0001에서 등록, 같은 날 대조·처분
+([DOGFOODING_0001](./DOGFOODING_0001.md) §3,
+[ADR-0035](../adr/0035-dogfooding-cost-parity-dispositions.md)):
 
-- [ ] QA 루프에 기각 사유 채널이 없어 기각된 지적이 재제기되고 점수가
-      역행·정체한다 (0.79→0.74→0.73, 통과선 도달 불가). upstream은 지적이
-      architect에 자동 반영되는 구조라 기각 개념이 없을 수 있다 — 사용자
-      채택 divergence(ADR-0019 §1)와의 상호작용을 대조한다.
-- [ ] QA 채점자가 verbatim 잠금 필드(제약·Non-goal)의 수정을 제안한다 —
-      Blueprint 단계에서 실행 불가능한 지적이다. upstream seed QA가 제약
-      필드를 다루는 방식과, 채점 입력에 "고정 필드" 표시 여부를 대조한다.
+- [x] QA 루프에 기각 사유 채널이 없어 기각된 지적이 재제기되고 점수가
+      역행·정체한다. → upstream 판정자에게도 기각 채널은 없음 (ledger 전용,
+      skills/seed step 2). 대신 upstream은 pass threshold와 반복 궤적을
+      프롬프트에 렌더 (`mcp/tools/qa.py`) — 정렬 수정, ADR-0019 §3 개정.
+      수정 채택의 User Adoption Gate는 upstream과 파리티 확인 (ADR-0035 §3·§5).
+- [x] QA 채점자가 verbatim 잠금 필드(제약·Non-goal)의 수정을 제안한다. →
+      upstream은 Socrates·user gate로 제약 수정이 실제 가능해 대응물 없음.
+      고정 필드 프롬프트 문장으로 보상, ADR-0035 §4에 등록.
 
 ## 4. Execute decisions
 

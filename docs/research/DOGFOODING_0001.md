@@ -55,6 +55,13 @@
 각 항목은 [OPEN_QUESTIONS](./OPEN_QUESTIONS.md) §2·§3에 등록했다. 처분
 (수정 ADR / divergence 등록 / 기각)은 pinned baseline 대조 후에 정한다.
 
+> **처분 완료 (2026-08-08).** 사용자 요구(비용·속도 upstream 동등 이상)에
+> 따라 같은 날 대조를 수행했다 — 대조표와 처분은
+> [ADR-0035](../adr/0035-dogfooding-cost-parity-dispositions.md). §3.1·§3.2는
+> 투영 수정(후보 전체 전달), §3.3은 QA 입력 정렬(threshold·궤적, ADR-0019 §3
+> 개정) + 기각 채널 비발명, §3.4는 고정 필드 프롬프트 보상. 감사 lane은
+> 병렬화되었다.
+
 ### 3.1 closure 감사 입력 투영이 확정 후보를 배제한다
 
 감사 입력(`open_requirements`)은 **미확정 후보만** 담는다. 라운드 없이

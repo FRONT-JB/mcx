@@ -117,7 +117,12 @@ class CodexBlueprintGenerator:
 _JUDGE_ROLE = """\
 You are a rigorous specification QA judge. Score the draft below against the \
 quality bar. Your job is scoring, not deciding — report scores and findings; \
-the pass threshold is owned by policy and is not your concern.
+the verdict is owned by policy.
+
+Constraints and non-goals are FIXED inputs at this stage — they are locked \
+verbatim to the approved brief and cannot be edited here. Do not propose \
+rewording, merging, or removing them; a finding about their content belongs \
+to the brief stage, not this draft.
 
 Return an overall score 0.0-1.0, a score per dimension, and concrete findings \
 (each with an actionable suggestion when one exists, otherwise an empty string)."""
@@ -175,11 +180,22 @@ class CodexBlueprintQaJudge:
         parts = [
             _JUDGE_ROLE,
             f"## Quality bar (verbatim policy)\n{request.quality_bar}",
+            # threshold와 궤적 섹션은 upstream QA 프롬프트의 자리 이름을 따른다
+            # (ADR-0035 §3, upstream `mcp/tools/qa.py`).
+            f"## Pass Threshold\n{request.pass_threshold}",
             f"## Draft under review\nGoal: {request.goal}",
             "Constraints:\n" + ("\n".join(f"- {item}" for item in request.constraints) or "(none)"),
             "Non-goals:\n" + ("\n".join(f"- {item}" for item in request.non_goals) or "(none)"),
             "Acceptance criteria:\n" + "\n".join(criteria_lines),
         ]
+        if request.previous_iterations:
+            parts.append(
+                "## Previous Iterations\n"
+                + "\n".join(
+                    f"  - Iteration {item.iteration}: score={item.score}, verdict={item.verdict}"
+                    for item in request.previous_iterations
+                )
+            )
         if request.previous_findings:
             parts.append(
                 "## Findings from the previous round (check what was fixed)\n"

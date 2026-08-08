@@ -4,6 +4,8 @@
 Test Matrix: B-002, B-003, B-016, B-029, B-034, B-035, B-036
 """
 
+import asyncio
+
 import pytest
 
 from mission_control.application.brief_service import (
@@ -255,7 +257,7 @@ class TestQuestionDispatch:
         assert set(request.model_dump()) == {
             "initial_intent",
             "previous_rounds",
-            "open_requirements",
+            "requirement_candidates",
         }
 
     async def test_request_does_not_expose_authority_or_revision(
@@ -491,7 +493,7 @@ class TestAssessmentRequest:
         assert set(assessor.requests[0].model_dump()) == {
             "initial_intent",
             "previous_rounds",
-            "open_requirements",
+            "requirement_candidates",
             "dimensions",
         }
 
@@ -670,9 +672,14 @@ class TestCandidateEntryPoint:
 
         assert decision.outcome == "CLEAR"
 
-    async def test_confirmed_candidates_are_not_sent_as_open(
+    async def test_confirmed_candidates_are_sent_with_their_resolution(
         self, service: BriefService, generator: ScriptedQuestionGenerator
     ) -> None:
+        """확정 후보를 감추면 위임 역할이 결정된 사안을 재차단한다 (ADR-0035 §1).
+
+        도그푸딩 0001 §3.1 — 확정된 non-goal이 보이지 않아 감사가 HIGH로
+        차단했다. 열림/닫힘은 목록이 아니라 resolution이 구분한다.
+        """
         await _answered(service)
         await service.record_candidate(
             mission_id="m-1",
@@ -692,8 +699,12 @@ class TestCandidateEntryPoint:
 
         await service.ask_next_question(mission_id="m-1")
 
-        open_texts = [item.text for item in generator.requests[-1].open_requirements]
-        assert open_texts == ["알림을 보낼지 미정"]
+        sent = generator.requests[-1].requirement_candidates
+        assert [item.text for item in sent] == ["로그인 사용자만 작성", "알림을 보낼지 미정"]
+        assert [item.resolution for item in sent] == [
+            CandidateResolution.CONFIRMED,
+            CandidateResolution.UNKNOWN,
+        ]
 
 
 class TestAssessmentFailure:
@@ -802,6 +813,43 @@ class TestClosureAuditUseCase:
         ]
         stored = await repository.load("m-1")
         assert stored is not None and stored.has_current_closure_audit
+
+    async def test_the_three_lanes_run_concurrently(
+        self,
+        repository: InMemoryBriefRepository,
+        generator: ScriptedQuestionGenerator,
+        assessor: ScriptedClarityAssessor,
+    ) -> None:
+        """lane은 서로의 결과를 보지 않으므로 동시에 수행된다 (ADR-0035 §2).
+
+        upstream은 tripanel을 한 병렬 배치로 spawn한다. 세 lane 전부가 barrier에
+        모여야 열리므로, 순차 실행이면 첫 lane에서 timeout으로 실패한다.
+        """
+        barrier = asyncio.Barrier(3)
+
+        class BarrierCloser:
+            async def audit(self, request: CloserAuditRequest) -> CloserReport:
+                await asyncio.wait_for(barrier.wait(), timeout=2)
+                return CloserReport(verdict=CloserVerdict.READY, reason="t")
+
+        class BarrierChallenger:
+            async def challenge(self, request: ClosureChallengeRequest) -> AdvisoryReport:
+                await asyncio.wait_for(barrier.wait(), timeout=2)
+                return AdvisoryReport(lane=request.lane, severity=ClosureSeverity.LOW, finding="t")
+
+        service = BriefService(
+            repository=repository,
+            question_generator=generator,
+            clarity_assessor=assessor,
+            closure_assessor=BarrierCloser(),
+            closure_challenger=BarrierChallenger(),
+            policy=POLICY,
+        )
+        await service.start(mission_id="m-1", initial_intent="댓글 기능")
+
+        state = await service.audit_closure(mission_id="m-1")
+
+        assert state.has_current_closure_audit
 
     async def test_requests_carry_the_upstream_contract_texts(
         self,

@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 
 from mission_control.application.ports import (
@@ -26,9 +27,9 @@ from mission_control.application.ports import (
     ClosureChallenger,
     ClosureChallengeRequest,
     GeneratedQuestion,
-    OpenRequirement,
     QuestionGenerator,
     QuestionRequest,
+    RequirementView,
 )
 from mission_control.domain.brief.clarity import ClarityPolicy
 from mission_control.domain.brief.closure import (
@@ -271,16 +272,20 @@ class BriefService:
         state = await self._require(mission_id)
 
         try:
-            closer = await self.closure_assessor.audit(
-                CloserAuditRequest(
-                    initial_intent=state.initial_intent,
-                    previous_rounds=BriefService._asked_rounds(state),
-                    open_requirements=BriefService._open_requirements(state),
-                    gate_summary=CLOSURE_GATE_SUMMARY,
-                )
+            # 세 lane은 서로의 결과를 보지 않으므로 동시에 수행한다 — upstream이
+            # tripanel을 한 병렬 배치로 spawn하는 것과 같은 배치다 (ADR-0035 §2).
+            closer, contrarian, gap_hunter = await asyncio.gather(
+                self.closure_assessor.audit(
+                    CloserAuditRequest(
+                        initial_intent=state.initial_intent,
+                        previous_rounds=BriefService._asked_rounds(state),
+                        requirement_candidates=BriefService._requirement_candidates(state),
+                        gate_summary=CLOSURE_GATE_SUMMARY,
+                    )
+                ),
+                self._challenge(state, AdvisoryLane.CONTRARIAN, CONTRARIAN_TASK),
+                self._challenge(state, AdvisoryLane.GAP_HUNTER, GAP_HUNTER_TASK),
             )
-            contrarian = await self._challenge(state, AdvisoryLane.CONTRARIAN, CONTRARIAN_TASK)
-            gap_hunter = await self._challenge(state, AdvisoryLane.GAP_HUNTER, GAP_HUNTER_TASK)
         except ClosureContractError:
             raise
         except Exception as error:
@@ -300,7 +305,7 @@ class BriefService:
                 severity_rule=SEVERITY_RULE,
                 initial_intent=state.initial_intent,
                 previous_rounds=BriefService._asked_rounds(state),
-                open_requirements=BriefService._open_requirements(state),
+                requirement_candidates=BriefService._requirement_candidates(state),
             )
         )
         if report.lane is not lane:
@@ -349,7 +354,7 @@ class BriefService:
         return QuestionRequest(
             initial_intent=state.initial_intent,
             previous_rounds=BriefService._asked_rounds(state),
-            open_requirements=BriefService._open_requirements(state),
+            requirement_candidates=BriefService._requirement_candidates(state),
         )
 
     def _assessment_request(self, state: BriefState) -> AssessmentRequest:
@@ -361,7 +366,7 @@ class BriefService:
         return AssessmentRequest(
             initial_intent=state.initial_intent,
             previous_rounds=BriefService._asked_rounds(state),
-            open_requirements=BriefService._open_requirements(state),
+            requirement_candidates=BriefService._requirement_candidates(state),
             dimensions=tuple(self.policy.weights),
         )
 
@@ -372,19 +377,20 @@ class BriefService:
         )
 
     @staticmethod
-    def _open_requirements(state: BriefState) -> tuple[OpenRequirement, ...]:
-        """아직 확정되지 않은 후보만 투영한다.
+    def _requirement_candidates(state: BriefState) -> tuple[RequirementView, ...]:
+        """후보 전체를 resolution과 함께 투영한다 (ADR-0035 §1).
 
-        확정된 후보는 더 물을 것이 없으므로 전달하지 않는다. 확인 권위와 내용
-        출처도 전달하지 않는다 — 승격 판정의 재료이지 다음 질문의 재료가 아니다.
+        확정된 후보를 감추면 위임 역할이 이미 결정된 사안을 다시 차단한다 —
+        도그푸딩 0001에서 감사 2순환이 이렇게 낭비되었다. upstream 감사는
+        전체 관점에서 수행되므로 같은 가시성을 준다. 확인 권위와 내용 출처는
+        전달하지 않는다 — 승격 판정의 재료이지 질문의 재료가 아니다.
         """
         return tuple(
-            OpenRequirement(
+            RequirementView(
                 section=item.section,
                 text=item.text,
                 resolution=item.resolution,
                 required=item.required,
             )
             for item in state.candidates
-            if item.resolution is not CandidateResolution.CONFIRMED
         )

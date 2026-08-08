@@ -81,6 +81,13 @@ closer의 gate summary, 두 advisory의 과제 문장, severity 규칙을 **영�
 
 ### 5. ambiguity 점수를 감사 요청에 전달하지 않는다
 
+> **재확인 (2026-08-08, ADR-0035 §5).** upstream tripanel 빌더도 점수를
+> 선택적으로 싣는다 (`subagent.py:2677-2680`). anchoring 제거 목적의 이
+> divergence는 유지한다. 함께: 감사 입력 투영은 ADR-0035 §1로 후보 전체
+> (확정 포함)를 전달하도록 바뀌었다 — upstream의 "main 세션 전체 관점"
+> 정렬이며, 본 ADR의 3-lane 구조와 합성 규칙은 그대로다. lane 실행은
+> ADR-0035 §2로 병렬이 되었다 (upstream 병렬 배치 정렬).
+
 **upstream과 다르다 — divergence로 등록한다.** upstream은 점수를 전달하고
 "충분조건으로 쓰지 마라"는 경고를 얹는다. 우리는 anchoring 위험 자체를
 제거한다. 평가자에게 통과선을 알리지 않는 기존 패턴(ADR-0009, ADR-0019 §3)과

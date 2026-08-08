@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex) |
-| Automated tests | 518 passed (unit + integration) |
+| Automated tests | 520 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -223,7 +223,10 @@ Verify Gate 미검사 조건)을 잡았다.
   실 AI 전체 파이프라인 도그푸딩 완료 (2026-08-08,
   [DOGFOODING_0001](../research/DOGFOODING_0001.md)) — Brief 질문 생성부터
   `CLEAR`(MISSION COMPLETE)까지 codex 47회 호출로 완주, 마찰 4건 등록.
-  잔여: Recover 실패 경로 도그푸딩(미발동), 마찰 4건의 upstream 대조·처분
+  마찰 4건의 upstream 대조·처분 완료 (2026-08-08, ADR-0035 — 비용·속도
+  upstream 동등 이상은 사용자 요구사항): 감사 lane 병렬화, 위임 투영에 후보
+  전체 전달, QA에 threshold·궤적 전달(ADR-0019 §3 개정), 고정 필드 프롬프트.
+  잔여: Recover 실패 경로 도그푸딩(미발동)
 - [ ] OpenCode adapter conformance
 - [ ] session/resume/cancel (ADR-0033 §6 보류 — 도입 시 upstream 정합
   검증과 대조)
@@ -402,12 +405,21 @@ upstream 영어 원문으로 교체되었다 (ADR-0019 §4 재평가 이행).
 upstream 대조 후에 정한다. Recover는 전 AC 1회 통과로 미발동이라 실패
 경로의 실물 관측이 남아 있다.
 
-다음 검증 가능한 목표 한 개: **도그푸딩 마찰 4건의 upstream 대조와 처분.**
-pinned baseline에서 ① 감사 입력이 requirement 상태를 보는지, ② 요구사항
-폐기 수명, ③ QA 지적의 반영 구조(기각 개념 유무), ④ seed QA의 제약 필드
-취급을 확인하고, 각각 수정 ADR / divergence 등록 / 기각 중 하나로
-처분한다. 그 다음 대기: Claude 텍스트 lane adapter 조사·ADR (사용자 확정
-방향 — claude(brief·blueprint·verify) + codex(execute·recover), 2026-08-08).
+도그푸딩 마찰 4건의 upstream 대조·처분은 2026-08-08 완료되었다
+([ADR-0035](../adr/0035-dogfooding-cost-parity-dispositions.md) — 대조표
+포함, 520 tests). **비용·속도는 upstream 동등 이상**이 사용자 요구사항으로
+확정되었다. 대조 결과 호출 수는 전 구간 upstream 동등 이하였고, 이탈 두
+곳을 upstream 정렬로 수정했다 — closure 감사 3-lane 병렬화(wall-clock
+순환당 2~4분 → 최장 lane 1개), 위임 투영에 후보 전체 전달(낭비 2순환
+≈ 12호출의 원인 제거). QA에는 upstream과 같이 threshold와 반복 궤적을
+전달한다 (ADR-0019 §3 개정). 기각 사유 채널과 후보 폐기 상태는 upstream에도
+없어 발명하지 않았다.
+
+다음 검증 가능한 목표 한 개: **Claude 텍스트 lane adapter 조사와 ADR**
+(사용자 확정 방향, 2026-08-08 — claude(brief·blueprint·verify 판정) +
+codex(execute·recover 교정)). claude CLI headless의 구조화 출력 수단
+(`--output-schema` 대응물)을 조사하고, ADR-0003/0033의 vendor 범위 변경을
+ADR로 확정한 뒤 ClaudeCompletion 엔진과 텍스트 lane 바인딩을 구현한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

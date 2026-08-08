@@ -22,8 +22,8 @@ from mission_control.application.ports import (
     CloserAuditRequest,
     ClosureChallengeRequest,
     GeneratedQuestion,
-    OpenRequirement,
     QuestionRequest,
+    RequirementView,
 )
 from mission_control.domain.brief.clarity import ClarityAssessment, DimensionScore
 from mission_control.domain.brief.closure import AdvisoryReport, CloserReport
@@ -48,7 +48,7 @@ class ClarityDimensionMismatchError(MissionControlError):
 def _render_context(
     initial_intent: str,
     previous_rounds: tuple[AskedRound, ...],
-    open_requirements: tuple[OpenRequirement, ...],
+    requirement_candidates: tuple[RequirementView, ...],
 ) -> str:
     parts = [f"## Initial intent\n{initial_intent}"]
     if previous_rounds:
@@ -57,9 +57,11 @@ def _render_context(
             lines.append(f"Q: {round_.question}")
             lines.append(f"A: {round_.answer if round_.answer is not None else '(unanswered)'}")
         parts.append("\n".join(lines))
-    if open_requirements:
-        lines = ["## Open requirement candidates"]
-        for item in open_requirements:
+    if requirement_candidates:
+        # 확정된 후보도 함께 싣는다 — 감추면 위임 역할이 이미 결정된 사안을
+        # 다시 차단한다 (ADR-0035 §1). 열림/닫힘은 resolution이 구분한다.
+        lines = ["## Requirement candidates (settled ones included; see resolution)"]
+        for item in requirement_candidates:
             lines.append(
                 f"- [{item.section}] {item.text} "
                 f"(resolution: {item.resolution}, required: {item.required})"
@@ -102,7 +104,7 @@ class CodexQuestionGenerator:
             [
                 _INTERVIEWER_ROLE,
                 _render_context(
-                    request.initial_intent, request.previous_rounds, request.open_requirements
+                    request.initial_intent, request.previous_rounds, request.requirement_candidates
                 ),
             ]
         )
@@ -142,7 +144,7 @@ class CodexClarityAssessor:
                 _ASSESSOR_ROLE,
                 f"## Requested dimensions\n{dimensions}",
                 _render_context(
-                    request.initial_intent, request.previous_rounds, request.open_requirements
+                    request.initial_intent, request.previous_rounds, request.requirement_candidates
                 ),
             ]
         )
@@ -214,7 +216,7 @@ class CodexClosureAssessor:
                 _CLOSER_ROLE,
                 f"## Closure gate criteria (verbatim policy)\n{request.gate_summary}",
                 _render_context(
-                    request.initial_intent, request.previous_rounds, request.open_requirements
+                    request.initial_intent, request.previous_rounds, request.requirement_candidates
                 ),
             ]
         )
@@ -266,7 +268,7 @@ class CodexClosureChallenger:
                 f"## Assigned perspective (verbatim policy)\n{request.challenge}",
                 f"## Severity rule (verbatim policy)\n{request.severity_rule}",
                 _render_context(
-                    request.initial_intent, request.previous_rounds, request.open_requirements
+                    request.initial_intent, request.previous_rounds, request.requirement_candidates
                 ),
             ]
         )
