@@ -1,4 +1,4 @@
-"""Blueprint 위임 port들의 Codex 구현 — 초안 생성과 QA 채점.
+"""Blueprint 위임 port들의 vendor 중립 구현 — 초안 생성과 QA 채점.
 
 생성기의 granularity contract는 upstream `agents/seed-architect.md` §3의
 영어 원문과 정렬하고, 채점자의 quality bar는 요청에 담겨 오는 정책 원문
@@ -8,13 +8,14 @@
 조립 단계(:func:`check_scope`)가 거부한다 (ADR-0018).
 
 계약: ``docs/adr/0034-codex-text-backend-contract.md``,
+``docs/adr/0036-claude-text-lane-contract.md``,
 ``docs/adr/0018-blueprint-generation-contract.md``,
 ``docs/adr/0019-blueprint-qa-loop.md``
 """
 
 from __future__ import annotations
 
-from mission_control.adapters.text.codex_completion import CodexCompletion, strict_schema
+from mission_control.adapters.text.completion_engine import CompletionEngine, strict_schema
 from mission_control.application.ports import BlueprintGenerationRequest, QaRequest
 from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import QaAssessment, QaDimension, QaFinding
@@ -70,10 +71,10 @@ _DRAFT_SCHEMA = strict_schema(
 )
 
 
-class CodexBlueprintGenerator:
+class PromptedBlueprintGenerator:
     """승인된 handoff를 확인 가능한 초안으로 구체화하는 Codex 구현."""
 
-    def __init__(self, *, completion: CodexCompletion) -> None:
+    def __init__(self, *, completion: CompletionEngine) -> None:
         self._completion = completion
 
     def render_prompt(self, request: BlueprintGenerationRequest) -> str:
@@ -158,10 +159,10 @@ _QA_SCHEMA = strict_schema(
 )
 
 
-class CodexBlueprintQaJudge:
+class PromptedBlueprintQaJudge:
     """주어진 quality bar로 초안을 채점하는 Codex 구현."""
 
-    def __init__(self, *, completion: CodexCompletion) -> None:
+    def __init__(self, *, completion: CompletionEngine) -> None:
         self._completion = completion
 
     def render_prompt(self, request: QaRequest) -> str:

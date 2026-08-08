@@ -12,9 +12,9 @@ from pydantic import ValidationError
 import pytest
 
 from mission_control.adapters.text.codex_completion import CodexCompletion
-from mission_control.adapters.text.codex_semantic_evaluator import (
+from mission_control.adapters.text.semantic_evaluator import (
     VERDICT_SCHEMA,
-    CodexSemanticEvaluator,
+    PromptedSemanticEvaluator,
     render_prompt,
 )
 from mission_control.application.ports import SemanticEvaluationRequest
@@ -103,7 +103,7 @@ class TestAssess:
             '"reward_hacking_risk": 0.0, "reasoning": "contract demonstrated", '
             '"evidence": ["report.md exists"], "questions_used": ["does it render?"]}',
         )
-        evaluator = CodexSemanticEvaluator(completion=CodexCompletion(cli_path=stub))
+        evaluator = PromptedSemanticEvaluator(completion=CodexCompletion(cli_path=stub))
 
         verdict = await evaluator.assess(_request())
 
@@ -120,7 +120,7 @@ class TestAssess:
             '"reward_hacking_risk": 0.0, "reasoning": "score out of range", '
             '"evidence": [], "questions_used": []}',
         )
-        evaluator = CodexSemanticEvaluator(completion=CodexCompletion(cli_path=stub))
+        evaluator = PromptedSemanticEvaluator(completion=CodexCompletion(cli_path=stub))
 
         with pytest.raises(ValidationError):
             await evaluator.assess(_request())

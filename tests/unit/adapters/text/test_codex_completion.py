@@ -13,8 +13,8 @@ import pytest
 from mission_control.adapters.text.codex_completion import (
     CodexCompletion,
     CodexCompletionError,
-    strict_schema,
 )
+from mission_control.adapters.text.completion_engine import strict_schema
 
 SCHEMA = strict_schema({"answer": {"type": "string"}})
 

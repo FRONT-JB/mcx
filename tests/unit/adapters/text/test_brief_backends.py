@@ -10,12 +10,12 @@ import textwrap
 
 import pytest
 
-from mission_control.adapters.text.codex_brief_backends import (
+from mission_control.adapters.text.brief_backends import (
     ClarityDimensionMismatchError,
-    CodexClarityAssessor,
-    CodexClosureAssessor,
-    CodexClosureChallenger,
-    CodexQuestionGenerator,
+    PromptedClarityAssessor,
+    PromptedClosureAssessor,
+    PromptedClosureChallenger,
+    PromptedQuestionGenerator,
 )
 from mission_control.adapters.text.codex_completion import CodexCompletion
 from mission_control.application.ports import (
@@ -65,7 +65,7 @@ OPEN = (
 
 class TestQuestionGenerator:
     def test_the_role_boundary_is_upstream_aligned(self, tmp_path: Path) -> None:
-        generator = CodexQuestionGenerator(completion=_engine(tmp_path, "q", "{}"))
+        generator = PromptedQuestionGenerator(completion=_engine(tmp_path, "q", "{}"))
         prompt = generator.render_prompt(
             QuestionRequest(
                 initial_intent="댓글 기능", previous_rounds=ROUNDS, requirement_candidates=OPEN
@@ -77,7 +77,7 @@ class TestQuestionGenerator:
         assert "[non_goal] 댓글 수정은 범위 밖" in prompt
 
     async def test_a_question_round_trips(self, tmp_path: Path) -> None:
-        generator = CodexQuestionGenerator(
+        generator = PromptedQuestionGenerator(
             completion=_engine(
                 tmp_path,
                 "codex-q",
@@ -95,7 +95,7 @@ class TestQuestionGenerator:
 
 class TestClarityAssessor:
     async def test_scores_carry_the_injected_policy_version(self, tmp_path: Path) -> None:
-        assessor = CodexClarityAssessor(
+        assessor = PromptedClarityAssessor(
             completion=_engine(
                 tmp_path,
                 "codex-clarity",
@@ -117,7 +117,7 @@ class TestClarityAssessor:
 
     async def test_wrong_dimensions_are_rejected(self, tmp_path: Path) -> None:
         """요청하지 않은 축의 채점은 집계에 들어가지 못한다."""
-        assessor = CodexClarityAssessor(
+        assessor = PromptedClarityAssessor(
             completion=_engine(
                 tmp_path,
                 "codex-wrongdim",
@@ -138,7 +138,7 @@ class TestClarityAssessor:
 
 class TestCloser:
     async def test_a_ready_verdict_has_no_blocking_question(self, tmp_path: Path) -> None:
-        assessor = CodexClosureAssessor(
+        assessor = PromptedClosureAssessor(
             completion=_engine(
                 tmp_path,
                 "codex-closer",
@@ -158,7 +158,7 @@ class TestCloser:
         assert report.blocking_question is None
 
     def test_the_gate_summary_is_carried_verbatim(self, tmp_path: Path) -> None:
-        assessor = CodexClosureAssessor(completion=_engine(tmp_path, "c", "{}"))
+        assessor = PromptedClosureAssessor(completion=_engine(tmp_path, "c", "{}"))
         prompt = assessor.render_prompt(
             CloserAuditRequest(
                 initial_intent="댓글 기능",
@@ -173,7 +173,7 @@ class TestCloser:
 class TestChallenger:
     async def test_the_lane_is_bound_from_the_request(self, tmp_path: Path) -> None:
         """lane은 응답이 아니라 요청에서 온다 (ADR-0034 §5와 같은 축)."""
-        challenger = CodexClosureChallenger(
+        challenger = PromptedClosureChallenger(
             completion=_engine(
                 tmp_path,
                 "codex-chall",

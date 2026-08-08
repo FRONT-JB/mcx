@@ -25,6 +25,11 @@ Mission Control Core는 backend-neutral contract만 사용한다.
 
 초기 concrete 방향은 Codex와 OpenCode이며 Gemini는 v1 범위에 포함하지 않는다.
 
+> **범위 변경 (2026-08-08, ADR-0036).** 사용자 결정으로 text-generation
+> backend 축에 Claude를 추가했다 — 텍스트 lane의 기본 vendor는 Claude,
+> 실행(execution Runtime) 축은 본 ADR 그대로 Codex(+OpenCode 예정)다.
+> Gemini 제외는 유지된다.
+
 ## Consequences
 
 ### Positive

@@ -8,9 +8,9 @@ import stat
 import sys
 import textwrap
 
-from mission_control.adapters.text.codex_blueprint_backends import (
-    CodexBlueprintGenerator,
-    CodexBlueprintQaJudge,
+from mission_control.adapters.text.blueprint_backends import (
+    PromptedBlueprintGenerator,
+    PromptedBlueprintQaJudge,
 )
 from mission_control.adapters.text.codex_completion import CodexCompletion
 from mission_control.application.ports import (
@@ -55,7 +55,7 @@ REQUEST = BlueprintGenerationRequest(
 
 class TestGenerator:
     def test_verbatim_copy_and_granularity_contract(self, tmp_path: Path) -> None:
-        generator = CodexBlueprintGenerator(completion=_engine(tmp_path, "g", "{}"))
+        generator = PromptedBlueprintGenerator(completion=_engine(tmp_path, "g", "{}"))
         prompt = generator.render_prompt(REQUEST)
         assert "Copy every constraint and non-goal EXACTLY as given" in prompt
         assert (
@@ -65,7 +65,7 @@ class TestGenerator:
         assert "## Constraints (copy verbatim)\n- 로그인 사용자만" in prompt
 
     async def test_the_draft_round_trips_with_empty_string_sentinels(self, tmp_path: Path) -> None:
-        generator = CodexBlueprintGenerator(
+        generator = PromptedBlueprintGenerator(
             completion=_engine(
                 tmp_path,
                 "codex-draft",
@@ -90,7 +90,7 @@ class TestGenerator:
 class TestQaJudge:
     def test_the_quality_bar_is_the_upstream_original(self, tmp_path: Path) -> None:
         """ADR-0019 §4 재평가 — 채점 계약 문장은 영어 원문이다."""
-        judge = CodexBlueprintQaJudge(completion=_engine(tmp_path, "j", "{}"))
+        judge = PromptedBlueprintQaJudge(completion=_engine(tmp_path, "j", "{}"))
         prompt = judge.render_prompt(
             QaRequest(
                 goal="댓글 기능",
@@ -111,7 +111,7 @@ class TestQaJudge:
     def test_threshold_trajectory_and_fixed_fields_follow_upstream(self, tmp_path: Path) -> None:
         """upstream 프롬프트 자리 이름 정렬 + verbatim 잠금 보상 문장
         (ADR-0035 §3~§4)."""
-        judge = CodexBlueprintQaJudge(completion=_engine(tmp_path, "j2", "{}"))
+        judge = PromptedBlueprintQaJudge(completion=_engine(tmp_path, "j2", "{}"))
         prompt = judge.render_prompt(
             QaRequest(
                 goal="댓글 기능",
@@ -132,7 +132,7 @@ class TestQaJudge:
         assert "Constraints and non-goals are FIXED inputs at this stage" in prompt
 
     async def test_the_assessment_round_trips(self, tmp_path: Path) -> None:
-        judge = CodexBlueprintQaJudge(
+        judge = PromptedBlueprintQaJudge(
             completion=_engine(
                 tmp_path,
                 "codex-qa",

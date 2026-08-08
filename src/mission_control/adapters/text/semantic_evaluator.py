@@ -1,4 +1,4 @@
-"""Codex로 semantic verdict를 받는 :class:`SemanticEvaluator` 구현.
+"""완성 엔진으로 semantic verdict를 받는 :class:`SemanticEvaluator` 구현 (vendor 중립).
 
 프롬프트는 upstream `semantic-evaluator.md`와 정렬한 영어 원문이고
 (``docs/research/RUNTIME_UPSTREAM_FINDINGS.md`` §7), 출력 schema는 우리
@@ -7,12 +7,13 @@ verdict 필드와 1:1이다. ``ac_key``는 평가자가 반환하지 않는다 �
 (ADR-0034 §5).
 
 계약: ``docs/adr/0034-codex-text-backend-contract.md`` §5,
+``docs/adr/0036-claude-text-lane-contract.md``,
 ``docs/adr/0030-verify-semantic-verdict-contract.md``
 """
 
 from __future__ import annotations
 
-from mission_control.adapters.text.codex_completion import CodexCompletion, strict_schema
+from mission_control.adapters.text.completion_engine import CompletionEngine, strict_schema
 from mission_control.application.ports import SemanticEvaluationRequest
 from mission_control.domain.verify.verdict import CriterionVerdict
 
@@ -115,10 +116,10 @@ def render_prompt(request: SemanticEvaluationRequest) -> str:
     return "\n\n".join(parts)
 
 
-class CodexSemanticEvaluator:
+class PromptedSemanticEvaluator:
     """Codex 완성 엔진 위의 semantic 평가자."""
 
-    def __init__(self, *, completion: CodexCompletion) -> None:
+    def __init__(self, *, completion: CompletionEngine) -> None:
         self._completion = completion
 
     async def assess(self, request: SemanticEvaluationRequest) -> CriterionVerdict:

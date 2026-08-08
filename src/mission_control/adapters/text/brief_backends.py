@@ -1,7 +1,8 @@
-"""Brief 위임 port들의 Codex 구현 — 질문 생성, clarity 채점, closure 감사.
+"""Brief 위임 port들의 vendor 중립 구현 — 질문 생성, clarity 채점, closure 감사.
 
-전부 공통 완성 엔진(:class:`CodexCompletion`) 위의 프롬프트+변환이다
-(ADR-0034 §1). 프롬프트가 곧 계약인 지점 — 질문 생성기의 역할 경계와
+전부 완성 엔진 계약(:class:`CompletionEngine`) 위의 프롬프트+변환이다
+(ADR-0034 §1, ADR-0036 §2) — 엔진만 vendor별이고 프롬프트 문장은 한 벌이다.
+프롬프트가 곧 계약인 지점 — 질문 생성기의 역할 경계와
 closure 감사의 기준 문장 — 은 upstream 영어 원문과 정렬한다. closure의
 기준 문장(gate_summary·challenge·severity_rule)은 요청에 담겨 오는 정책
 원문을 그대로 싣는다 (ADR-0020 §4).
@@ -10,12 +11,13 @@ workspace는 없다 — Brief는 저장소를 조사하지 않는다 (Guide §4.
 사실은 별도 read-only 경로가 제공한다).
 
 계약: ``docs/adr/0034-codex-text-backend-contract.md``,
+``docs/adr/0036-claude-text-lane-contract.md``,
 ``docs/adr/0020-brief-closure-audit.md``
 """
 
 from __future__ import annotations
 
-from mission_control.adapters.text.codex_completion import CodexCompletion, strict_schema
+from mission_control.adapters.text.completion_engine import CompletionEngine, strict_schema
 from mission_control.application.ports import (
     AskedRound,
     AssessmentRequest,
@@ -93,10 +95,10 @@ _QUESTION_SCHEMA = strict_schema(
 )
 
 
-class CodexQuestionGenerator:
+class PromptedQuestionGenerator:
     """질문 하나를 생성하는 제한된 역할의 Codex 구현."""
 
-    def __init__(self, *, completion: CodexCompletion) -> None:
+    def __init__(self, *, completion: CompletionEngine) -> None:
         self._completion = completion
 
     def render_prompt(self, request: QuestionRequest) -> str:
@@ -126,14 +128,14 @@ and 1.0 (unambiguous) with a one-sentence justification. Score exactly the \
 requested dimensions, nothing else."""
 
 
-class CodexClarityAssessor:
+class PromptedClarityAssessor:
     """축별 clarity를 채점하는 제한된 역할의 Codex 구현.
 
     ``policy_version``은 구성에서 주입된다 — 평가자에게 threshold를 알려 주지
     않는 계약(ports)과 기록의 정책 추적(clarity.py)을 함께 만족하는 자리다.
     """
 
-    def __init__(self, *, completion: CodexCompletion, policy_version: str) -> None:
+    def __init__(self, *, completion: CompletionEngine, policy_version: str) -> None:
         self._completion = completion
         self._policy_version = policy_version
 
@@ -204,10 +206,10 @@ _CLOSER_SCHEMA = strict_schema(
 )
 
 
-class CodexClosureAssessor:
+class PromptedClosureAssessor:
     """closure gate 판정(closer lane)의 Codex 구현."""
 
-    def __init__(self, *, completion: CodexCompletion) -> None:
+    def __init__(self, *, completion: CompletionEngine) -> None:
         self._completion = completion
 
     def render_prompt(self, request: CloserAuditRequest) -> str:
@@ -251,14 +253,14 @@ _CHALLENGER_SCHEMA = strict_schema(
 )
 
 
-class CodexClosureChallenger:
+class PromptedClosureChallenger:
     """advisory lane(contrarian·gap_hunter)의 Codex 구현.
 
     lane은 응답이 아니라 요청에서 바인딩된다 — semantic 평가자의 ``ac_key``와
     같은 이유다 (ADR-0034 §5).
     """
 
-    def __init__(self, *, completion: CodexCompletion) -> None:
+    def __init__(self, *, completion: CompletionEngine) -> None:
         self._completion = completion
 
     def render_prompt(self, request: ClosureChallengeRequest) -> str:

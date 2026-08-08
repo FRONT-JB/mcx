@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex) |
-| Automated tests | 520 passed (unit + integration) |
+| Automated tests | 530 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -227,6 +227,13 @@ Verify Gate 미검사 조건)을 잡았다.
   upstream 동등 이상은 사용자 요구사항): 감사 lane 병렬화, 위임 투영에 후보
   전체 전달, QA에 threshold·궤적 전달(ADR-0019 §3 개정), 고정 필드 프롬프트.
   잔여: Recover 실패 경로 도그푸딩(미발동)
+- [x] Claude 텍스트 lane adapter (ADR-0036, 2026-08-08) — 사용자 확정 구조:
+  텍스트 lane(질문·채점·감사·생성·QA·semantic 판정)은 Claude, 실행은 Codex.
+  `ClaudeCompletion` 엔진(`--json-schema` + `structured_output` 1급 소비,
+  도구 카탈로그 봉투, 총시간 600s)과 vendor 중립 프롬프트 클래스
+  (`Prompted*`, `CompletionEngine` protocol) — conformance 10건 + 실물
+  스모크 3회 (RUNTIME findings §10, semantic 평가자가 read-only 봉투에서
+  Grep으로 증거를 세어 인용)
 - [ ] OpenCode adapter conformance
 - [ ] session/resume/cancel (ADR-0033 §6 보류 — 도입 시 upstream 정합
   검증과 대조)
@@ -415,11 +422,21 @@ upstream 대조 후에 정한다. Recover는 전 AC 1회 통과로 미발동이�
 전달한다 (ADR-0019 §3 개정). 기각 사유 채널과 후보 폐기 상태는 upstream에도
 없어 발명하지 않았다.
 
-다음 검증 가능한 목표 한 개: **Claude 텍스트 lane adapter 조사와 ADR**
-(사용자 확정 방향, 2026-08-08 — claude(brief·blueprint·verify 판정) +
-codex(execute·recover 교정)). claude CLI headless의 구조화 출력 수단
-(`--output-schema` 대응물)을 조사하고, ADR-0003/0033의 vendor 범위 변경을
-ADR로 확정한 뒤 ClaudeCompletion 엔진과 텍스트 lane 바인딩을 구현한다.
+Claude 텍스트 lane은 2026-08-08 완료되었다 (ADR-0036, 530 tests).
+조사(RUNTIME findings §10)에서 upstream `claude_code_adapter.py`의 CLI
+전송·도구 봉투·격리 플래그를 확인했고, upstream이 우회하던 스키마 강제가
+로컬 claude CLI 2.1.226에서 `--json-schema` + envelope `structured_output`
+필드로 1급 지원됨을 실물 스모크로 확인했다 (prose 재질의 불채택 — 등록된
+divergence). 프롬프트 클래스 7종은 vendor 중립(`Prompted*`)으로 개명되어
+`CompletionEngine` protocol만 요구한다 — 같은 프롬프트 한 벌이 Codex와
+Claude 양쪽 엔진에서 돈다 (upstream의 persona/LLMAdapter 분리 정렬).
+
+다음 검증 가능한 목표 한 개: **혼합 vendor 도그푸딩 0002 (사용자 승인 필요
+— claude·codex 호출 비용 발생, 추정 루프당 호출 × 순환수 기준 25~45회).**
+사용자 확정 구조(claude 텍스트 + codex 실행) 그대로 작은 실제 미션을
+`CLEAR — MISSION COMPLETE`까지 완주해 ADR-0035 수정(감사 병렬·투영·QA
+궤적)의 효과와 Claude 프롬프트 품질을 실물 관측하고, 의도적 실패 1건으로
+아직 미관측인 Recover 실패→교정→재검증 경로를 처음 실물로 돈다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

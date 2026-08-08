@@ -22,32 +22,19 @@ import signal
 import tempfile
 from typing import Any
 
-from mission_control.domain.errors import MissionControlError
+from mission_control.adapters.text.completion_engine import (
+    MAX_ATTEMPTS,
+    CompletionError,
+    is_transient,
+)
 
 #: upstream stall 기준 채택 — 침묵이지 총 시간이 아니다 (ADR-0033 §4).
 SILENCE_TIMEOUT_SECONDS = 900.0
 
-#: transient 재시도 상한과 backoff — upstream 완성 adapter 채택 (findings §7).
-MAX_ATTEMPTS = 3
-
-#: upstream 공용 transient 코어의 부분집합. 소문자 대조.
-_TRANSIENT_PATTERNS = (
-    "rate limit",
-    "429",
-    "temporarily",
-    "overloaded",
-    "connection",
-    "try again",
-    "500",
-    "502",
-    "503",
-    "504",
-)
-
 _OUTPUT_TAIL_CHARS = 2_000
 
 
-class CodexCompletionError(MissionControlError):
+class CodexCompletionError(CompletionError):
     """완성 호출이 사용할 수 있는 구조화 출력을 만들지 못했다.
 
     파싱 실패·schema 위반·timeout·비일시적 오류가 전부 여기다 — 어느 것도
@@ -55,23 +42,7 @@ class CodexCompletionError(MissionControlError):
     """
 
     def __init__(self, *, reason: str) -> None:
-        super().__init__(f"codex completion failed: {reason}")
-        self.reason = reason
-
-
-def strict_schema(properties: dict[str, Any]) -> dict[str, Any]:
-    """Codex가 요구하는 strict shape로 schema를 구성한다.
-
-    모든 property가 ``required``이고 ``additionalProperties: false`` —
-    upstream `_normalize_schema_for_codex`가 강제하는 형태를 처음부터
-    만든다 (findings §7).
-    """
-    return {
-        "type": "object",
-        "properties": properties,
-        "required": list(properties.keys()),
-        "additionalProperties": False,
-    }
+        super().__init__(reason=reason, engine="codex")
 
 
 class CodexCompletion:
@@ -127,8 +98,7 @@ class CodexCompletion:
             if isinstance(outcome, dict):
                 return outcome
             last_error = outcome
-            transient = any(pattern in outcome.lower() for pattern in _TRANSIENT_PATTERNS)
-            if not transient or attempt >= self._max_attempts - 1:
+            if not is_transient(outcome) or attempt >= self._max_attempts - 1:
                 raise CodexCompletionError(reason=outcome)
             await asyncio.sleep(2**attempt)
         raise CodexCompletionError(reason=last_error)

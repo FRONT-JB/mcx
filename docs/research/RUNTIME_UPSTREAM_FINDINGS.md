@@ -140,6 +140,63 @@ Mission Control 대응: 1은 [ADR-0033](../adr/0033-first-runtime-adapter-contra
   도입 시 조사한다.
 - `AgentMessage`의 정확한 필드와 이벤트 정규화 규칙 — 스트리밍 도입 시.
 
+## 10. Claude 텍스트 backend 조사 (2026-08-08 후속)
+
+사용자 확정 방향(claude가 brief·blueprint·verify 판정 담당)의 재료.
+upstream 근거는 `providers/claude_code_adapter.py`, 로컬 실물은 claude CLI
+**2.1.226** (스모크 2회, **Verified by execution**).
+
+### upstream `ClaudeCodeAdapter` (Verified — 소스)
+
+- 전송: SDK가 있으면 SDK, 없으면 **CLI print 모드 fallback** —
+  `claude -p --output-format json [--model M] [--append-system-prompt S]
+  [--permission-mode P] [--tools T --allowedTools T] --max-turns N
+  [--strict-mcp-config --setting-sources ""]`, 프롬프트는 stdin (`:643-707`).
+- **`--tools ""`가 도구 카탈로그 자체를 비운다** — `--allowedTools`는 권한
+  프롬프트 억제일 뿐이라 둘 다 필요 (`:697-702`). interview/PM/QA 호출자는
+  `allowed_tools=[]` + `strict_mcp_config=True`로 만들어 재귀·도구를 차단.
+- semantic 평가는 **"20-turn read-only envelope"** (`:665-668` docstring).
+- 격리: `--strict-mcp-config --setting-sources ""` — MCP 재발견과 setting
+  source(프로젝트 지침·agents·plugins·hooks) 상속을 뿌리에서 차단 (`:705-713`).
+- timeout: **총 시간 600s** (`_CLI_DEFAULT_TIMEOUT_SECONDS`, `:108`) —
+  print 모드는 끝에 한 번 보고하므로 침묵 기준이 성립하지 않는다.
+- envelope: stdout이 JSON 하나 — `result`(문자열)·`is_error`·`subtype`·
+  `session_id`·`usage`. 비JSON stdout은 CLI 자체 실패(auth·flag)로 stderr가
+  진단 (`:770-790`).
+- 구조화 출력: **"CLI path does not reliably honor json_schema"** (`:458`,
+  2.1.220 시점) → 스키마를 프롬프트에 싣고 `extract_json_payload`로 추출,
+  prose면 `_MAX_JSON_RETRIES = 3` 재질의 (`:71`, `:849-909`).
+- transient 재시도는 JSON 강제와 별도 층 (`:912` 이후).
+
+### 로컬 claude CLI 2.1.226 (Verified by execution — 스모크 2회)
+
+upstream이 우회했던 지점이 그 사이 1급 지원이 되었다.
+
+- **`--json-schema <inline JSON>` 플래그가 존재**하고, 응답 envelope에
+  **`structured_output` 필드로 스키마 적합 객체가 파싱되어 담긴다**
+  (`result`에는 같은 내용의 문자열). 스모크: 무도구 봉투에서 왕복 성공.
+- `--tools "" --allowedTools "" --max-turns 1 --strict-mcp-config
+  --setting-sources ""` 전부 실플래그 (`--tools`·`--max-turns`는 --help에
+  없지만 동작 — upstream 관찰과 일치). 무도구 + `--max-turns 1`에서도
+  구조화 출력이 내부 도구 턴으로 처리되어 `num_turns 2`로 성공.
+- read-only 봉투 스모크: `--tools "Read Glob Grep"` + cwd=workspace에서
+  평가자가 파일을 실제로 읽고(응답 evidence에 파일 내용 인용) 스키마 적합
+  판정을 반환. `permission_denials: []` — headless에서 권한 프롬프트 없이
+  동작. 호출당 비용 관측: $0.016~0.022 (haiku).
+- envelope에 `total_cost_usd`·`permission_denials`·`num_turns`가 있어
+  비용·봉투 위반 관측이 공짜다.
+
+### Mission Control 함의 (Claude 엔진)
+
+- 스키마 강제는 프롬프트 삽입이 아니라 `--json-schema` + `structured_output`
+  소비로 간다 — codex `--output-schema`와 같은 위치의 CLI측 검증이므로
+  upstream의 prose 재질의(3회)는 불필요해진다. 결정은
+  [ADR-0036](../adr/0036-claude-text-lane-contract.md).
+- 구현 후 실물 확인 (스모크 3번째 호출): 실제 `ClaudeCompletion` +
+  `PromptedSemanticEvaluator`로 배열 필드를 포함한 실제 VERDICT_SCHEMA가
+  왕복했고, 평가자가 read-only 봉투 안에서 Grep(-o)으로 증거를 직접 세어
+  인용하며 satisfied/score 1.0, uncertainty 0.0을 반환했다.
+
 ## Mission Control 함의
 
 결정은 [ADR-0033](../adr/0033-first-runtime-adapter-contract.md)(port 분리
