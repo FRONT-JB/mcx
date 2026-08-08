@@ -220,7 +220,10 @@ Verify Gate 미검사 조건)을 잡았다.
   채점자, closer·challenger, Blueprint 생성기·QA 채점자) — quality bar는
   upstream 영어 원문으로 교체(ADR-0019 §4 재평가 이행). 실물 스모크 완료
   (RUNTIME findings §8). **다섯 Stage 전부가 실제 AI로 구동 가능하다.**
-  잔여: 실 AI 전체 파이프라인 관측(도그푸딩)
+  실 AI 전체 파이프라인 도그푸딩 완료 (2026-08-08,
+  [DOGFOODING_0001](../research/DOGFOODING_0001.md)) — Brief 질문 생성부터
+  `CLEAR`(MISSION COMPLETE)까지 codex 47회 호출로 완주, 마찰 4건 등록.
+  잔여: Recover 실패 경로 도그푸딩(미발동), 마찰 4건의 upstream 대조·처분
 - [ ] OpenCode adapter conformance
 - [ ] session/resume/cancel (ADR-0033 §6 보류 — 도입 시 upstream 정합
   검증과 대조)
@@ -385,12 +388,26 @@ workspace 안에서 검증 명령을 직접 재현하고 확신 있는 판정을
 518 tests) — 다섯 Stage 전부가 실제 AI로 구동 가능하다. quality bar는
 upstream 영어 원문으로 교체되었다 (ADR-0019 §4 재평가 이행).
 
-다음 검증 가능한 목표 한 개: **실 AI 전체 파이프라인 도그푸딩 (사용자 승인
-필요 — codex 다수 호출·비용 발생).** 작은 실제 미션 하나를 Brief 질문
-생성부터 `CLEAR — MISSION COMPLETE`까지 전부 실제 codex로 돌려, 각 위임
-port의 프롬프트 품질과 다섯 Stage 순환을 실물로 관측한다. 관측 결과(질문
-품질, 채점 분포, 명세 범위 준수, 판정 정확도)를 research에 기록하고
-프롬프트·계약 불일치를 정정한다.
+실 AI 전체 파이프라인 도그푸딩은 2026-08-08 사용자 승인 하에 완료되었다
+([DOGFOODING_0001](../research/DOGFOODING_0001.md) — Verified by execution).
+미션 `dogfood-0001`(wordfreq CLI)이 Brief 질문 생성부터 Verify Gate
+`CLEAR`(MISSION COMPLETE)까지 실제 codex 47회 호출로 완주했고, 산출물은
+수동 spot check에서도 계약대로 동작했다. closure 감사의 HIGH 차단 4건은
+전부 material했고 5순환에 READY로 수렴했으며, Blueprint 생성기는 제약
+11개를 원문 그대로 보존했고 AC 기대 출력이 수동 검산과 일치했다. 마찰
+4건(감사 입력 투영의 확정 후보 배제, 폐기 후보의 영구 잔존, QA 기각 사유
+채널 부재로 인한 점수 정체 — 상한 소진·임계 미달 수락으로 출구, verbatim
+잠금 필드에 대한 QA 제안)은 고치지 않고
+[Open Questions §2·§3](../research/OPEN_QUESTIONS.md)에 등록했다 — 처분은
+upstream 대조 후에 정한다. Recover는 전 AC 1회 통과로 미발동이라 실패
+경로의 실물 관측이 남아 있다.
+
+다음 검증 가능한 목표 한 개: **도그푸딩 마찰 4건의 upstream 대조와 처분.**
+pinned baseline에서 ① 감사 입력이 requirement 상태를 보는지, ② 요구사항
+폐기 수명, ③ QA 지적의 반영 구조(기각 개념 유무), ④ seed QA의 제약 필드
+취급을 확인하고, 각각 수정 ADR / divergence 등록 / 기각 중 하나로
+처분한다. 그 다음 대기: Claude 텍스트 lane adapter 조사·ADR (사용자 확정
+방향 — claude(brief·blueprint·verify) + codex(execute·recover), 2026-08-08).
 
 ### CLEAR 조건 중 강제되지 않는 것
 
