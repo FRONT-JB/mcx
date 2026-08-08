@@ -28,7 +28,7 @@
 |---|---|---|---|
 | AC 분해 (preflight/bounce, 자식 2~5, 라이브 깊이 2, repair 1) | 예외 경로로 존재 | v1 미도입 — atomic-first의 1단계만. 도입 시 upstream 한도와 대조 | [ADR-0024](./0024-execute-v1-execution-model.md) §2 |
 | dependency 파생 (선언 신호 ∪ LLM 추론, 토폴로지 level) | 존재 | v1 미도입 — 선언 순서 순차 + 실패 시 중단 | [ADR-0024](./0024-execute-v1-execution-model.md) §3 |
-| 병렬 실행 (stage 안 병렬, serial-only 분리) | 존재 | v1 미도입. **Phase 11** (2026-08-09 사용자 결정 — OpenCode adapter와 한 묶음). 도입 Gate는 [Execute Guide](../07_EXECUTE.md) §17 | [ADR-0024](./0024-execute-v1-execution-model.md) §3 |
+| 병렬 실행 (stage 안 병렬, serial-only 분리) | 존재 | v1 미도입. **Phase 11** (2026-08-09 사용자 결정 — 독립 항목. OpenCode와 묶었던 근거는 조사로 철회됐다). 도입 Gate는 [Execute Guide](../07_EXECUTE.md) §17 | [ADR-0024](./0024-execute-v1-execution-model.md) §3 |
 | cancelled/timeout attempt 상태 | 존재 (stall scope, cancel) | **Phase 7** (2026-08-09 재지정 — 장기 job 취소 계약과 함께). 원래 시한 "concrete adapter(Phase 5)"는 도과했다: Phase 5 adapter는 단발 실행이라 취소 경로를 만들지 않았다 | [ADR-0024](./0024-execute-v1-execution-model.md) §4 |
 | capability의 실제 차단 | runtime 계층에서 tools 목록·approval mode 전달 | **Phase 5 부분 이행** — 실행측은 sandbox 수준(`--sandbox workspace-write`), 텍스트 lane은 도구 카탈로그(ADR-0036 §4)까지. **도구 단위 allowlist 차단은 Codex CLI에 표면이 없어 보류 유지** (ADR-0033 §6 표) | [ADR-0024](./0024-execute-v1-execution-model.md) §6 |
 | context reference 예산 (참조 256개, 12,000자) | 존재 | v1 미도입 — dispatch 입력이 AC 하나라 예산 문제가 아직 없다 | 이 표 |

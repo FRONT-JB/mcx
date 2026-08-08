@@ -109,7 +109,9 @@ Mission Control은 CLI/MCP가 같은 application service와 같은 composition�
 - 이미 실재하던 라우팅이 명시적 표현을 갖는다 — "왜 이 Stage가 Claude인가"가
   코드 상수가 아니라 데이터로 답해진다.
 - 운용자의 설정 실수가 조용한 재라우팅이 아니라 로드 실패로 드러난다.
-- Phase 11(OpenCode)에서 stage별 분기가 실제로 필요해질 때 축이 이미 있다.
+- Execute의 하네스 교체(codex ↔ opencode — upstream 아키텍처 방향)가 설정
+  한 줄이 된다. backend 레지스트리는 등록된 adapter에 대해 열려 있으므로,
+  실물 adapter를 나중에 추가해도 기존 코드는 바뀌지 않는다.
 
 ### Cost
 

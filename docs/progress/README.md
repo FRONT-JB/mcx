@@ -243,14 +243,15 @@ Verify Gate 미검사 조건)을 잡았다.
 - [-] OpenCode adapter — 조사 완료·구현 이연 (사용자 결정 2026-08-08,
   ADR-0003 범위 note 2). upstream 사용 시점·계약 재료·로컬 1.18.15
   드리프트 후보는 [RUNTIME findings §11](../research/RUNTIME_UPSTREAM_FINDINGS.md).
-  **Phase 11로 배치 확정** (사용자 결정 2026-08-09) — "실수요 시점"이라는
-  조건부 시한은 발동 조건(병렬 실행 도입)이 로드맵에 없어 기약이 없었다
+  **2026-08-09 재정리**: 용도 전제가 틀렸음이 조사로 드러났다 — upstream은
+  OpenCode를 Execute 하네스로 배치한다. 사용자 결정은 **Execute backend
+  교체 구조는 Phase 6에서 열고, 실물 adapter는 이연**(로컬 모델 성능)
 - [-] session/resume/cancel — **Phase 7로 재지정** (사용자 결정 2026-08-09):
   장기 실행 job 계약·취소와 한 묶음. 단발 실행 계약에는 불필요하다는 판단은
   유지되나, 시한이 "OpenCode 실수요"에서 MCP로 앞당겨졌다 (ADR-0033 §6 이연분
   합류)
-- [-] local model vs provided agent capability mapping — **Phase 11로 재지정**
-  (OpenCode adapter와 같은 자리 — 실물 대상이 그때 생긴다)
+- [-] local model vs provided agent capability mapping — **OpenCode adapter와
+  함께 이연** (실물 대상이 그때 생긴다 — 아래 "실수요 이연" 절)
 
 ### Phase 6 — `mcx` CLI
 
@@ -276,7 +277,10 @@ Verify Gate 미검사 조건)을 잡았다.
   ADR-0038 개정으로 도입 예정
 - [ ] Stage→Runtime 라우팅 테이블 + `config.toml`
   ([ADR-0039](../adr/0039-stage-runtime-routing-table.md), 사용자 결정
-  2026-08-09) — ADR-0023이 Phase 5에 약속하고 이행하지 않은 항목
+  2026-08-09) — ADR-0023이 Phase 5에 약속하고 이행하지 않은 항목.
+  **Execute의 backend 교체가 구조적으로 가능해야 한다** (codex ↔ opencode,
+  upstream 방향) — backend 레지스트리는 등록된 adapter에 열려 있고, 실물
+  OpenCode adapter는 이연이다
 - [ ] Phase 6 종료 검토
 
 ### Phase 7 — MCP control surface
@@ -336,27 +340,65 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 - [ ] secret redaction 정책의 실물 재대조 (Phase 7 진입 조건으로 쓴 ADR을
   실 레포 사례로 검증 — 조사 기반 정책의 첫 실물 대조)
 
-### Phase 10 — Reflect/Evolve (사용자 결정 2026-08-09)
+### Phase 10 — Reflect/Evolve: 자가개선 루프 (사용자 결정 2026-08-09)
 
-목표: mission 간 진화 루프의 도입 여부를 조사로 결정하고 도입한다.
+목표: **미션이 배운 것을 다음 미션의 스펙으로 자동 전환한다.** 사용자 지시는
+"도입 여부 조사"가 아니라 **확실하게 구성**이다 — Hermes 사용 방식과 자가개선
+결과가 다음 작업에 연결되는 경로를 깊이 파악해 반영한다.
 
-- [ ] upstream `evolve_step`·wonder·reflect(4번째 stage 축) 조사
-- [ ] 도입 ADR (조사 결과가 부정적이면 제외 ADR로 기록)
-- [ ] 구현
+upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
 
-### Phase 11 — 병렬 실행 + OpenCode adapter (사용자 결정 2026-08-09)
+- `reflect`는 닫힌 stage 어휘 4개 중 하나이고 지정된 하네스는 **Hermes**
+  (`orchestrator_stage.py:1-20` — interview=Codex, execute=OpenCode/OMX,
+  evaluate=Claude Code, reflect=Hermes).
+- **WonderEngine** (`evolution/wonder.py`): *"What do we still not know?"* —
+  현재 ontology·평가 결과·실행 산출물을 검사해 빈틈·긴장·미답 질문을 찾는다.
+- **ReflectEngine** (`evolution/reflect.py`): 실행 결과 + ontology + wonder
+  출력 → **다음 Seed의 개선된 AC와 ontology 변형**. 모듈 docstring:
+  *"This is where the Ouroboros eats its tail"*, 그리고 **"Interview is Gen 1
+  only; Reflect handles all subsequent generations autonomously."**
+- Hermes는 upstream 정식 backend다 (`config/models.py`의
+  `VALID_RUNTIME_BACKENDS`에 `hermes`/`hermes_cli`, `hermes_cli_path` 설정
+  필드). 로컬 실물도 있다 (`~/.local/bin/hermes`) — 실 검증이 가능하다.
 
-목표: 둘째 실행 Runtime을 붙인다. OpenCode의 upstream 용도는 종반의 **병렬**
-부수 작업인데 mcx는 병렬 실행 자체가 미도입(ADR-0024 §3, 선언 순서 순차)이라,
-병렬 Gate 결정이 선행하지 않으면 붙여도 쓸 자리가 없다 — 두 항목을 한 묶음으로
-둔 이유다. ADR-0003의 "초기 Runtime은 Codex/OpenCode" 선언은 여기서 이행된다
-(범위 note 2 해제).
+- [ ] Hermes를 reflect 단계에서 **어떻게 쓰는지** 깊이 조사 — 호출 계약,
+  프롬프트, 출력 스키마, 다른 backend와 다른 점
+- [ ] **자가개선 결과가 다음 작업에 연결되는 경로** 조사 —
+  `evolution/loop.py`, `projector.py`, `parent_seed_id` lineage,
+  `evolve_step` MCP tool. "무엇이 다음 세대의 입력이 되는가"의 전체 경로
+- [ ] Wonder/Reflect 출력의 mcx 대응물 설계 ADR — 우리 Brief/Blueprint의
+  어디로 들어오는가 (Gen 2+에서 Brief를 대체하는가, 입력으로 들어가는가)
+- [ ] 구현 + Hermes adapter (필요 시 — 텍스트 lane 축이므로 `CompletionEngine`
+  추가로 끝날 수 있다)
+
+### Phase 11 — 병렬 실행
+
+목표: 여러 AC를 동시에 실행한다.
 
 - [ ] 병렬 실행 도입 Gate ([Execute Guide](../07_EXECUTE.md) §17,
   [Open Questions §4](../research/OPEN_QUESTIONS.md))
-- [ ] OpenCode adapter ([RUNTIME findings §11](../research/RUNTIME_UPSTREAM_FINDINGS.md))
-- [ ] local model vs provided agent capability mapping
-- [ ] `REDISPATCH_ALT_HARNESS` 재평가 (ADR-0032 보류 — 다중 runtime 후)
+- [ ] `REDISPATCH_ALT_HARNESS` 재평가 (ADR-0032 보류 — 다중 runtime 실물이
+  생긴 뒤)
+
+### 실수요 이연 — OpenCode adapter (사용자 판단 2026-08-09)
+
+**구조는 Phase 6에서 열리고, 실물 구현만 이연한다.** ADR-0039 라우팅
+테이블이 `[stages.execute] execution = "opencode"`를 표현할 수 있게 만들고,
+backend 레지스트리는 등록된 adapter에 대해 열려 있다. adapter를 추가하면
+설정 값이 유효해지고 기존 코드는 바뀌지 않는다 — 되돌리기 싼 항목이라
+조건부 이연이 정당한 경우다.
+
+이연 사유: 로컬 모델 성능이 실 하네스를 돌려 검증할 수준이 아니다
+(사용자 판단). 발동 조건: 그 수준에 도달하거나 Codex와 비교할 실수요가 생길 때.
+
+함께 이연: local model vs provided agent capability mapping (실물 대상이 그때
+생긴다).
+
+**용도 정정 (2026-08-09).** 2026-08-08에 기록된 "OpenCode의 용도는 종반의
+병렬 부수 작업"은 upstream 사실이 아니라 그 시점의 사용자 의도였다. upstream
+아키텍처는 OpenCode를 **Execute 하네스**로 배치한다
+(`orchestrator_stage.py:6`). 사용자 결정은 upstream 방향 채택 — Execute의
+backend를 codex/opencode로 갈아끼우는 구조다.
 
 ## Implementation HOLD
 
@@ -551,7 +593,8 @@ OpenCode 사용 시점 조사(RUNTIME findings §11 — upstream도 자동 편�
 사용자 구성 3진입로뿐) 후 사용자 결정으로 실수요 시점 이연이 확정되었다
 (ADR-0003 범위 note 2). **2026-08-09 재지정** — 조건부 시한이 기약 없이
 밀리는 것을 막기 위해 전부 Phase로 배치했다: resume/cancel은 Phase 7,
-OpenCode adapter와 capability mapping은 Phase 11.
+OpenCode adapter와 capability mapping은 구조만 Phase 6에서 열고 실물은 이연
+(로컬 모델 성능 — 사용자 판단 2026-08-09).
 
 Phase 6 선행 조사는 2026-08-08 완료되었다
 ([CLI_UPSTREAM_FINDINGS](../research/CLI_UPSTREAM_FINDINGS.md)): ①
@@ -815,8 +858,8 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 7 — MCP control surface | 대기 (진입 조건: redaction Security ADR) | — |
 | Phase 8 — plugin 패키징 (합성 계층) | 대기 | — |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | 대기 | — |
-| Phase 10 — Reflect/Evolve | 대기 | — |
-| Phase 11 — 병렬 실행 + OpenCode adapter | 대기 | — |
+| Phase 10 — Reflect/Evolve | 대기 (조사 범위 확정: Hermes 사용 방식 + 다음 작업 연결 경로) | — |
+| Phase 11 — 병렬 실행 | 대기 | — |
 
 ## Update protocol
 

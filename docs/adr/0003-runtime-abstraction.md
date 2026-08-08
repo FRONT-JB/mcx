@@ -39,13 +39,28 @@ Mission Control Core는 backend-neutral contract만 사용한다.
 > 재료(명령·이벤트·로컬 1.18.15 드리프트 후보)는 조사 완료 상태로 기록되어
 > 있어 도입 시 조사 비용이 거의 없다.
 >
-> **시한 확정 (2026-08-09, 사용자 결정).** "실수요 시점"이라는 조건부 시한은
-> 발동 조건(병렬 실행 도입)이 로드맵에 없어 기약이 없었다 —
-> **Phase 11**(병렬 실행 Gate + OpenCode adapter)로 배치해 본 ADR의
-> "초기 Runtime은 Codex와 OpenCode" 선언이 이행되는 자리를 고정한다.
-> capability mapping은 같은 Phase, session/resume/cancel(ADR-0033 §6)은
+> **용도 정정과 처분 (2026-08-09, 사용자 결정).** 범위 변경 2가 근거로 쓴
+> "OpenCode의 용도는 종반의 병렬 부수 작업"은 **upstream 사실이 아니라 그
+> 시점의 사용자 의도**였다. upstream 아키텍처는 OpenCode를 **Execute
+> 하네스**로 배치한다 (`orchestrator_stage.py:6` — interview=Codex,
+> execute=OpenCode/OMX, evaluate=Claude Code, reflect=Hermes).
+>
+> 사용자 결정은 upstream 방향 채택이다 — Execute의 backend를 codex/opencode로
+> **갈아끼우는 구조**를 [ADR-0039](./0039-stage-runtime-routing-table.md)
+> 라우팅 테이블이 Phase 6에서 연다. 실물 OpenCode adapter 구현만 이연하며,
+> 사유는 로컬 모델 성능이 실 하네스 검증 수준이 아니라는 사용자 판단이다.
+> 이 이연은 되돌리기 싼 항목이다 — 레지스트리가 열려 있어 adapter를 추가하면
+> 설정 값이 유효해지고 기존 코드는 바뀌지 않는다.
+>
+> capability mapping은 같은 시점, session/resume/cancel(ADR-0033 §6)은
 > **Phase 7**(장기 실행 job 계약)로 분리 배치했다 — 취소·재개는 둘째
 > Runtime이 아니라 MCP 장기 job이 요구하는 것이었다.
+>
+> **범위 확장 (2026-08-09).** reflect 단계의 지정 하네스는 **Hermes**이며
+> upstream 정식 backend다(`VALID_RUNTIME_BACKENDS`, `hermes_cli_path`).
+> Phase 10에서 reflect를 구성할 때 Hermes를 어떻게 다룰지 결정한다 — 텍스트
+> lane 축이면 `CompletionEngine` 추가로 끝나고 본 ADR의 실행 Runtime 범위는
+> 바뀌지 않는다.
 
 ## Consequences
 

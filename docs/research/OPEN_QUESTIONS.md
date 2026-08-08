@@ -86,7 +86,7 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
 - [-] Codex/OpenCode Runtime의 cancellation/resume/error normalization을
       비교한다. → Codex는
       [RUNTIME findings §5](./RUNTIME_UPSTREAM_FINDINGS.md) (thread 기반
-      resume, 정합 검증). **OpenCode는 Phase 11**
+      resume, 정합 검증). **OpenCode는 adapter 구현과 함께 이연**
 - [x] MCP authoring handler와 execution handler의 recursive dispatch guard를
       확인한다. → [RUNTIME findings](./RUNTIME_UPSTREAM_FINDINGS.md):
       `allowed_tools=[]` + `strict_mcp_config=True`로 재귀·도구 차단,
@@ -201,9 +201,10 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       ([ADR-0024](../adr/0024-execute-v1-execution-model.md) §7). exact key
       schema는 여전히 미정
 - [ ] parallel execution 도입 Gate를 정의한다. → **시한 지정 (2026-08-09,
-      사용자 결정): Phase 11** — OpenCode adapter와 한 묶음. OpenCode의
-      upstream 용도가 종반 병렬 부수 작업이라, 병렬 Gate 없이 adapter만
-      붙이면 쓸 자리가 없다.
+      사용자 결정): Phase 11** — 독립 항목이다. 2026-08-09 조사로 "OpenCode의
+      용도는 종반 병렬 부수 작업"이라는 전제가 upstream 사실이 아님이
+      드러났고(upstream은 OpenCode를 Execute 하네스로 배치), 병렬은 OpenCode와
+      분리됐다.
 - [x] **Execute 진입 경로가 하나임을 무엇이 보장하는지, Telemetry가 "무엇이
       이 작업을 만들었는가"를 기록하는지 결정한다.**
       → 작업 생성은 application use case 단일 경로 + Blueprint Gate `CLEAR`
@@ -311,8 +312,9 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       (upstream stall 채택, ADR-0033 §4). cancel은 스트리밍과 함께, resume은
       upstream 정합 검증(바이너리 해시·모델 고정)과 대조해 도입 (§6 보류)
 - [ ] OpenCode local/provider/agent mode를 capability로 어떻게 표현할지
-      결정한다. → **시한 지정 (2026-08-09, 사용자 결정): Phase 11** —
-      OpenCode adapter와 같은 자리 (실물 대상이 그때 생긴다).
+      결정한다. → **OpenCode adapter와 함께 이연** (2026-08-09 사용자 판단 —
+      로컬 모델 성능이 실 하네스 검증 수준이 아니다). 구조는 Phase 6
+      라우팅 테이블이 열어 두고, 실물 대상이 생길 때 결정한다.
       [RUNTIME_UPSTREAM_FINDINGS §6](./RUNTIME_UPSTREAM_FINDINGS.md) 미조사
 
 ## 8. MCP and CLI decisions
@@ -418,13 +420,25 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
 제품 정체성의 절반인데, mcx에는 대응물도 제외 기록도 없었다. 사용자
 결정: 제외가 아니라 **전체 도입 조사 (Phase 10)**.
 
-- [ ] upstream `evolve_step` MCP tool과 evolution loop의 실제 동작을
-      조사한다 (`evolution/loop.py`).
-- [ ] reflect stage(Wonder·Reflect 페르소나, Hermes 담당 축)의 입력·출력·
-      저장을 조사한다.
-- [ ] mission 간 학습의 mcx 대응물을 결정한다 — 무엇이 다음 Brief/정책의
-      입력이 되는가 (도그푸딩 기록이 수동으로 하던 역할의 자동화).
-- [ ] 도입 ADR을 작성한다. 조사 결과가 부정적이면 제외 ADR로 기록한다.
+**2026-08-09 범위 격상 (사용자 지시).** "도입 여부 조사"가 아니라 **확실하게
+구성**한다. 예비 조사에서 reflect의 정체가 확인됐기 때문이다 — reflect는
+부수 작업 단계가 아니라 **2세대 이후의 Interview 대체품**이다
+(`evolution/reflect.py`: *"Interview is Gen 1 only; Reflect handles all
+subsequent generations autonomously"*). Wonder는 *"What do we still not
+know?"*로 빈틈을 찾고, Reflect가 그 위에서 다음 Seed의 AC와 ontology 변형을
+만든다. 지정 하네스는 **Hermes**이며 upstream 정식 backend이고 로컬 실물도
+있다 (`~/.local/bin/hermes`).
+
+- [ ] **Hermes를 reflect에서 어떻게 쓰는지** 조사한다 — 호출 계약, 프롬프트,
+      출력 스키마, 다른 backend와 다르게 다루는 점.
+- [ ] **자가개선 결과가 다음 작업에 연결되는 경로**를 조사한다 —
+      `evolution/loop.py`, `projector.py`, `parent_seed_id` lineage,
+      `evolve_step` MCP tool. "무엇이 다음 세대의 입력이 되는가"의 전 구간.
+- [ ] Wonder/Reflect 출력의 mcx 대응물을 결정한다 — 우리 Brief/Blueprint의
+      어디로 들어오는가. Gen 2+에서 Brief를 대체하는지, 입력으로 합류하는지가
+      핵심 갈림길이다 (도그푸딩 기록이 수동으로 하던 역할의 자동화).
+- [ ] 도입 ADR을 작성하고 구현한다. Hermes adapter가 필요한지는 조사 결과에
+      달렸다 — 텍스트 lane 축이면 `CompletionEngine` 추가로 끝난다.
 
 ---
 

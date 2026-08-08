@@ -200,7 +200,8 @@ upstream이 우회했던 지점이 그 사이 1급 지원이 되었다.
 ## 11. OpenCode 실행 runtime 조사 (2026-08-08 후속)
 
 사용자 처분(OpenCode까지 Phase 5에서 구현, 용도는 대부분 종반의 부수
-작업)의 재료. upstream 근거는 `orchestrator/opencode_runtime.py`와
+작업)의 재료. **괄호 안 용도 전제는 2026-08-09에 철회됐다** — upstream은
+OpenCode를 Execute 하네스로 배치한다 (아래 "Mission Control 함의" 정정). upstream 근거는 `orchestrator/opencode_runtime.py`와
 `orchestrator/opencode_event_normalizer.py`, 로컬 실물은 opencode CLI
 **1.18.15** (`--help` 확인, 실행 스모크는 미수행).
 
@@ -261,13 +262,26 @@ upstream이 우회했던 지점이 그 사이 1급 지원이 되었다.
 포지셔닝: multi-provider(로컬 모델 포함) 접근이 존재 이유이고, frontier
 모델 사용을 권장한다 (guide "Model recommendation").
 
-### Mission Control 함의 (처분 대기)
+### Mission Control 함의
 
-- 사용자 의도(2026-08-08, "대부분 마지막 단계에서 다른 용도·병렬") 는
-  upstream 용법과 정합한다 — ①(host 병렬 fan-out)과 ③(stage별 라우팅)의
-  조합. 우리 구조에서는 stage별 service 조립이 곧 runtime_profile이므로
-  별도 기능 없이 조립 주입으로 표현된다.
-- 실행 adapter(ADR-0037 후보)의 구현 시점은 사용자 처분 대기. 구현 시
+> **2026-08-09 정정 — 전제가 틀렸다.** 아래 첫 항목은 "사용자 의도가
+> upstream 용법과 정합한다"고 적었으나, 같은 날 `orchestrator_stage.py`를
+> 읽고 **upstream이 OpenCode를 Execute 하네스로 배치**함을 확인했다
+> (`:1-20` — interview=Codex, **execute=OpenCode/OMX**, evaluate=Claude Code,
+> reflect=Hermes). 즉 "OpenCode = 종반 부수 작업"은 upstream 사실이 아니라
+> 2026-08-08 시점의 사용자 의도였고, 이 문서가 그것을 upstream 용법과
+> 정합한다고 기술한 것은 과대 해석이었다. ①(host 병렬 fan-out)은 사용자가
+> **OpenCode를 host로 쓸 때**의 이야기이지 mcx가 OpenCode를 worker로 부를
+> 때가 아니다.
+>
+> 사용자 결정(2026-08-09)은 upstream 방향 채택이다 — Execute의 backend를
+> codex/opencode로 갈아끼우는 구조를 [ADR-0039](../adr/0039-stage-runtime-routing-table.md)가
+> 연다. 실물 adapter는 이연(로컬 모델 성능).
+
+- ~~사용자 의도(2026-08-08, "대부분 마지막 단계에서 다른 용도·병렬")는
+  upstream 용법과 정합한다~~ — 위 정정 참조. 남는 사실은 ③(stage별 라우팅)이
+  upstream의 1급 구성 표면이라는 것이고, 우리 대응물이 ADR-0039다.
+- 실행 adapter의 구현 시점은 **이연**(ADR-0003 note 3). 구현 시
   스모크 확인 대상: stdin 프롬프트 자동 감지, `--auto`의 실효(권한 프롬프트
   없이 완주), `--dangerously-skip-permissions` 수용 여부(기록용), `text`
   이벤트·`sessionID` 필드 형태의 1.18.15 실물.
