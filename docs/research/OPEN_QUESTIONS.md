@@ -100,11 +100,15 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 - [ ] workspace/file scope 표현을 결정한다.
 - [ ] required idempotency의 exact key, scope, retention, duplicate result semantics를 정의한다.
 - [ ] parallel execution 도입 Gate를 정의한다.
-- [ ] **Execute 진입 경로가 하나임을 무엇이 보장하는지, Telemetry가 "무엇이
-      이 작업을 만들었는가"를 기록하는지 결정한다.** upstream 관측에서
-      Stage→Runtime 바인딩이 orchestrator 밖 경로에서 조회되지조차 않았다
-      ([SEED_UPSTREAM_FINDINGS §12.3](./SEED_UPSTREAM_FINDINGS.md)). 계층
-      경계에 해당하므로 Execute 구현 **시작 전에** 정한다.
+- [x] **Execute 진입 경로가 하나임을 무엇이 보장하는지, Telemetry가 "무엇이
+      이 작업을 만들었는가"를 기록하는지 결정한다.**
+      → 작업 생성은 application use case 단일 경로 + Blueprint Gate `CLEAR`
+      요구; 경로 밖 작업의 탐지는 약속하지 않고 "기록의 부재가 판정
+      가능해야 한다"를 방어선으로; provenance 네 항목(생성 경로, 실행 주체,
+      lineage, 시도)을 선언 필드로 강제
+      ([ADR-0023](../adr/0023-execute-entry-and-provenance.md), 소스 조사는
+      [RUN_UPSTREAM_FINDINGS](./RUN_UPSTREAM_FINDINGS.md)). Telemetry 없는
+      작업의 `CLEAR` 여부(§5)와 MCP host 직접 작업(§8)은 남은 결정이다.
 
 ## 5. Verify decisions
 

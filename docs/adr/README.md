@@ -43,6 +43,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0020](./0020-brief-closure-audit.md) | 점수 통과 뒤 3-lane closure 감사가 Brief 종료를 gate한다. | Accepted |
 | [0021](./0021-blueprint-state-and-revisions.md) | Blueprint 상태는 revision·QA 기록·승인을 한 문서에 담고, 승인은 채점된 현재 revision을 요구한다. | Accepted |
 | [0022](./0022-blueprint-deliberate-divergences.md) | Blueprint에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
+| [0023](./0023-execute-entry-and-provenance.md) | Execute 작업 생성은 단일 use case 경로이고, Telemetry는 생성 주체를 선언 필드로 기록한다. | Accepted |
 
 ## Template
 

@@ -47,7 +47,7 @@
 | `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 22 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급) |
+| `adr/` | 23 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023은 Phase 3 선행 결정) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -238,11 +238,17 @@ Phase 2는 2026-08-08 완료되었다
 조회 → 생성 → 조립 → QA 반복 → 수정 → 승인 → Execute 진입 Gate가 파일 저장소를
 거쳐 이어지고, 승인은 채점된 현재 revision에 묶인다.
 
-다음 검증 가능한 목표 한 개: **Execute 시작 전 결정을 닫는다.**
-[Open Questions §4](../research/OPEN_QUESTIONS.md)의 굵은 항목 — Execute 진입
-경로가 하나임을 무엇이 보장하는지, Telemetry가 "무엇이 이 작업을 만들었는가"를
-기록하는지 — 은 계층 경계라 Execute 구현 시작 전에 정해야 한다. upstream 조사
-(`docs/research/`)와 ADR로 확정한다.
+Execute 시작 전 결정은 2026-08-08 닫혔다
+([ADR-0023](../adr/0023-execute-entry-and-provenance.md),
+[RUN_UPSTREAM_FINDINGS](../research/RUN_UPSTREAM_FINDINGS.md)) — 작업 생성은
+단일 use case 경로, provenance 네 항목은 선언 필드.
+
+다음 검증 가능한 목표 한 개: **Run Stage 본 조사를 수행하고 Execute 첫
+vertical slice를 [Execute Guide](../07_EXECUTE.md)에 고정한다.** work
+derivation(AC tree), dependency readiness, capability scope를 upstream과
+대조하고(Open Questions §4 잔여 항목), Phase 1·2와 같은 방식으로 첫 slice의
+계약과 Test Matrix를 확정한 뒤 구현을 시작한다. Execute divergence 등록부
+ADR 신설도 이때다 (ADR-0023 §3의 이관 예정 항목 포함).
 
 ### CLEAR 조건 중 강제되지 않는 것
 

@@ -11,6 +11,7 @@
 - [INTERVIEW_UPSTREAM_FINDINGS.md](./INTERVIEW_UPSTREAM_FINDINGS.md) — Brief 우선 조사 결과 (Open Questions §0, file:line 근거)
 - [PERSISTENCE_UPSTREAM_FINDINGS.md](./PERSISTENCE_UPSTREAM_FINDINGS.md) — 저장 계층(event store, checkpoint, brownfield registry) 조사
 - [SEED_UPSTREAM_FINDINGS.md](./SEED_UPSTREAM_FINDINGS.md) — Blueprint(Seed) schema와 acceptance criterion identity 조사
+- [RUN_UPSTREAM_FINDINGS.md](./RUN_UPSTREAM_FINDINGS.md) — Execute 진입 경로와 Telemetry provenance 조사 (Open Questions §4 굵은 항목 한정)
 
 ## Evidence levels
 
