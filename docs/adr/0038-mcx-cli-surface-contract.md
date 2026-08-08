@@ -26,27 +26,40 @@ CLI의 대화형 지점은 upstream skill 계층이 대화 안에 있어 대조 
 
 ### 1. 명령 표면 — application service 메서드와 1:1, CLI에 workflow 로직 없음
 
-`mcx <stage> <verb> --mission <id>` 형태. 각 명령은 application service
+`mcx <stage> <verb> [프롬프트]` 형태. 각 명령은 application service
 메서드 하나를 호출하고 결과를 렌더한다. CLI는 Gate·retry·Recover를
 결정하지 않는다 (upstream 정렬: 표면은 공유 핸들러 위임 — findings §2.
 Phase 7 MCP도 같은 service를 공유해 표면 파리티를 구현 공유로 얻는다).
 
+> **개정 1 (2026-08-09, 사용자 결정 — `mcx {동작} {옵션?} {프롬프트}`
+> 형식).** 프롬프트 인자(intent·answer·statement)는 플래그가 아니라
+> **positional**이고, `mcx brief "<intent>"`는 `brief start`의 단축이다
+> (upstream 정렬: `ooo init "Build an API"` 단축 — `cli/main.py:7-9`의
+> default-subcommand fallback. 프롬프트가 verb와 같은 단어면 verb로
+> 해석되는 모호성도 upstream과 동일). `--mission`은 선택이 된다 —
+> `brief start`에서 생략하면 id를 자동 생성하고(upstream `auto_<hex>`
+> session id 정렬), 그 외 명령에서 생략하면 **마지막으로 시작한 mission**
+> (state의 `current_mission` 포인터)을 쓴다. 최근 mission 기본값은
+> upstream CLI에 대응물이 없다(스킬 계층의 "recent session" 추론에만
+> 대응) — 등록된 divergence이며, 병행 mission에서는 `--mission` 명시가
+> 안전 경계다.
+
 | 명령 | service 호출 |
 |---|---|
-| `mcx brief start --intent` (+`--workspace`) | `BriefService.start` + mission record 생성 |
+| `mcx brief "<intent>"` (= `brief start`, +`--workspace`) | `BriefService.start` + mission record 생성 |
 | `mcx brief ask` | `ask_next_question` |
-| `mcx brief answer --answer` (+`--authority --question`) | `record_answer` |
+| `mcx brief answer "<답변>"` (+`--authority --question`) | `record_answer` |
 | `mcx brief candidate --section --text` (+옵션) | `record_candidate` |
 | `mcx brief resolve --number --resolution` (+`--authority`) | `resolve_candidate` |
 | `mcx brief assess` | `assess_clarity` |
 | `mcx brief audit` | `audit_closure` |
-| `mcx brief approve --statement` | `approve` |
+| `mcx brief approve "<statement>"` | `approve` |
 | `mcx brief gate` | `decide_gate` |
 | `mcx brief handoff` | `build_handoff` (관찰용) |
 | `mcx blueprint generate` | `BlueprintService.generate` |
 | `mcx blueprint qa` | `assess_qa` |
 | `mcx blueprint revise --draft-file` | `revise` |
-| `mcx blueprint approve --statement` (+`--accept-below-threshold`) | `approve` |
+| `mcx blueprint approve "<statement>"` (+`--accept-below-threshold`) | `approve` |
 | `mcx blueprint gate` | `decide_gate` |
 | `mcx execute next` | `ExecuteService.dispatch_next` |
 | `mcx execute gate` | `decide_gate` |
@@ -58,8 +71,10 @@ Phase 7 MCP도 같은 service를 공유해 표면 파리티를 구현 공유로 
 | `mcx recover gate` | `decide_gate` |
 | `mcx status` | mission record + 각 Stage 저장 상태 요약 (읽기 전용) |
 
-`--mission`은 전역 필수 옵션이다 — "최근 mission" 추론은 없다 (upstream
-`ooo seed`도 session_id를 명시로 요구한다).
+`--mission`은 전역 옵션이다. ~~필수이며 "최근 mission" 추론은 없다~~ —
+개정 1로 대체: 생략 시 `brief start`는 자동 생성, 그 외는 마지막 시작
+mission. 원문이 근거로 든 upstream `ooo seed`의 명시 요구는 사실이며, 그
+차이가 개정 1의 등록된 divergence다.
 
 ### 2. 대화형 지점 — v1은 전부 비대화형 단발이다
 

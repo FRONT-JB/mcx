@@ -23,6 +23,7 @@ import json
 from pathlib import Path
 import sys
 from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel
 
@@ -56,6 +57,35 @@ _TRANSITION_TRIGGERS: dict[tuple[str, str], Stage] = {
     ("verify", "semantic"): Stage.VERIFY,
     ("recover", "dispatch"): Stage.RECOVER,
 }
+
+BRIEF_VERBS = frozenset(
+    {
+        "start",
+        "ask",
+        "answer",
+        "candidate",
+        "resolve",
+        "assess",
+        "audit",
+        "approve",
+        "gate",
+        "handoff",
+    }
+)
+
+
+def normalize_argv(argv: list[str]) -> list[str]:
+    """``mcx brief "<intent>"`` 단축을 ``brief start``로 편다 (개정 1).
+
+    upstream ``ooo init "..."``의 default-subcommand fallback과 같은 규칙 —
+    verb 자리의 토큰이 verb가 아니면 프롬프트다. 프롬프트가 verb와 같은
+    단어면 verb로 해석되는 모호성도 upstream과 동일하다.
+    """
+    if len(argv) >= 2 and argv[0] == "brief":
+        head = argv[1]
+        if head not in BRIEF_VERBS and not head.startswith("-"):
+            return ["brief", "start", *argv[1:]]
+    return argv
 
 
 def _now() -> str:
@@ -93,7 +123,11 @@ def show(value: object) -> None:
 def build_parser() -> argparse.ArgumentParser:
     """명령 표면을 구성하는 순수 함수 — conformance 테스트가 고정한다."""
     common = argparse.ArgumentParser(add_help=False)
-    common.add_argument("--mission", required=True, help="mission id")
+    common.add_argument(
+        "--mission",
+        default=None,
+        help="mission id (생략: brief start는 자동 생성, 그 외는 마지막 시작 mission)",
+    )
     common.add_argument(
         "--state-dir",
         type=Path,
@@ -111,11 +145,11 @@ def build_parser() -> argparse.ArgumentParser:
         dest="verb", required=True
     )
     p = brief.add_parser("start", parents=[common])
-    p.add_argument("--intent", required=True)
+    p.add_argument("intent", help="mission의 초기 의도")
     p.add_argument("--workspace", default=None, help="실행 workspace (기본: 현재 디렉터리)")
     brief.add_parser("ask", parents=[common])
     p = brief.add_parser("answer", parents=[common])
-    p.add_argument("--answer", required=True)
+    p.add_argument("answer", help="질문에 대한 답변")
     p.add_argument("--authority", default="decision", choices=["decision", "observation"])
     p.add_argument(
         "--question", default=None, help="닫힌 질문 밖에서 온 질문(예: closure 차단 질문)"
@@ -140,7 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
     brief.add_parser("assess", parents=[common])
     brief.add_parser("audit", parents=[common])
     p = brief.add_parser("approve", parents=[common])
-    p.add_argument("--statement", required=True)
+    p.add_argument("statement", help="승인 문장")
     brief.add_parser("gate", parents=[common])
     brief.add_parser("handoff", parents=[common])
 
@@ -152,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = blueprint.add_parser("revise", parents=[common])
     p.add_argument("--draft-file", required=True, type=Path)
     p = blueprint.add_parser("approve", parents=[common])
-    p.add_argument("--statement", required=True)
+    p.add_argument("statement", help="승인 문장")
     p.add_argument("--accept-below-threshold", action="store_true")
     blueprint.add_parser("gate", parents=[common])
 
@@ -180,6 +214,31 @@ def build_parser() -> argparse.ArgumentParser:
     status.set_defaults(verb="show")
 
     return parser
+
+
+def _current_mission_pointer(layout: StateLayout) -> Path:
+    return layout.state / "current_mission"
+
+
+def _resolve_mission(args: argparse.Namespace, layout: StateLayout) -> str:
+    """생략된 ``--mission``을 채운다 (ADR-0038 개정 1).
+
+    brief start는 새 id를 만들고, 그 외 명령은 마지막으로 시작한 mission을
+    쓴다. 최근 mission 추론은 upstream CLI에 없는 등록된 divergence다 —
+    병행 mission에서는 ``--mission`` 명시가 안전 경계다.
+    """
+    if args.mission:
+        return str(args.mission)
+    if args.stage == "brief" and args.verb == "start":
+        return f"m-{uuid4().hex[:6]}"
+    pointer = _current_mission_pointer(layout)
+    if pointer.exists():
+        value = pointer.read_text(encoding="utf-8").strip()
+        if value:
+            return value
+    raise LookupError(
+        'no mission specified and none started yet; run `mcx brief "<intent>"` first'
+    )
 
 
 async def _load_record(layout: StateLayout, mission_id: str) -> MissionRecord | None:
@@ -309,6 +368,7 @@ async def _dispatch_brief(
         state = await service.start(mission_id=mission, initial_intent=args.intent)
         record = MissionRecord.create(mission_id=mission, workspace=workspace)
         await composition.mission_repository(layout).save(record)
+        _current_mission_pointer(layout).write_text(f"{mission}\n", encoding="utf-8")
         show({"mission_id": state.mission_id, "revision": state.revision, "workspace": workspace})
     elif verb == "ask":
         show(await service.ask_next_question(mission_id=mission))
@@ -474,6 +534,7 @@ async def _dispatch_recover(
 async def dispatch(args: argparse.Namespace, adapters: Adapters) -> int:
     """파싱된 명령을 service 호출로 위임하고 exit code를 돌려준다."""
     layout = StateLayout.under(args.state_dir)
+    args.mission = _resolve_mission(args, layout)
 
     if args.stage == "status":
         return await _status(layout, args.mission)
@@ -493,7 +554,7 @@ async def dispatch(args: argparse.Namespace, adapters: Adapters) -> int:
 
 
 async def amain(argv: list[str] | None = None, adapters: Adapters | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    args = build_parser().parse_args(normalize_argv(argv if argv is not None else sys.argv[1:]))
     try:
         return await dispatch(args, adapters or composition.default_adapters())
     except Exception as exc:  # noqa: BLE001 — 표면 경계: 오류는 exit 1로 수렴한다

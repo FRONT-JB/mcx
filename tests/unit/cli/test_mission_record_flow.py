@@ -32,7 +32,6 @@ async def test_brief_start_creates_record_with_workspace(tmp_path: Path) -> None
         [
             "brief",
             "start",
-            "--intent",
             "g",
             "--workspace",
             "/some/ws",
@@ -57,7 +56,7 @@ async def test_stage_entry_records_transition(
     monkeypatch.setattr(composition, "blueprint_service", lambda layout, adapters: StubService())
     adapters = default_adapters()
 
-    assert await amain(["brief", "start", "--intent", "g", *argv("m", tmp_path)], adapters) == 0
+    assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
     assert await amain(["blueprint", "generate", *argv("m", tmp_path)], adapters) == 0
 
     record = await repository(tmp_path).load("m")
@@ -78,7 +77,7 @@ async def test_illegal_transition_warns_but_command_succeeds(
     monkeypatch.setattr(composition, "verify_service", lambda layout, adapters: StubService())
     adapters = default_adapters()
 
-    assert await amain(["brief", "start", "--intent", "g", *argv("m", tmp_path)], adapters) == 0
+    assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
     assert await amain(["verify", "mechanical", *argv("m", tmp_path)], adapters) == 0
 
     assert "transition not recorded" in capsys.readouterr().err
@@ -119,7 +118,7 @@ async def test_verify_gate_clear_outside_verify_warns_not_fails(
     monkeypatch.setattr(composition, "verify_service", lambda layout, adapters: StubService())
     adapters = default_adapters()
 
-    assert await amain(["brief", "start", "--intent", "g", *argv("m", tmp_path)], adapters) == 0
+    assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
     assert await amain(["verify", "gate", *argv("m", tmp_path)], adapters) == 0
 
     assert "MISSION COMPLETE not recorded" in capsys.readouterr().err
@@ -134,7 +133,7 @@ async def test_status_reports_record_and_mismatch(
     adapters = default_adapters()
     assert await amain(["status", *argv("missing", tmp_path)], adapters) == 1
 
-    assert await amain(["brief", "start", "--intent", "g", *argv("m", tmp_path)], adapters) == 0
+    assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
     capsys.readouterr()
     assert await amain(["status", *argv("m", tmp_path)], adapters) == 0
     output = capsys.readouterr().out

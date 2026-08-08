@@ -243,7 +243,14 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 - [ ] async job/polling/notification 방식을 결정한다.
 - [ ] disconnect, cancel, timeout의 의미를 분리한다.
 - [ ] CLI와 MCP parity test 전략을 정의한다.
-- [ ] plugin 설치·발견·설정 UX를 결정한다.
+- [ ] plugin 설치·발견·설정 UX를 결정한다. — upstream의 배포 실물은
+      **plugin = skills + MCP server + CLI 3층**이며 skill이 MCP tool을
+      orchestrate한다 (`skills/seed/SKILL.md` frontmatter
+      `mcp_tool: ouroboros_generate_seed`,
+      [CLI_UPSTREAM_FINDINGS §3](./CLI_UPSTREAM_FINDINGS.md)). 우리 대응:
+      Phase 7 MCP server가 기반층이고, CLI/MCP가 같은 application service를
+      공유하므로 (ADR-0038 §1) skill 래퍼와 manifest만 얹으면 된다 — Claude·
+      Codex 양쪽 다 MCP 클라이언트라 같은 server가 붙는다.
 - [ ] **MCP host가 자기 편집 도구로 작업하고 Verify만 호출하는 경로를 어떻게
       다룰지 결정한다.** host는 에이전트이며 `mcx` 도구와 자기 도구를 동시에
       갖는다 — upstream에서 실제로 발생한 조건이다

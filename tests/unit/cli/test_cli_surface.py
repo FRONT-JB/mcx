@@ -12,20 +12,20 @@ from mission_control.cli.main import amain, build_parser
 #: ADR-0038 §1의 명령 표면 전체. 여기 없는 명령이 생기거나 여기 있는 명령이
 #: 사라지면 ADR 개정이 먼저다.
 SURFACE: list[tuple[list[str], str, str]] = [
-    (["brief", "start", "--intent", "i"], "brief", "start"),
+    (["brief", "start", "i"], "brief", "start"),
     (["brief", "ask"], "brief", "ask"),
-    (["brief", "answer", "--answer", "a"], "brief", "answer"),
+    (["brief", "answer", "a"], "brief", "answer"),
     (["brief", "candidate", "--section", "goal", "--text", "t"], "brief", "candidate"),
     (["brief", "resolve", "--number", "1", "--resolution", "confirmed"], "brief", "resolve"),
     (["brief", "assess"], "brief", "assess"),
     (["brief", "audit"], "brief", "audit"),
-    (["brief", "approve", "--statement", "s"], "brief", "approve"),
+    (["brief", "approve", "s"], "brief", "approve"),
     (["brief", "gate"], "brief", "gate"),
     (["brief", "handoff"], "brief", "handoff"),
     (["blueprint", "generate"], "blueprint", "generate"),
     (["blueprint", "qa"], "blueprint", "qa"),
     (["blueprint", "revise", "--draft-file", "d.json"], "blueprint", "revise"),
-    (["blueprint", "approve", "--statement", "s"], "blueprint", "approve"),
+    (["blueprint", "approve", "s"], "blueprint", "approve"),
     (["blueprint", "gate"], "blueprint", "gate"),
     (["execute", "next"], "execute", "next"),
     (["execute", "gate"], "execute", "gate"),
@@ -48,9 +48,34 @@ def test_surface_is_fixed(argv: list[str], stage: str, verb: str) -> None:
     assert args.verb == verb
 
 
-def test_mission_is_required() -> None:
-    with pytest.raises(SystemExit):
-        build_parser().parse_args(["brief", "gate", "--state-dir", "/tmp/x"])
+def test_shorthand_expands_to_brief_start() -> None:
+    """`mcx brief \"프롬프트\"` 단축 — ADR-0038 개정 1 (upstream ooo init 정렬)."""
+    from mission_control.cli.main import normalize_argv
+
+    assert normalize_argv(["brief", "CSV 중복 제거 도구"]) == [
+        "brief",
+        "start",
+        "CSV 중복 제거 도구",
+    ]
+    assert normalize_argv(["brief", "ask"]) == ["brief", "ask"]  # verb가 이긴다
+    assert normalize_argv(["brief", "--help"]) == ["brief", "--help"]
+    assert normalize_argv(["status"]) == ["status"]
+
+
+async def test_missing_mission_without_any_started_exits_one(tmp_path: Path) -> None:
+    """--mission 생략 + 시작된 mission 없음 → 오류 (개정 1)."""
+    assert await amain(["brief", "gate", "--state-dir", str(tmp_path)], default_adapters()) == 1
+
+
+async def test_omitted_mission_defaults_to_last_started(tmp_path: Path) -> None:
+    """brief start가 id를 자동 생성하고 이후 명령이 그 mission을 쓴다 (개정 1)."""
+    adapters = default_adapters()
+    assert await amain(["brief", "작업 목표", "--state-dir", str(tmp_path)], adapters) == 0
+    pointer = tmp_path / "state" / "current_mission"
+    assert pointer.exists()
+    assert pointer.read_text().strip().startswith("m-")
+    # 같은 mission으로 이어진다 — gate는 fresh brief라 HOLD(2)
+    assert await amain(["brief", "gate", "--state-dir", str(tmp_path)], adapters) == 2
 
 
 def test_every_domain_section_is_accepted_by_the_parser() -> None:
@@ -69,7 +94,7 @@ async def test_brief_start_exits_zero_and_gate_hold_exits_two(tmp_path: Path) ->
     argv = ["--mission", "m1", "--state-dir", str(tmp_path)]
     adapters = default_adapters()
 
-    assert await amain(["brief", "start", "--intent", "goal", *argv], adapters) == 0
+    assert await amain(["brief", "start", "goal", *argv], adapters) == 0
     assert await amain(["brief", "gate", *argv], adapters) == 2
 
 
@@ -96,7 +121,7 @@ async def test_gate_clear_exits_zero(
     )
     argv = ["--mission", "m3", "--state-dir", str(tmp_path)]
     adapters = default_adapters()
-    assert await amain(["brief", "start", "--intent", "g", *argv], adapters) == 0
+    assert await amain(["brief", "start", "g", *argv], adapters) == 0
     assert await amain(["execute", "gate", *argv], adapters) == 0
 
 
