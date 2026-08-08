@@ -7,8 +7,8 @@
 | Project phase | Phase 2 — Blueprint vertical slice COMPLETE; Phase 3 준비 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 COMPLETE (2026-08-08, [종료 검토](./0002_BLUEPRINT_VERTICAL_SLICE.md)) |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint service, ports), `adapters/persistence/` (brief·blueprint) |
-| Automated tests | 331 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute service, ports), `adapters/persistence/` (brief·blueprint·execute) |
+| Automated tests | 386 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -158,11 +158,17 @@ CLEAR 경로 테스트 전부 감사 단계를 포함하도록 갱신했다.
 
 목표: AC 기반 bounded work와 executed-unverified 상태를 검증한다.
 
-- [ ] work derivation
-- [ ] dependency readiness
-- [ ] capability scope
-- [ ] Runtime contract
-- [ ] Telemetry
+- [x] work derivation — AC key가 곧 실행 단위, 선언 순서 순차, 분해 미도입
+  (ADR-0024 §1~§3, commit 016c1b8, `test_plan.py`)
+- [-] dependency readiness — v1은 파생 없이 실패 중단 규칙만
+  (ADR-0024 §3, ADR-0025 보류 등록). graph 도입은 이후 결정
+- [-] capability scope — envelope(workspace + 도구 목록)의 전달·기록까지
+  (ADR-0024 §6). 실제 차단은 Phase 5
+- [-] Runtime contract — `ExecutionRuntime` port(backend + execute)와 결정적
+  fake. concrete adapter conformance는 Phase 5
+- [-] Telemetry — attempt 기록이 provenance 네 항목을 선언 필드로 강제
+  (ADR-0023 §3, `test_state.py` 누락 거부). event/report/bundle schema는
+  미정 ([Open Questions §9](../research/OPEN_QUESTIONS.md))
 
 ### Phase 4 — Verify and Recover
 
@@ -243,18 +249,16 @@ Execute 시작 전 결정은 2026-08-08 닫혔다
 [RUN_UPSTREAM_FINDINGS](../research/RUN_UPSTREAM_FINDINGS.md)) — 작업 생성은
 단일 use case 경로, provenance 네 항목은 선언 필드.
 
-Run 본 조사와 첫 slice 계약은 2026-08-08 고정되었다 —
-[RUN_UPSTREAM_FINDINGS §7~§10](../research/RUN_UPSTREAM_FINDINGS.md),
-[ADR-0024](../adr/0024-execute-v1-execution-model.md) (AC가 곧 실행 단위,
-순차 + 실패 중단, attempt 상태 셋, provenance 선언 필드),
-[ADR-0025](../adr/0025-execute-deliberate-divergences.md) (Execute divergence
-등록부).
+Execute 첫 vertical slice는 2026-08-08 구현되었다 (ADR-0023~0025,
+commit 016c1b8, 386 tests). 승인된 Blueprint에서 순차 dispatch → 결과 기록 →
+`CLEAR — Clear for Verify`가 파일 저장소를 거쳐 이어지고, 지속이 dispatch보다
+먼저이며, provenance 없는 attempt는 만들어지지 않는다.
 
-다음 검증 가능한 목표 한 개: **Execute 첫 vertical slice를 구현한다.**
-ExecuteState(attempt 이력·상태 전이·provenance)와 Execute Gate, ExecuteService
-(Blueprint Gate `CLEAR` 요구 → dispatch 전 지속 → 결정적 fake runtime →
-결과 기록), 파일 저장소. 계약은 [Execute Guide](../07_EXECUTE.md) §6·§7·§13과
-ADR-0024의 Verification 목록이다.
+다음 검증 가능한 목표 한 개: **Phase 3 종료 검토를 수행하고 progress record
+0003을 남긴다.** 특히 [Execute Guide](../07_EXECUTE.md) §9 Required
+Telemetry의 각 질문("어떤 명령·변경 artifact를 남겼는가" 포함)에 현재 attempt
+기록이 답할 수 있는지 대조하고, 답하지 못하는 항목의 처분(§9 telemetry
+schema 결정 대기인지, Phase 3 결격인지)을 확정한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
