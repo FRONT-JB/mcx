@@ -93,12 +93,29 @@ Mission Control 대응: 1은 [ADR-0033](../adr/0033-first-runtime-adapter-contra
 ([ADR-0007](../adr/0007-mcp-is-control-surface.md) — 같은 배치), 3은
 [Open Questions §8](./OPEN_QUESTIONS.md)(host 직접 작업 경로)의 결정 재료다.
 
-## 7. 조사하지 않은 것
+## 7. 완성(text) 경로 — `--output-schema`와 재시도 (2026-08-08 후속)
+
+- **구조화 출력**: JSON Schema를 임시 파일로 쓰고 `--output-schema <path>`로
+  전달한다. **Codex는 strict shape를 요구한다** — 모든 property가
+  `required`에 있어야 하고 `additionalProperties: false`. 열린 map은
+  `{key, value}` 배열로 재작성 후 복원한다
+  (`codex_cli_adapter.py:238-273` `_normalize_schema_for_codex`).
+- **결과는 `--output-last-message` 파일에서 읽는다** — schema가 있으면 그
+  내용이 곧 구조화 JSON이다 (`:895-940`).
+- **재시도**: 완성은 부작용이 없으므로 전체 재시도가 안전하다 — transient
+  패턴만, 최대 3회, `2**attempt` 지수 backoff. **timeout은 재시도하지
+  않는다** (`:1215-1245`).
+- **semantic 평가자의 시스템 프롬프트** (`agents/semantic-evaluator.md`):
+  "You are a rigorous software evaluation assistant" + JSON exact format 강제
+  + 필드 의미 정의 + 통과 기준(“ac_compliance = true, score >= 0.8,
+  uncertainty <= 0.3”) — VERIFY findings §6의 스키마·임계와 일치한다.
+- 완성 명령에는 `--ephemeral`(세션 미보존) 옵션이 있다 (`:437-438`).
+
+## 8. 조사하지 않은 것
 
 - OpenCode runtime의 상세 계약 (`opencode_runtime.py`) — 두 번째 adapter
   도입 시 조사한다.
 - `AgentMessage`의 정확한 필드와 이벤트 정규화 규칙 — 스트리밍 도입 시.
-- `--output-schema`의 스키마 형식 — text backend adapter(위임 port) 구현 시.
 
 ## Mission Control 함의
 
