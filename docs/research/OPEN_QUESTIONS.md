@@ -99,8 +99,11 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       ([ADR-0021](../adr/0021-blueprint-state-and-revisions.md) §2)
 - [-] approval actor와 approval evidence를 결정한다. → evidence는
       `BlueprintApproval`(statement + QA 근거,
-      [ADR-0019](../adr/0019-blueprint-qa-loop.md) §8)로 확정. actor
-      identity와 승인 UX는 surface(Phase 6·7)에서 결정한다.
+      [ADR-0019](../adr/0019-blueprint-qa-loop.md) §8)로 확정. CLI 표면은
+      결정 — 승인 주체는 명령을 실행한 로컬 사용자이고 actor 식별자는
+      미도입 ([ADR-0038](../adr/0038-mcx-cli-surface-contract.md) §7,
+      upstream도 CLI에 user identity 없음). MCP(Phase 7)의 host 대리 승인
+      경로만 잔여.
 - [ ] user-edited YAML을 지원할지 결정한다.
 - [x] schema/ontology를 v1에 포함할지 결정한다. → 제외. upstream 필드 5개
       (ontology_schema 등)는 v1 미포함으로 기록
@@ -256,15 +259,15 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       주석)이고, Seed QA 루프는 합성 계층 둘(skill, `ooo auto`
       REVIEW↔REPAIR + GradeGate)이 항상 붙인다. `mcx blueprint`의 QA 상시
       포함은 upstream use case를 부수지 않는다.
-- [ ] **`mcx` CLI의 대화형 지점을 결정한다.** QA EXHAUSTED에서의 사용자
-      선택, 수정 후보 채택, HOLD의 exit code, 비대화형 모드 지원 여부.
-      upstream skill 계층은 대화 안에 있어 이 질문들이 없었으므로 **대조
-      불가능한 신규 영역**이다 — 여기서의 작은 판단들이 누적 divergence가
-      되지 않도록 결정을 ADR로 묶는다. 단, QA 우회 플래그(`--skip-qa` 류)는
-      선택지가 아니다 — [ADR-0019](../adr/0019-blueprint-qa-loop.md) §1이
-      죽인 surface 간 비대칭을 재생산한다. 부분 전례(qa exit code 2,
-      ambiguity 대화형 선택, Confirm 전환, status 스냅샷 고정)는
-      [CLI_UPSTREAM_FINDINGS §5](./CLI_UPSTREAM_FINDINGS.md)에 있다.
+- [x] **`mcx` CLI의 대화형 지점을 결정한다.** →
+      [ADR-0038](../adr/0038-mcx-cli-surface-contract.md): v1은 전부
+      **비대화형 단발** — 사용자 결정은 인자와 별도 명령으로만 들어오고
+      (도그푸딩 2회 검증 형태, Lifecycle §10.2·§10.4 구조 강제), QA
+      EXHAUSTED는 exit 2 + §10.1 형식 안내로 멈춘다. exit code는 upstream
+      정렬 0/1/2 (판정 부정 = 2, `qa.py:108-109`). QA 우회 플래그와
+      ambiguity 강제 생성 대응물은 도입하지 않음(등록된 divergence).
+      upstream의 대화형 프롬프트는 합성 흐름(`ooo init`)의 것이라 합성 흐름
+      도입 시 재평가 (ADR-0038 §7).
 
 ## 9. Persistence and Telemetry decisions
 

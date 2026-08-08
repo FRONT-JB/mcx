@@ -4,11 +4,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 6 (`mcx` CLI) — 선행 조사 완료 (2026-08-08, [CLI findings](../research/CLI_UPSTREAM_FINDINGS.md)·ADR-0037); CLI 표면 설계 ADR 대기 |
+| Project phase | Phase 6 (`mcx` CLI) — 표면 구현 완료 (2026-08-09, [ADR-0038](../adr/0038-mcx-cli-surface-contract.md)); 도그푸딩 0003 대기 |
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연) |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종) |
-| Automated tests | 530 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`) |
+| Automated tests | 579 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-09 |
 
@@ -249,13 +249,22 @@ Verify Gate 미검사 조건)을 잡았다.
 
 ### Phase 6 — `mcx` CLI
 
-목표: 다섯 Stage를 동일 application boundary로 조작한다.
+목표: 다섯 Stage를 동일 application boundary로 조작한다. 표면 계약은
+[ADR-0038](../adr/0038-mcx-cli-surface-contract.md).
 
-- [ ] `mcx brief`
-- [ ] `mcx blueprint`
-- [ ] `mcx execute`
-- [ ] `mcx verify`
-- [ ] `mcx recover`
+- [x] `mcx brief` — start/ask/answer/candidate/resolve/assess/audit/approve/
+  gate/handoff (tests/unit/cli)
+- [x] `mcx blueprint` — generate/qa/revise/approve/gate
+- [x] `mcx execute` — next/gate (workspace는 mission record가 나른다)
+- [x] `mcx verify` — mechanical/semantic/gate (gate `CLEAR`만 MISSION
+  COMPLETE 기록)
+- [x] `mcx recover` — plan/dispatch/gate
+- [x] mission record + `mcx status` — ADR-0037 구현: 합법 전이 그래프
+  (Lifecycle §9 미러 테스트), CLI만 기록, 어긋남은 경고·표시
+  (tests/unit/domain/test_mission.py, tests/unit/cli/)
+- [ ] 실 AI 도그푸딩으로 설치된 CLI 완주 검증 (도그푸딩 0003 — 사용자 승인
+  필요)
+- [ ] Phase 6 종료 검토
 
 ### Phase 7 — MCP control surface
 
@@ -471,12 +480,16 @@ primitive였다 — `mcx blueprint`의 QA 상시 포함은 upstream use case를
 합성 계층(Phase 6 CLI) 소유 mission 문서에 도입, enforcement는 Gate
 재계산 유지.
 
-다음 검증 가능한 목표 한 개: **Phase 6 첫 설계 — `mcx` CLI 표면 ADR.**
-명령 표면(다섯 Stage 명령의 입출력·exit code), 대화형 지점(OPEN_QUESTIONS
-§8 잔여 — QA EXHAUSTED 선택, HOLD exit code, 비대화형 모드), mission 상태
-문서와 composition root의 배치(ADR-0037 구현 형태)를
-[CLI_UPSTREAM_FINDINGS §5](../research/CLI_UPSTREAM_FINDINGS.md)의 전례와
-대조해 ADR로 확정한 뒤 구현에 들어간다.
+Phase 6 표면은 2026-08-09 구현되었다: [ADR-0038](../adr/0038-mcx-cli-surface-contract.md)
+계약(비대화형 단발, exit 0/1/2, mission record는 CLI만 기록) 그대로 24개
+명령 + entry point `mcx`, 도그푸딩 드라이버의 검증된 표면을 승계. 579 tests,
+LLM-free 경로 스모크(start→status→gate HOLD exit 2) 확인.
+
+다음 검증 가능한 목표 한 개: **도그푸딩 0003 — 설치된 `mcx` CLI로 실 AI
+완주.** 스크립트 드라이버가 아니라 `[project.scripts]`로 설치된 실물
+명령으로 다섯 Stage를 완주해 exit code·mission record 전이·status 표시를
+실사용에서 검증한다 (실 AI 비용 — 사용자 승인 필요). 완주 후 Phase 6 종료
+검토.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
