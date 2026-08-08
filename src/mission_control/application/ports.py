@@ -31,6 +31,7 @@ from mission_control.domain.brief.requirement import (
 )
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.execute.state import ExecuteState
+from mission_control.domain.recover.packet import PreviousFailure
 from mission_control.domain.verify.evidence import (
     CommandExecution,
     VerificationRun,
@@ -123,6 +124,9 @@ class ExecutionRequest(BaseModel):
     criterion: AcceptanceCriterion
     workspace: str
     allowed_tools: tuple[str, ...]
+    #: 교정 재시도가 가지고 가는 이전 실패 (ADR-0031 §5). 첫 실행에는 없고
+    #: Recover 경로에서만 채워진다 — "같은 prompt의 반복"을 막는 장치다.
+    previous_failure: PreviousFailure | None = None
 
 
 class ExecutionOutcome(BaseModel):

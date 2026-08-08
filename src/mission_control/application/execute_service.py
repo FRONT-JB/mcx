@@ -39,6 +39,7 @@ from mission_control.domain.errors import MissionControlError
 from mission_control.domain.execute.gate import ExecuteGateDecision, evaluate_execute_gate
 from mission_control.domain.execute.plan import next_criterion
 from mission_control.domain.execute.state import CapabilityEnvelope, ExecuteState
+from mission_control.domain.recover.packet import PreviousFailure
 
 
 class BlueprintNotClearedError(MissionControlError):
@@ -54,6 +55,24 @@ class BlueprintNotClearedError(MissionControlError):
         super().__init__(f"blueprint for mission {mission_id} is not cleared for Execute: {joined}")
         self.mission_id = mission_id
         self.reasons = reasons
+
+
+class UnknownCriterionError(MissionControlError):
+    """현재 승인된 Blueprint에 없는 AC의 교정을 요청했다.
+
+    key가 내용 digest이므로 revision이 바뀌면 key도 바뀔 수 있다 — 이전
+    revision의 실패를 새 revision에서 교정하는 것은 새 실행이지 재시도가
+    아니다.
+    """
+
+    def __init__(self, *, mission_id: str, ac_key: str, blueprint_revision: int) -> None:
+        super().__init__(
+            f"criterion {ac_key} does not exist in blueprint revision "
+            f"{blueprint_revision} of mission {mission_id}"
+        )
+        self.mission_id = mission_id
+        self.ac_key = ac_key
+        self.blueprint_revision = blueprint_revision
 
 
 class AllCriteriaExecutedError(MissionControlError):
@@ -100,9 +119,39 @@ class ExecuteService:
             raise AllCriteriaExecutedError(
                 mission_id=mission_id, blueprint_revision=blueprint.revision
             )
+        return await self._dispatch(blueprint, criterion, state, previous_failure=None)
 
+    async def dispatch_correction(
+        self, *, mission_id: str, ac_key: str, previous_failure: PreviousFailure
+    ) -> ExecuteState:
+        """Recover의 교정 재시도 — 지정된 AC를 실패 증거와 함께 재실행한다.
+
+        이미 ``EXECUTED_UNVERIFIED``인 AC도 대상이다(검증이 실패를 드러낸
+        경우). 실패 증거 없는 교정은 없다 — ``previous_failure``가 필수인
+        이유이며, 이 경로가 Guide §11 "같은 prompt를 반복하지 않는다"의
+        구현이다 (ADR-0031 §5).
+        """
+        blueprint = (await self._cleared_blueprint(mission_id)).current
+        criterion = next(
+            (item for item in blueprint.acceptance_criteria if item.key == ac_key), None
+        )
+        if criterion is None:
+            raise UnknownCriterionError(
+                mission_id=mission_id, ac_key=ac_key, blueprint_revision=blueprint.revision
+            )
+        state = await self._state(mission_id)
+        return await self._dispatch(blueprint, criterion, state, previous_failure=previous_failure)
+
+    async def _dispatch(
+        self,
+        blueprint: Blueprint,
+        criterion: AcceptanceCriterion,
+        state: ExecuteState,
+        *,
+        previous_failure: PreviousFailure | None,
+    ) -> ExecuteState:
         dispatched = state.dispatch(
-            execution_id=f"exec-{mission_id}-{len(state.attempts) + 1:04d}",
+            execution_id=f"exec-{state.mission_id}-{len(state.attempts) + 1:04d}",
             runtime_backend=self.runtime.backend,
             blueprint_revision=blueprint.revision,
             ac_key=criterion.key,
@@ -111,7 +160,9 @@ class ExecuteService:
         await self.repository.save(dispatched)
 
         try:
-            outcome = await self.runtime.execute(self._request(blueprint, criterion))
+            outcome = await self.runtime.execute(
+                self._request(blueprint, criterion, previous_failure=previous_failure)
+            )
         except Exception as error:
             failed = dispatched.record_result(
                 succeeded=False, error=f"runtime raised before returning an outcome: {error}"
@@ -156,7 +207,13 @@ class ExecuteService:
             raise BlueprintNotClearedError(mission_id=mission_id, reasons=decision.blocking_reasons)
         return blueprint_state
 
-    def _request(self, blueprint: Blueprint, criterion: AcceptanceCriterion) -> ExecutionRequest:
+    def _request(
+        self,
+        blueprint: Blueprint,
+        criterion: AcceptanceCriterion,
+        *,
+        previous_failure: PreviousFailure | None = None,
+    ) -> ExecutionRequest:
         """Runtime에 전달할 bounded 입력을 구성한다.
 
         Blueprint의 방향 필드와 대상 AC 하나만 담는다. 다른 AC의 내용은
@@ -170,4 +227,5 @@ class ExecuteService:
             criterion=criterion,
             workspace=self.envelope.workspace,
             allowed_tools=self.envelope.allowed_tools,
+            previous_failure=previous_failure,
         )
