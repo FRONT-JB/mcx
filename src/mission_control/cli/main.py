@@ -559,6 +559,10 @@ async def amain(argv: list[str] | None = None, adapters: Adapters | None = None)
         return await dispatch(args, adapters or composition.default_adapters())
     except Exception as exc:  # noqa: BLE001 — 표면 경계: 오류는 exit 1로 수렴한다
         _note(f"error: {type(exc).__name__}: {exc}")
+        cause = exc.__cause__
+        while cause is not None:
+            _note(f"  caused by: {type(cause).__name__}: {cause}")
+            cause = cause.__cause__
         return 1
 
 

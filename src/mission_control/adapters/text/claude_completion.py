@@ -39,6 +39,10 @@ TOTAL_TIMEOUT_SECONDS = 600.0
 #: 관찰 봉투의 읽기 도구 카탈로그와 턴 예산 (upstream 정렬, ADR-0036 §4).
 _OBSERVE_TOOLS = "Read Glob Grep"
 _OBSERVE_MAX_TURNS = "20"
+#: json-schema lane의 구조화 출력이 내부 턴을 소비한다 (0002 실측 2, 0003의
+#: 9-AC QA가 1에서 error_max_turns) — upstream max_turns=1 pairing은 prose
+#: lane의 것이라 이전되지 않는다 (ADR-0036 §4 정정 note).
+_NO_TOOL_MAX_TURNS = "8"
 
 _STDERR_TAIL_CHARS = 2_000
 
@@ -79,7 +83,9 @@ class ClaudeCompletion:
             command.extend(["--model", self._model])
         command.extend(["--json-schema", schema_json])
         if workspace is None:
-            command.extend(["--tools", "", "--allowedTools", "", "--max-turns", "1"])
+            command.extend(
+                ["--tools", "", "--allowedTools", "", "--max-turns", _NO_TOOL_MAX_TURNS]
+            )
         else:
             command.extend(
                 [

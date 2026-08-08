@@ -175,6 +175,12 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       채택 ([ADR-0030](../adr/0030-verify-semantic-verdict-contract.md),
       [VERIFY_UPSTREAM_FINDINGS §6](./VERIFY_UPSTREAM_FINDINGS.md))
 - [ ] UI/API/CLI observation adapter의 우선순위를 결정한다.
+- [ ] semantic 판정의 AC 병렬화를 결정한다. — 도그푸딩 0003에서 AC 9개
+      순차 판정에 ~12분 (AC당 ~80s, 서로 독립). 감사 3-lane 병렬화
+      (ADR-0035 §2)와 같은 축이나 **upstream evaluate의 AC 병렬 여부
+      미확인** — 조사 후 처분 ([DOGFOODING_0003 §5](./DOGFOODING_0003.md)).
+- [ ] semantic verdict의 일괄 저장을 유지할지 결정한다. — 진행 중 가시성이
+      0이라 12분간 진척 확인 불가 (0003 §5). status 박스(§8)와 함께 처분.
 - [x] conditional consensus를 v1에 포함할지 결정한다. → 미포함 — escalation은
       HOLD가 전부. trigger 6조건·숙의 구조·배심 독립성은 도입 시 대조 기준으로
       기록 ([ADR-0030](../adr/0030-verify-semantic-verdict-contract.md) §5,
@@ -243,6 +249,13 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 - [ ] async job/polling/notification 방식을 결정한다.
 - [ ] disconnect, cancel, timeout의 의미를 분리한다.
 - [ ] CLI와 MCP parity test 전략을 정의한다.
+- [ ] **status 박스를 도입한다 (사용자 제안 2026-08-09, 도그푸딩 0003).**
+      명령 단위 journal(명령·시작 시각·소요·exit code를 mission별 파일에
+      append — 시작 시 기록해 "진행 중"도 표현) + `mcx status`의 구간표
+      렌더. upstream 대응물: `ooo status auto`의 "한 줄 한 사실" 블록·스냅샷
+      고정·CLI/MCP 미러 ([CLI_UPSTREAM_FINDINGS §5](./CLI_UPSTREAM_FINDINGS.md)),
+      `AutoPipelineState.phase_started_at`/`last_progress_at`. 쓰기 주체는
+      CLI뿐(ADR-0037 경계 유지) — ADR-0038 개정으로 도입.
 - [ ] plugin 설치·발견·설정 UX를 결정한다. — upstream의 배포 실물은
       **plugin = skills + MCP server + CLI 3층**이며 skill이 MCP tool을
       orchestrate한다 (`skills/seed/SKILL.md` frontmatter

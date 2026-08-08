@@ -4,7 +4,7 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 6 (`mcx` CLI) — 표면 구현 완료 (2026-08-09, [ADR-0038](../adr/0038-mcx-cli-surface-contract.md)); 도그푸딩 0003 대기 |
+| Project phase | Phase 6 (`mcx` CLI) — 표면 구현 + 도그푸딩 0003 MISSION COMPLETE (2026-08-09); status 박스·종료 검토 대기 |
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`) |
@@ -262,8 +262,13 @@ Verify Gate 미검사 조건)을 잡았다.
 - [x] mission record + `mcx status` — ADR-0037 구현: 합법 전이 그래프
   (Lifecycle §9 미러 테스트), CLI만 기록, 어긋남은 경고·표시
   (tests/unit/domain/test_mission.py, tests/unit/cli/)
-- [ ] 실 AI 도그푸딩으로 설치된 CLI 완주 검증 (도그푸딩 0003 — 사용자 승인
-  필요)
+- [x] 실 AI 도그푸딩으로 설치된 CLI 완주 검증 — **도그푸딩 0003 MISSION
+  COMPLETE** (2026-08-09, [기록](../research/DOGFOODING_0003.md)): 단축형
+  표면·exit code 3종·mission record 전체 전이 그래프(재검증 edge 포함)·
+  QA EXHAUSTED→수락·자연 발생 Recover 전부 실물 검증. 도그푸딩이 잡은 결함
+  2건(무도구 max-turns 계약, CLI 원인 사슬 삼킴) 수정 완료
+- [ ] status 박스 — 사용자 제안(2026-08-09), OPEN_QUESTIONS §8 등록,
+  ADR-0038 개정으로 도입 예정
 - [ ] Phase 6 종료 검토
 
 ### Phase 7 — MCP control surface
@@ -485,11 +490,17 @@ Phase 6 표면은 2026-08-09 구현되었다: [ADR-0038](../adr/0038-mcx-cli-sur
 명령 + entry point `mcx`, 도그푸딩 드라이버의 검증된 표면을 승계. 579 tests,
 LLM-free 경로 스모크(start→status→gate HOLD exit 2) 확인.
 
-다음 검증 가능한 목표 한 개: **도그푸딩 0003 — 설치된 `mcx` CLI로 실 AI
-완주.** 스크립트 드라이버가 아니라 `[project.scripts]`로 설치된 실물
-명령으로 다섯 Stage를 완주해 exit code·mission record 전이·status 표시를
-실사용에서 검증한다 (실 AI 비용 — 사용자 승인 필요). 완주 후 Phase 6 종료
-검토.
+도그푸딩 0003은 2026-08-09 MISSION COMPLETE로 완주했다
+([기록](../research/DOGFOODING_0003.md)) — 설치된 실물 CLI로 exit code
+3종·mission record 전이 전체 그래프·QA EXHAUSTED→수락·자연 발생 Recover를
+검증했고, 계약 결함 2건(무도구 max-turns, 원인 사슬 삼킴)을 잡아 수정했다.
+콜 실측 60 (추정 30~50 — 초과분은 closure 감사 7라운드×3lane,
+upstream 파리티 동작으로 확인).
+
+다음 검증 가능한 목표 한 개: **status 박스 구현 (사용자 제안, ADR-0038
+개정).** 명령 단위 journal + `mcx status` 구간표 렌더 — 진행 중 단계·소요·
+통과 여부를 사용자가 볼 수 있게 한다 (OPEN_QUESTIONS §8 등록 항목, upstream
+`ooo status auto` 블록 정렬). 완료 후 Phase 6 종료 검토.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

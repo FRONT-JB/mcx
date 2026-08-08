@@ -61,8 +61,19 @@ codex의 sandbox 모드 대응물은 claude에서 도구 카탈로그다 (upstre
 
 | 모드 | 플래그 | 사용처 |
 |---|---|---|
-| 무도구 | `--tools "" --allowedTools "" --max-turns 1` | workspace 없는 role 전부 (질문·채점·감사·생성·QA). turn 1도 upstream pairing이다 (`evaluation/verification_artifacts.py:109` — "``allowed_tools=[]`` paired with ``max_turns=1``") |
+| 무도구 | `--tools "" --allowedTools "" --max-turns 8` | workspace 없는 role 전부 (질문·채점·감사·생성·QA) |
 | 관찰 | `--tools "Read Glob Grep" --allowedTools 동일 --max-turns 20` + cwd=workspace | semantic 평가자 (upstream "20-turn read-only envelope" 정렬) |
+
+> **정정 (2026-08-09, 도그푸딩 0003 — Verified by execution).** 무도구
+> 봉투는 원래 `--max-turns 1`이었고 근거로 upstream pairing
+> (`evaluation/verification_artifacts.py:109` — "``allowed_tools=[]``
+> paired with ``max_turns=1``")을 인용했다. 그러나 그 pairing은 upstream의
+> **prose 재질의 lane**의 것이고, 우리가 채택한 `--json-schema` lane(§3의
+> 등록된 divergence)은 구조화 출력이 내부 턴을 소비한다 — 0002에서
+> `num_turns: 2` 관측(record 0005 §1.6), 0003에서 9-AC Blueprint QA 판정이
+> `error_max_turns`로 2회 재현 실패. 무도구 상한을 **8**로 정정한다 —
+> 실측 최소(2)의 4× 여유이면서 폭주 방지 상한은 유지. 재관측 시 조정하고,
+> upstream 대응물이 없는 값이므로 이 note가 등록이다.
 
 `--tools ""`가 카탈로그를 비우고 `--allowedTools`는 프롬프트 억제일 뿐이라
 둘 다 넘긴다 (upstream `:697-702`). `--strict-mcp-config --setting-sources ""`

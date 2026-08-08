@@ -19,6 +19,7 @@
 - [CLI_UPSTREAM_FINDINGS.md](./CLI_UPSTREAM_FINDINGS.md) — CLI 표면 두께·품질 루프의 거처·canonical phase 저장 조사 (Open Questions §8 선행 항목)
 - [DOGFOODING_0001.md](./DOGFOODING_0001.md) — 실 AI 도그푸딩 1차 (전부 codex) 관측 기록
 - [DOGFOODING_0002.md](./DOGFOODING_0002.md) — 실 AI 도그푸딩 2차 (claude+codex, Recover 경로) 관측 기록
+- [DOGFOODING_0003.md](./DOGFOODING_0003.md) — 실 AI 도그푸딩 3차 (설치된 mcx CLI 실물, QA EXHAUSTED·자연 Recover 첫 관측) 기록
 
 ## Evidence levels
 

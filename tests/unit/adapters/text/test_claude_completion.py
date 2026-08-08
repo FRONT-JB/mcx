@@ -78,7 +78,7 @@ class TestBuildCommand:
             "--allowedTools",
             "",
             "--max-turns",
-            "1",
+            "8",
             "--strict-mcp-config",
             "--setting-sources",
             "",
