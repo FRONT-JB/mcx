@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.scripts]
-# CLI entry point는 Phase 6에서 추가한다 (ADR-0012 Divergence 2).
+mcx = "mission_control.cli.main:run"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
