@@ -197,6 +197,81 @@ upstream이 우회했던 지점이 그 사이 1급 지원이 되었다.
   왕복했고, 평가자가 read-only 봉투 안에서 Grep(-o)으로 증거를 직접 세어
   인용하며 satisfied/score 1.0, uncertainty 0.0을 반환했다.
 
+## 11. OpenCode 실행 runtime 조사 (2026-08-08 후속)
+
+사용자 처분(OpenCode까지 Phase 5에서 구현, 용도는 대부분 종반의 부수
+작업)의 재료. upstream 근거는 `orchestrator/opencode_runtime.py`와
+`orchestrator/opencode_event_normalizer.py`, 로컬 실물은 opencode CLI
+**1.18.15** (`--help` 확인, 실행 스모크는 미수행).
+
+### upstream `OpenCodeRuntime` (Verified — 소스)
+
+- 명령: `opencode run --pure --format json
+  [--dangerously-skip-permissions] [--model provider/model] [--session ID]`
+  — **프롬프트는 argv가 아니라 stdin** (ARG_MAX 회피, OpenCode가 비TTY
+  stdin을 자동 감지) (`:469-524`, `:477-480`).
+- **`--pure`가 외부 플러그인을 끈다** — ouroboros-bridge가 subprocess 안에서
+  이중 dispatch하는 것을 막는 명시적 격리 (`:497-503`). 우리의 재귀 금지
+  (ADR-0004)와 같은 자리.
+- 권한: 기본 `permission_mode="bypassPermissions"` →
+  `--dangerously-skip-permissions` (`:503-510`). sandbox 모드 개념은 없다 —
+  경계는 cwd(작업 디렉토리)다.
+- timeout: **2단** — 첫 출력까지 120s(`_startup_output_timeout_seconds`),
+  이후 출력 간 유휴 600s(`_stdout_idle_timeout_seconds`) (`:188-192`).
+- 이벤트: JSONL, `type` 필드로 dispatch — `text` 이벤트의 `part.text`가
+  assistant 텍스트 블록, session id는 이벤트 최상위 `sessionID`
+  (normalizer `:10`, `:199`; runtime `:718-729`).
+- resume은 `--session <id>`/`--continue`, 자식 세션(subagent)도 네이티브
+  지원 — 전부 우리 v1 범위 밖 (ADR-0033 §6 보류 유지).
+- 완성(LLMAdapter) 쪽도 같은 전송이다: `providers/opencode_adapter.py` —
+  `opencode run --format json` 단발 (§로컬 확인만, 우리는 텍스트 어댑터를
+  만들지 않는다).
+
+### 로컬 opencode CLI 1.18.15 (`--help` 확인)
+
+- `--format json`·`--pure`·`--session`·`--model provider/model`·`--agent`
+  전부 존재.
+- **`--dangerously-skip-permissions`가 help에 없다** — 대신
+  `--auto`("auto-approve permissions that are not explicitly denied
+  (dangerous!)")가 있다. codex `--full-auto` 부재와 같은 패턴의 드리프트
+  후보 — 실행 스모크에서 확인 필요.
+- **`--dir`** — "directory to run in" — codex `-C`의 대응물이 생겼다.
+  upstream은 cwd로만 경계를 줬지만 로컬은 명시 플래그가 있다.
+
+### upstream은 OpenCode를 언제 쓰는가 (Verified — 소스·문서)
+
+**workflow 로직이 자동으로 OpenCode를 고르는 시점은 없다 — 언제나 사용자
+구성의 결과다.** 세 가지 진입로가 전부다.
+
+1. **host일 때 (권장 경로)** — 사용자가 OpenCode 세션 안에서 ouroboros를
+   구동하면, `_subagent` envelope을 내는 도구들(`ouroboros_qa`,
+   `ouroboros_lateral_think` 등)이 OpenCode 네이티브 **Task pane으로 병렬
+   fan-out**된다 — "one child session per subagent, parallel multi-persona
+   dispatch" (`docs/runtime-guides/opencode.md` §1). 병렬 부수 작업이라는
+   용도의 upstream 실물이 바로 이것이다.
+2. **worker 실행 backend로 구성했을 때 (fallback, headless/CI)** —
+   `runtime_backend: opencode` 또는 `ouroboros setup --runtime opencode`.
+   9종 동급 backend 목록의 하나이며, 문서가 명시하는 자리는 "CLI-driven
+   workflows, batch runs, 세션 없는 환경"이다 (같은 문서 §2).
+3. **stage별 라우팅** — `runtime_profile.stages`가 닫힌 stage 어휘
+   (`interview`/`execute`/`evaluate`/`reflect`)별로 다른 backend를
+   지정하고 `default`가 fallback이다 (`config/models.py:480-541`).
+   "특정 단계만 다른 runtime"은 upstream에 이미 1급 구성 표면이 있다.
+
+포지셔닝: multi-provider(로컬 모델 포함) 접근이 존재 이유이고, frontier
+모델 사용을 권장한다 (guide "Model recommendation").
+
+### Mission Control 함의 (처분 대기)
+
+- 사용자 의도(2026-08-08, "대부분 마지막 단계에서 다른 용도·병렬") 는
+  upstream 용법과 정합한다 — ①(host 병렬 fan-out)과 ③(stage별 라우팅)의
+  조합. 우리 구조에서는 stage별 service 조립이 곧 runtime_profile이므로
+  별도 기능 없이 조립 주입으로 표현된다.
+- 실행 adapter(ADR-0037 후보)의 구현 시점은 사용자 처분 대기. 구현 시
+  스모크 확인 대상: stdin 프롬프트 자동 감지, `--auto`의 실효(권한 프롬프트
+  없이 완주), `--dangerously-skip-permissions` 수용 여부(기록용), `text`
+  이벤트·`sessionID` 필드 형태의 1.18.15 실물.
+
 ## Mission Control 함의
 
 결정은 [ADR-0033](../adr/0033-first-runtime-adapter-contract.md)(port 분리
