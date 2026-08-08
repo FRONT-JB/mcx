@@ -184,12 +184,25 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
 ## 7. Runtime decisions
 
-- [ ] Runtime protocol method와 streaming shape를 결정한다.
-- [ ] text-generation backend port를 execution Runtime과 어떻게 분리할지 결정한다.
-- [ ] capability descriptor와 mismatch semantics를 정의한다.
+- [-] Runtime protocol method와 streaming shape를 결정한다. → v1은 단발
+      (`ExecutionRuntime.execute` 유지 — upstream `execute_task_to_result`
+      축). 스트리밍은 event 층과 함께 보류
+      ([ADR-0033](../adr/0033-first-runtime-adapter-contract.md) §3)
+- [x] text-generation backend port를 execution Runtime과 어떻게 분리할지
+      결정한다. → 별개 port 유지 — upstream LLMAdapter/AgentRuntime 분리와
+      일치, 같은 backend가 양쪽 adapter를 각각 가짐 (ADR-0033 §1,
+      [RUNTIME_UPSTREAM_FINDINGS §1](./RUNTIME_UPSTREAM_FINDINGS.md))
+- [-] capability descriptor와 mismatch semantics를 정의한다. → upstream은
+      선언적 3플래그(이름 검사보다 플래그 분기). 우리 도입은 둘째 adapter
+      에서 차이가 실제로 생길 때 (ADR-0033 §6)
 - [ ] native event 보존과 normalized Telemetry 연결 방식을 정의한다.
-- [ ] timeout/cancel/resume contract를 정의한다.
-- [ ] OpenCode local/provider/agent mode를 capability로 어떻게 표현할지 결정한다.
+      (스트리밍·event 층과 함께 — ADR-0027 §3)
+- [-] timeout/cancel/resume contract를 정의한다. → timeout은 침묵 900초
+      (upstream stall 채택, ADR-0033 §4). cancel은 스트리밍과 함께, resume은
+      upstream 정합 검증(바이너리 해시·모델 고정)과 대조해 도입 (§6 보류)
+- [ ] OpenCode local/provider/agent mode를 capability로 어떻게 표현할지
+      결정한다. (OpenCode adapter 도입 시 —
+      [RUNTIME_UPSTREAM_FINDINGS §6](./RUNTIME_UPSTREAM_FINDINGS.md) 미조사)
 
 ## 8. MCP and CLI decisions
 

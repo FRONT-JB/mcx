@@ -675,6 +675,16 @@ raw output을 항상 영구 보존한다는 뜻은 아니다. 보존 기간과 �
 upstream 사실을 주장하지 않는다. 실제 adapter 구현 전에는 현재 버전의 공식 문서,
 도움말, 이벤트 출력, 라이선스와 테스트를 `research/`에 근거와 함께 기록해야 한다.
 
+**v1 확정 (2026-08-08)**: 첫 adapter는 **Codex의 ExecutionRuntime**이고,
+순서는 Codex 실행 → Codex text backend → OpenCode다. upstream 조사
+([RUNTIME_UPSTREAM_FINDINGS](./research/RUNTIME_UPSTREAM_FINDINGS.md))로 아래
+목록의 대부분이 확인되었다 — 호출은 `codex exec` 단발(프롬프트 stdin,
+`--json`, `-C`), 권한은 공용 sandbox enum → Codex 플래그 파생(v1 기본
+`--full-auto`, bypass 경로 없음), session은 JSONL thread id, timeout은 침묵
+900초, adapter 자체 재시도 없음. 스트리밍·resume·cancel·도구 단위 차단은
+보류 등록. 계약은
+[ADR-0033](./adr/0033-first-runtime-adapter-contract.md)이 고정한다.
+
 ### 13.1 Codex Adapter 방향
 
 Codex adapter는 다음을 조사하고 계약에 매핑해야 한다.

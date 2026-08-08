@@ -47,7 +47,7 @@
 | `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | 진입(ADR-0026)·mechanical 계약(ADR-0028)·증거 필드(ADR-0027 §1) 확정 — 구현으로 검증. semantic verdict schema는 후속 slice |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도 예산·정체 중단 계약 확정 (ADR-0031·0032) — 구현으로 검증. rollback·oscillation 탐지는 보류 |
-| `adr/` | 32 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정, 0026~0032는 Phase 4 선행 결정) |
+| `adr/` | 33 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3, 0026~0032는 Phase 4, 0033은 Phase 5 선행 결정) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -345,13 +345,19 @@ Gate·Test Matrix 전수 대조 포함). Brief → Blueprint → Execute → Ver
 Recover 다섯 Stage 전부가 파일 저장소를 거쳐 이어지고, 실패 → 교정 → 재검증 →
 `MISSION COMPLETE`의 전체 순환이 실제 명령으로 검증되었다.
 
-다음 검증 가능한 목표 한 개: **Phase 5 첫 결정을 닫는다 — Runtime protocol과
-첫 concrete adapter.** 선행은 upstream adapter 계약 조사
-([Open Questions §7](../research/OPEN_QUESTIONS.md): protocol method·streaming
-shape, capability descriptor, timeout/cancel/resume)이며,
-[Runtime 문서](../03_RUNTIME.md)를 대조해 첫 adapter(Codex 또는 OpenCode)의
-순서와 계약을 ADR로 확정한다. Execute Guide §17의 보류(capability 차단,
-timeout, execution_id 재평가)와 Phase 5 이관 항목들이 이 결정에 걸려 있다.
+Phase 5 첫 결정은 2026-08-08 닫혔다
+([RUNTIME_UPSTREAM_FINDINGS](../research/RUNTIME_UPSTREAM_FINDINGS.md),
+[ADR-0033](../adr/0033-first-runtime-adapter-contract.md)) — port 분리는
+upstream(LLMAdapter/AgentRuntime)과 일치 확정, 첫 adapter는 **Codex
+ExecutionRuntime**(`codex exec` 단발, 프롬프트 stdin, sandbox 권한 —
+bypass 경로 없음, 침묵 900초 timeout, adapter 자체 재시도 없음), 스트리밍·
+resume·cancel·도구 단위 차단은 보류 등록.
+
+다음 검증 가능한 목표 한 개: **Codex ExecutionRuntime adapter를 구현한다** —
+명령 구성(CLI 실물 없이 검증 가능해야 함), 프롬프트 렌더링(성공 계약·
+previous_failure 블록은 영어 원문), JSONL thread id → native_session_id,
+침묵 timeout과 process group 정리, 실패의 outcome 정규화까지. conformance
+test는 [Runtime 문서](../03_RUNTIME.md) §15의 첫 적용이다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
