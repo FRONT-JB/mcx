@@ -58,6 +58,13 @@ Mission은 하나의 승인 가능한 Goal을 Brief부터 최종 검증까지 �
 Mission은 최소한 identity, current Stage, state version, active input revisions,
 attempt lineage, GateDecision과 Telemetry reference를 가진다.
 
+> **구현 시점 (2026-08-08,
+> [ADR-0037](adr/0037-mission-record-and-canonical-stage.md)).** current
+> Stage를 포함한 Mission record는 합성 계층(Phase 6 CLI) 소유로 도입한다.
+> 저장된 Stage는 표시·resume·stall 탐지용이며, Stage 진입의 실질 보증은 각
+> 진입의 Gate 재계산이다 — 둘이 어긋나면 Gate가 이긴다 (upstream 정렬:
+> [CLI_UPSTREAM_FINDINGS §4](research/CLI_UPSTREAM_FINDINGS.md)).
+
 ### 3.2 Stage — NORMATIVE
 
 Stage는 책임, 입력, 종료 조건과 capability가 분리된 구간이다.
