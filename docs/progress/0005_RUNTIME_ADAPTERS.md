@@ -8,8 +8,8 @@
   [DOGFOODING_0001](../research/DOGFOODING_0001.md)·
   [DOGFOODING_0002](../research/DOGFOODING_0002.md) (Verified by execution),
   [RUNTIME_UPSTREAM_FINDINGS](../research/RUNTIME_UPSTREAM_FINDINGS.md) §1~§10
-- 상태: **검토 수행 완료. Phase 완료 선언은 잔여 항목 처분(사용자 결정)
-  대기** — 아래 §3.
+- 상태: **Phase 5 COMPLETE (2026-08-08).** 잔여 3항목은 사용자 결정으로
+  실수요 시점 이연 — 아래 §3의 처분 결과.
 
 ## 1. 여섯 질문에 대한 답
 
@@ -99,8 +99,17 @@ Codex/OpenCode"로 잡았으나, 사용자 확정 구조(2026-08-08)는 claude �
 
 선택지: (a) 셋을 Phase 5에서 분리해 후속 backlog로 이동하고 Phase 5를
 완료 선언 (ADR-0003 범위 note 필요), (b) OpenCode adapter까지 Phase 5
-안에서 구현 후 완료 선언. 처분은 사용자 결정으로 올린다 — 결정 전까지
-Phase 5는 "검토 수행, 선언 대기" 상태다.
+안에서 구현 후 완료 선언.
+
+**처분 결과 (2026-08-08, 사용자 결정): (a) — 조사로 닫고 완료 선언.**
+결정에 앞서 사용자가 용도를 확정했고("기본 워크플로 비편입, 대부분 종반의
+병렬 부수 작업") upstream 사용 시점 조사를 요청해 수행했다
+([RUNTIME findings §11](../research/RUNTIME_UPSTREAM_FINDINGS.md)) —
+upstream도 자동 편입 없이 사용자 구성 3진입로(host fan-out / worker
+backend / `runtime_profile.stages`)뿐이며, 의도한 용법은 수요 시점의 조립
+주입으로 표현된다. 셋은 ADR-0003 범위 note 2로 실수요 시점 이연이
+등록되었다. 계약 재료(명령·이벤트·1.18.15 드리프트 후보)는 findings §11에
+확보되어 도입 시 조사 비용이 거의 없다.
 
 ## 4. 미관측으로 남은 것 (결격 아님, 다음 실물 기회에)
 

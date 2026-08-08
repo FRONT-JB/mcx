@@ -29,6 +29,16 @@ Mission Control Core는 backend-neutral contract만 사용한다.
 > backend 축에 Claude를 추가했다 — 텍스트 lane의 기본 vendor는 Claude,
 > 실행(execution Runtime) 축은 본 ADR 그대로 Codex(+OpenCode 예정)다.
 > Gemini 제외는 유지된다.
+>
+> **범위 변경 2 (2026-08-08, 사용자 결정 — progress 0005 §3).** OpenCode는
+> v1 기본 범위에서 **실수요 시점으로 이연**한다. 확정된 용도는 기본
+> 워크플로가 아니라 종반의 병렬 부수 작업이며, upstream도 OpenCode를 자동
+> 편입하지 않고 사용자 구성(host fan-out / worker backend /
+> `runtime_profile.stages`)으로만 쓴다
+> ([RUNTIME findings §11](../research/RUNTIME_UPSTREAM_FINDINGS.md)). 계약
+> 재료(명령·이벤트·로컬 1.18.15 드리프트 후보)는 조사 완료 상태로 기록되어
+> 있어 도입 시 조사 비용이 거의 없다. session/resume/cancel(ADR-0033 §6)과
+> capability mapping도 같은 시점에 묶인다.
 
 ## Consequences
 

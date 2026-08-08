@@ -4,9 +4,9 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 5 — Runtime adapters: 구현·도그푸딩 2회 완료, [종료 검토](./0005_RUNTIME_ADAPTERS.md) 수행. 완료 선언은 잔여 3항목 처분(사용자 결정) 대기 |
+| Project phase | Phase 5 — Runtime adapters COMPLETE (2026-08-08); Phase 6 (`mcx` CLI) 선행 조사 준비 |
 | Mission status | ACTIVE |
-| Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 검토 수행 (2026-08-08, [progress 0005](./0005_RUNTIME_ADAPTERS.md)) |
+| Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종) |
 | Automated tests | 530 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
@@ -238,10 +238,14 @@ Verify Gate 미검사 조건)을 잡았다.
   (`Prompted*`, `CompletionEngine` protocol) — conformance 10건 + 실물
   스모크 3회 (RUNTIME findings §10, semantic 평가자가 read-only 봉투에서
   Grep으로 증거를 세어 인용)
-- [ ] OpenCode adapter conformance
-- [ ] session/resume/cancel (ADR-0033 §6 보류 — 도입 시 upstream 정합
-  검증과 대조)
-- [ ] local model vs provided agent capability mapping
+- [-] OpenCode adapter — **조사 완료·구현 이연** (사용자 결정 2026-08-08,
+  ADR-0003 범위 note 2). upstream 사용 시점·계약 재료·로컬 1.18.15
+  드리프트 후보는 [RUNTIME findings §11](../research/RUNTIME_UPSTREAM_FINDINGS.md).
+  용도(종반 병렬 부수 작업)가 구체화되는 실수요 시점에 도입
+- [-] session/resume/cancel — 위와 같은 시점으로 이연 (ADR-0033 §6 보류
+  유지, 단발 실행 계약에는 불필요)
+- [-] local model vs provided agent capability mapping — OpenCode 도입
+  시점으로 이연 (실물 대상이 그때 생긴다)
 
 ### Phase 6 — `mcx` CLI
 
@@ -451,13 +455,18 @@ Phase 5 종료 검토는 2026-08-08 수행되었다
 차단 시점), 근거 미인용 1건(무도구 max-turns의 upstream pairing), 미표시
 보류 1건(mechanical 명령의 workspace 밖 부작용)을 잡아 수정했다.
 
-다음 검증 가능한 목표 한 개: **Phase 5 잔여 3항목의 처분 확정 (사용자
-결정).** OpenCode adapter·session/resume/cancel·capability mapping을
-Phase 5에서 분리해 backlog로 이동할지(ADR-0003 범위 note 필요, Phase 5
-완료 선언), OpenCode까지 구현하고 선언할지 — record 0005 §3의 선택지.
-결정 즉시 Phase 5 상태를 갱신하고 다음 Phase(6 — `mcx` CLI, 착수 전
-선행 조사: upstream이 CLI를 얇게 둔 이유(OPEN_QUESTIONS §8), canonical
-Stage 저장 결정)로 넘어간다.
+Phase 5는 2026-08-08 완료되었다 ([progress 0005](./0005_RUNTIME_ADAPTERS.md)).
+잔여 3항목(OpenCode adapter·session/resume/cancel·capability mapping)은
+OpenCode 사용 시점 조사(RUNTIME findings §11 — upstream도 자동 편입 없이
+사용자 구성 3진입로뿐) 후 사용자 결정으로 실수요 시점 이연이 확정되었다
+(ADR-0003 범위 note 2).
+
+다음 검증 가능한 목표 한 개: **Phase 6 선행 조사 — upstream이 CLI를 얇게
+둔 이유와 canonical Stage 저장 결정.** ① upstream CLI 경로의 실제 두께와
+책임 배치를 소스로 확인하고 (OPEN_QUESTIONS §8), ② 전 Stage 공통 한계로
+등록된 canonical Stage 저장 부재(record 0004 질문 4 처분 — Lifecycle 소유
+결정, Phase 6 전 시한)를 닫는다. 둘 다 `mcx` CLI의 첫 설계 결정에
+선행한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -659,7 +668,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 2 — Blueprint | **충족 (2026-08-08)** — 완료 선언 전 절차로 첫 수행. 계약 미달 1건 발견·수정(중복 AC, b00e0c2), 표시 누락 1건 추가(크기 제한), 미확인 이탈 1건 등록(previous_findings → ADR-0022) | [progress 0002](./0002_BLUEPRINT_VERTICAL_SLICE.md) |
 | Phase 3 — Execute | **충족 (2026-08-08)** — Test Matrix 누락 2행 테스트 추가(2f951e2), ADR-0024 과장 정정, §10 미검사 조건 표 추가, telemetry schema 시점 정정(§9 → Phase 4 전), 재시도 정책 미확인 등록(ADR-0025) | [progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md) |
 | Phase 4 — Verify/Recover | **충족 (2026-08-08)** — 예산 리셋 테스트 추가(0186450), directive 저장 vs 파생 충돌 해소, exit_conditions 유예 재평가, canonical Stage 저장 부재 등록, Verify Gate 미검사 조건 표 신설. Gate·Matrix 전수 대조 포함 | [progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) |
-| Phase 5 — Runtime adapters | **검토 수행 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). **완료 선언은 잔여 3항목 처분(사용자 결정) 대기** | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
+| Phase 5 — Runtime adapters | **충족 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). 잔여 3항목은 OpenCode 사용 시점 조사 후 사용자 결정으로 실수요 이연 (ADR-0003 note 2) | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
 | Phase 6 — `mcx` CLI | 대기 | — |
 | Phase 7 — MCP control surface | 대기 | — |
 
