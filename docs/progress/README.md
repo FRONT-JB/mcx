@@ -47,7 +47,7 @@
 | `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | 진입(ADR-0026)·mechanical 계약(ADR-0028)·증거 필드(ADR-0027 §1) 확정 — 구현으로 검증. semantic verdict schema는 후속 slice |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 29 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정, 0026~0029는 Phase 4 선행 결정) |
+| `adr/` | 30 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정, 0026~0030은 Phase 4 선행 결정) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -295,12 +295,16 @@ Verify 첫 vertical slice는 2026-08-08 구현되었다 (commit d663c7b, 440 tes
 blocker로 드러난다. 실행 attempt의 성공 주장은 어느 경로로도 증거가 되지
 않는다.
 
-다음 검증 가능한 목표 한 개: **Verify semantic 층
-([Verify Guide](../08_VERIFY.md) §13 Slice 3~4)의 계약을 고정한다** — 선행은
-upstream semantic(Stage 2) 프롬프트 계약과 consensus(Stage 3) reviewer 독립성
-규칙의 조사다 ([ADR-0029](../adr/0029-verify-deliberate-divergences.md) 미확인
-표). semantic verdict schema(uncertainty 표현 포함, [Open Questions
-§5](../research/OPEN_QUESTIONS.md))를 ADR로 확정한 뒤 구현한다.
+semantic 층 계약은 2026-08-08 고정되었다
+([VERIFY_UPSTREAM_FINDINGS §6~§7](../research/VERIFY_UPSTREAM_FINDINGS.md),
+[ADR-0030](../adr/0030-verify-semantic-verdict-contract.md)) — verdict는 AC
+단위 `satisfied`(bool) + `score` + `uncertainty` + `reward_hacking_risk`,
+임계 셋(0.8/0.3/0.7)은 upstream 채택, consensus는 미도입(escalation은 HOLD).
+
+다음 검증 가능한 목표 한 개: **Verify semantic slice를 구현한다** — verdict
+도메인과 정책, semantic 평가자 port + 결정적 fake, Gate의
+`CLEAR — MISSION COMPLETE` 완성(ADR-0030 §4의 네 조건), VerifyService 통합.
+성공 시 v1에서 처음으로 MISSION COMPLETE가 도달 가능해진다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

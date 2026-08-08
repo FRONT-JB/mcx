@@ -198,6 +198,17 @@ uncertainty
 required follow-up
 ```
 
+**v1 확정 (2026-08-08)**: 위 4-status 초안은 채택하지 않는다 — verdict는
+`satisfied`(bool) + `score` + `uncertainty`(0..1) + `reward_hacking_risk` +
+`reasoning`/`evidence`/`questions_used`다 (`upstream 관측` — 구조화 JSON
+스키마, [VERIFY_UPSTREAM_FINDINGS §6](./research/VERIFY_UPSTREAM_FINDINGS.md)).
+통과는 `satisfied AND score >= 0.8`, `uncertainty > 0.3`은 실패가 아니라
+escalation 대기 `HOLD`, `reward_hacking_risk >= 0.7`은 단일 최종 veto —
+수치 셋 모두 upstream 채택이다
+([ADR-0030](./adr/0030-verify-semantic-verdict-contract.md) §1~§2).
+`not_observed`는 observation adapter(§13 Slice 5) 도입 시 재평가한다
+([ADR-0029](./adr/0029-verify-deliberate-divergences.md) 보류).
+
 #### 필수 관점
 
 - Goal에 실제로 기여하는가?
@@ -236,6 +247,12 @@ Observed behavior proves it works
 
 Consensus가 도입되더라도 다수결만으로 evidence 부족을 채우지 않는다. trigger,
 참여자 독립성, 입력, 투표 규칙, 비용 한도, tie 처리 정책은 별도 ADR이 필요하다.
+
+**v1 확정 (2026-08-08)**: consensus는 도입하지 않는다 — escalation은 `HOLD`가
+전부다. upstream의 trigger 6조건·ADVOCATE/DEVIL/JUDGE 숙의·배심 독립성
+4-label은 도입 시 대조 기준으로 기록되었다
+([ADR-0030](./adr/0030-verify-semantic-verdict-contract.md) §5,
+[VERIFY_UPSTREAM_FINDINGS §7](./research/VERIFY_UPSTREAM_FINDINGS.md)).
 
 ---
 
@@ -468,10 +485,13 @@ Next:
 | Mechanical | 성공 계약 없는 AC ([ADR-0028](./adr/0028-verify-v1-mechanical-contract.md) §3) | 통과가 아니라 판정 불가로 구분 |
 | Semantic | 모든 AC 충족 | evidence가 충분할 때 CLEAR 후보 |
 | Semantic | 테스트는 통과하지만 AC 미충족 | HOLD |
+| Semantic | `satisfied`인데 `score < 0.8` (`upstream 관측` — 통과는 compliance AND score, [VERIFY_UPSTREAM_FINDINGS §6](./research/VERIFY_UPSTREAM_FINDINGS.md)) | 통과로 세지 않음 |
+| Semantic | `reward_hacking_risk >= 0.7` (`upstream 관측` — 단일 최종 veto, §6) | 다른 조건이 전부 통과여도 거부 |
+| Semantic | 이전 revision 위에서 내린 verdict ([ADR-0030](./adr/0030-verify-semantic-verdict-contract.md) §4) | stale — 현재 revision을 CLEAR하지 않음 |
 | Semantic | Non-goal 구현 감지 | scope drift HOLD |
 | Observation | UI AC인데 실제 관찰 없음 | not_observed, CLEAR 금지 |
 | Evidence | worker claim만 존재 | 불충분 evidence로 HOLD |
-| Uncertainty | evaluator가 uncertain | escalation 또는 HOLD |
+| Uncertainty | evaluator가 uncertain (`uncertainty > 0.3` — `upstream 관측` escalation trigger 임계, §6) | v1은 escalation 대기 HOLD ([ADR-0030](./adr/0030-verify-semantic-verdict-contract.md) §2) |
 | Parser | evaluator 구조화 출력 손상 | 성공으로 해석하지 않음 |
 | Independence | executor 자기 평가만 사용 | 독립 검증 요구 |
 | Recovery | 하나의 AC 실패 | 실패 packet이 Recover에 전달됨 |

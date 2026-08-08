@@ -137,9 +137,17 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       없이 들어오는 repo 명령의 방어이며 그 층의 도입 시 함께 온다
       ([ADR-0028](../adr/0028-verify-v1-mechanical-contract.md) §2,
       [VERIFY_UPSTREAM_FINDINGS §4~§5](./VERIFY_UPSTREAM_FINDINGS.md))
-- [ ] semantic verdict schema와 uncertainty 표현을 결정한다.
+- [x] semantic verdict schema와 uncertainty 표현을 결정한다. → AC 단위
+      `satisfied`(bool) + `score` + `uncertainty`(0..1) + `reward_hacking_risk`
+      + reasoning/evidence/questions_used. uncertainty는 통과 조건이 아니라
+      escalation 신호(임계 0.3, v1은 HOLD). 임계 셋(0.8/0.3/0.7)은 upstream
+      채택 ([ADR-0030](../adr/0030-verify-semantic-verdict-contract.md),
+      [VERIFY_UPSTREAM_FINDINGS §6](./VERIFY_UPSTREAM_FINDINGS.md))
 - [ ] UI/API/CLI observation adapter의 우선순위를 결정한다.
-- [ ] conditional consensus를 v1에 포함할지 결정한다.
+- [x] conditional consensus를 v1에 포함할지 결정한다. → 미포함 — escalation은
+      HOLD가 전부. trigger 6조건·숙의 구조·배심 독립성은 도입 시 대조 기준으로
+      기록 ([ADR-0030](../adr/0030-verify-semantic-verdict-contract.md) §5,
+      [VERIFY_UPSTREAM_FINDINGS §7](./VERIFY_UPSTREAM_FINDINGS.md))
 - [ ] workspace snapshot/revision 검증 방식을 결정한다.
 - [x] **Execute Telemetry 없이 나타난 작업을 Verify가 CLEAR할 수 있는지
       결정한다.** → **없다 — 진입 자체가 막힌다.** Verify 진입이 Execute Gate

@@ -51,6 +51,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0027](./0027-telemetry-layers-and-v1-schema.md) | Telemetry 세 층은 소비자가 정의하고 생산자의 Phase에서 확정한다. report 층 v1 스키마 확정. | Accepted |
 | [0028](./0028-verify-v1-mechanical-contract.md) | Verify v1 mechanical 검증 — 실행 주체는 Verify, 명령은 승인된 `verify_command`뿐, 실행 계약과 증거 필드 확정. | Accepted |
 | [0029](./0029-verify-deliberate-divergences.md) | Verify에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
+| [0030](./0030-verify-semantic-verdict-contract.md) | semantic verdict는 AC 단위 bool+score+uncertainty이고, 임계 셋(0.8/0.3/0.7)은 upstream 채택이다. | Accepted |
 
 ## Template
 

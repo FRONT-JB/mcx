@@ -86,15 +86,56 @@ AC `verify_command`에는 allowlist가 없고 shell이 허용된다. repo 수준
 guard, process group kill, timeout)가 있다. 비대칭의 의도 서술은 allowlist
 주석(CI RCE 우려)까지가 소스 근거다.
 
-## 6. 조사하지 않은 것
+## 6. semantic(Stage 2) — AC 단위, 구조화 출력, compliance AND score
 
-- semantic(Stage 2) 프롬프트 계약과 consensus(Stage 3) reviewer 독립성 규칙 —
-  semantic slice 설계 시 조사한다.
-- coverage 판정의 상세 (`coverage_threshold` 적용 지점).
+> 2026-08-08 후속 조사 — §6(구판)의 미조사 항목 해소.
+
+- **판정 단위는 AC 하나다.** `EvaluationContext.current_ac` 하나를 평가하고,
+  복수 AC는 AC별로 파이프라인을 반복해 checklist로 집계한다
+  (`evaluation_handlers.py:738-757`).
+- **입력 프롬프트** (`semantic.py:106-180`): AC 원문 + **선언된 성공
+  계약**(있으면 — "The AC passes ONLY if the artifact demonstrates the
+  declared contract was met. Cite the evidence line") + goal + constraints +
+  **실제 소스 파일들**(bundle — 요약이 아니라 원문, `models.py:301-302`).
+- **출력은 구조화 JSON 스키마다** (`semantic.py:35-62`): `score`(0..1),
+  `ac_compliance`(bool), `goal_alignment`, `drift_score`, `uncertainty`,
+  `reward_hacking_risk`, `reasoning`, `questions_used`(평가자가 실제로 물은
+  질문 — "show its work", anti-reward-hacking #367), `evidence`(구체 증거).
+  범위는 생성 시 검증된다 (`models.py:141-152`).
+- **통과 논리** (`pipeline.py:139-280`): Stage 1(mechanical) 실패 →
+  불승인(semantic이 뒤집지 못함). Stage 2 통과는
+  **`ac_compliance` AND `score >= 0.8`**. `uncertainty`는 통과 조건이 아니라
+  escalation(Stage 3) trigger 입력이다.
+- **reward-hacking veto는 단일 최종 gate다**: `reward_hacking_risk >= 0.7`이면
+  통과 판정을 뒤집는다. 임계가 높은 이유가 주석에 있다 — "a nervous
+  evaluator's mild suspicion never blocks a genuine pass"
+  (`models.py:26-33`, `pipeline.py` `_build_result`).
+
+## 7. consensus(Stage 3) — trigger 6조건과 배심 독립성
+
+- **trigger** (`trigger.py:84-175`): 수동 요청이 최우선, 이후 우선순위 —
+  seed 수정, ontology 진화, goal 재해석, seed drift(`> 0.3`),
+  Stage 2 uncertainty(`> 0.3`), lateral thinking 채택. 발동하면 Stage 3이
+  최종 결정(`stage3_result.approved`)이다.
+- **심의 구조**: ADVOCATE(옹호) / DEVIL(비판) / JUDGE(판정) 역할의 2-round
+  숙의 (`models.py` `VoterRole`).
+- **배심 독립성** (`reviewer_independence.py`): 실행한 backend의 **vendor를
+  배심에서 배제**한다 — 단 정족수(최소 배심) 아래로는 배제하지 않는다
+  ("votes beat purity", `:45`). 결과에는 정직한 독립성 라벨 4종이 찍힌다:
+  `unavailable`(독립 배심 불가) / `independent`(다른 vendor 입증) /
+  `unverified`(입증도 반증도 불가 — 거짓 `independent`와 구분) /
+  `same_vendor`. unknown vendor는 독립의 증거로 세지 않는다.
+
+## 8. 조사하지 않은 것
+
+- coverage 판정의 상세 (`coverage_threshold` 적용 지점) — coverage 도입 시.
 - bounce/repair의 실패 증거 전달 방식 (ADR-0025 미확인 유지).
+- consensus 심의 프롬프트의 상세(ADVOCATE/DEVIL/JUDGE 각 계약) — consensus
+  도입 시.
 
 ## Mission Control 함의
 
 결정은 [ADR-0028](../adr/0028-verify-v1-mechanical-contract.md)(v1 mechanical
-검증 계약)과 [ADR-0029](../adr/0029-verify-deliberate-divergences.md)(Verify
-divergence 등록부)에 있다.
+검증 계약), [ADR-0029](../adr/0029-verify-deliberate-divergences.md)(Verify
+divergence 등록부), [ADR-0030](../adr/0030-verify-semantic-verdict-contract.md)
+(semantic verdict 계약)에 있다.

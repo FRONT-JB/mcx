@@ -32,14 +32,16 @@
 | workspace mutation guard (검증 명령의 작업물 변경 거부) | 실행 전후 content digest 대조로 FAIL | v1 미도입 — 도입 시 digest 범위를 함께 결정 | [ADR-0028](./0028-verify-v1-mechanical-contract.md) §5, 계약 기록은 findings §2 |
 | changed_files 수집 (git 기반) | VerificationArtifacts에 포함 | 실제 파일 변경이 생기는 concrete adapter(Phase 5)와 함께 | [ADR-0027](./0027-telemetry-layers-and-v1-schema.md) §1, [ADR-0028](./0028-verify-v1-mechanical-contract.md) §4 |
 | coverage 판정 (coverage_threshold 0.7) | Stage 1 축 | v1 미도입 | [ADR-0028](./0028-verify-v1-mechanical-contract.md) §5 |
-| semantic 평가 (Stage 2)와 consensus (Stage 3) | 존재 | 후속 slice — port + 결정적 fake로 시작, 프롬프트 계약은 도입 시 조사 | [VERIFY_UPSTREAM_FINDINGS §6](../research/VERIFY_UPSTREAM_FINDINGS.md) |
+| consensus (Stage 3: trigger 6조건, ADVOCATE/DEVIL/JUDGE 숙의, 배심 독립성 4-label) | 존재 — uncertainty·drift escalation의 해소 경로 | v1 미도입 — escalation은 `HOLD`가 전부. 도입 시 임계(0.3)·"votes beat purity"·독립성 라벨과 대조 | [ADR-0030](./0030-verify-semantic-verdict-contract.md) §5, [VERIFY_UPSTREAM_FINDINGS §7](../research/VERIFY_UPSTREAM_FINDINGS.md) |
+| `not_observed` 류 관찰 status와 observation adapter | UI/API 관찰 경로 | v1 미도입 — verdict는 bool + uncertainty (upstream 정렬). 관찰 status는 observation adapter(Guide §13 Slice 5) 도입 시 재평가 | [ADR-0030](./0030-verify-semantic-verdict-contract.md) §1 |
 
 ### 미확인 — 대조하지 못했다. "차이 없음"이 아니다
 
 | 항목 | 내용 |
 |---|---|
-| semantic(Stage 2) 프롬프트 계약과 평가 축 | semantic slice 설계 전에 조사한다 (findings §6) |
-| consensus(Stage 3) reviewer 독립성 규칙 (executor vendor 배제 포함) | 위와 같은 시점 |
+| ~~semantic(Stage 2) 프롬프트 계약과 평가 축~~ | **2026-08-08 확인 완료** — AC 단위, 선언 계약 대조, 구조화 JSON, `compliance AND score >= 0.8` ([VERIFY_UPSTREAM_FINDINGS §6](../research/VERIFY_UPSTREAM_FINDINGS.md), 계약은 [ADR-0030](./0030-verify-semantic-verdict-contract.md)) |
+| ~~consensus(Stage 3) reviewer 독립성 규칙 (executor vendor 배제 포함)~~ | **2026-08-08 확인 완료** — vendor 배제 + 정족수 우선 + 정직 라벨 4종 ([VERIFY_UPSTREAM_FINDINGS §7](../research/VERIFY_UPSTREAM_FINDINGS.md)). 도입은 보류 표 참조 |
+| consensus 심의 프롬프트의 상세 (ADVOCATE/DEVIL/JUDGE 각 계약) | consensus 도입 시 조사 (findings §8) |
 | coverage_threshold의 실제 적용 지점 | coverage 도입 시 조사 |
 
 ## Consequences
