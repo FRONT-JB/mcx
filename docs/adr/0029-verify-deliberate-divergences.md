@@ -30,11 +30,11 @@
 |---|---|---|---|
 | repo 수준 명령 실행 (mechanical.toml: lint/build/test/static/coverage) | Stage 1 + AI detector 발견 + 4겹 안전 모델 | v1 미도입 — 승인된 verify_command만 실행. 도입 시 allowlist·argv·entry-point 모델과 대조 | [ADR-0028](./0028-verify-v1-mechanical-contract.md) §2, [VERIFY_UPSTREAM_FINDINGS §3~§4](../research/VERIFY_UPSTREAM_FINDINGS.md) |
 | workspace mutation guard (검증 명령의 작업물 변경 거부) | 실행 전후 content digest 대조로 FAIL | v1 미도입 — 도입 시 digest 범위를 함께 결정 | [ADR-0028](./0028-verify-v1-mechanical-contract.md) §5, 계약 기록은 findings §2 |
-| changed_files 수집 (git 기반) | VerificationArtifacts에 포함 | 실제 파일 변경이 생기는 concrete adapter(Phase 5)와 함께 | [ADR-0027](./0027-telemetry-layers-and-v1-schema.md) §1, [ADR-0028](./0028-verify-v1-mechanical-contract.md) §4 |
+| changed_files 수집 (git 기반) | VerificationArtifacts에 포함 | **Phase 9 실사용 진입** (2026-08-09 재지정 — git 기반이라 worktree 격리·AC별 checkpoint 커밋과 같은 자리). 원래 시한 "concrete adapter(Phase 5)와 함께"는 무처분 도과했다: Phase 5는 실제 파일 변경을 만들었으나 수집을 붙이지 않았다 | [ADR-0027](./0027-telemetry-layers-and-v1-schema.md) §1, [ADR-0028](./0028-verify-v1-mechanical-contract.md) §4 |
 | coverage 판정 (coverage_threshold 0.7) | Stage 1 축 | v1 미도입 | [ADR-0028](./0028-verify-v1-mechanical-contract.md) §5 |
 | consensus (Stage 3: trigger 6조건, ADVOCATE/DEVIL/JUDGE 숙의, 배심 독립성 4-label) | 존재 — uncertainty·drift escalation의 해소 경로 | v1 미도입 — escalation은 `HOLD`가 전부. 도입 시 임계(0.3)·"votes beat purity"·독립성 라벨과 대조 | [ADR-0030](./0030-verify-semantic-verdict-contract.md) §5, [VERIFY_UPSTREAM_FINDINGS §7](../research/VERIFY_UPSTREAM_FINDINGS.md) |
 | `not_observed` 류 관찰 status와 observation adapter | UI/API 관찰 경로 | v1 미도입 — verdict는 bool + uncertainty (upstream 정렬). 관찰 status는 observation adapter(Guide §13 Slice 5) 도입 시 재평가 | [ADR-0030](./0030-verify-semantic-verdict-contract.md) §1 |
-| `exit_conditions` (Mission 전체 종료 조건) | seed 필드 + 진화 루프 소비 | ADR-0017 유예의 시한(Phase 4)이 도래해 재평가 — 핵심 조건은 Gate의 AC 전수 요구가 덮고, 잔여(project 검사, 사용자 acceptance)는 repo 명령 층·Phase 6·7 surface 도입 시 | [ADR-0017](./0017-blueprint-schema-baseline.md) 2026-08-08 재평가 |
+| `exit_conditions` (Mission 전체 종료 조건) | seed 필드 + 진화 루프 소비 | ADR-0017 유예의 시한(Phase 4)이 도래해 재평가 — 핵심 조건은 Gate의 AC 전수 요구가 덮고, 잔여는 **2026-08-09 재지정** — project 검사는 repo 명령 층(ADR-0028 §2 보류, 로드맵 미배치), 사용자 acceptance는 Phase 9 실사용 진입 | [ADR-0017](./0017-blueprint-schema-baseline.md) 2026-08-08 재평가 |
 
 ### 미확인 — 대조하지 못했다. "차이 없음"이 아니다
 

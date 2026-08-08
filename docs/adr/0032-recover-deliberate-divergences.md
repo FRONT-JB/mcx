@@ -24,13 +24,13 @@
 
 | 항목 | upstream | 상태 | 기록 |
 |---|---|---|---|
-| 세밀한 실패 분류 (FABRICATION_SUSPECTED, SCOPE_CREEP, EVIDENCE 계열) | verifier 증거 계약 위의 분류 | Phase 5 verifier 실체화와 함께 — 도입 시 정책 테이블(§2) 대조 | [REPAIR_UPSTREAM_FINDINGS §1~§2](../research/REPAIR_UPSTREAM_FINDINGS.md) |
-| ESCALATE_MODEL (상위 tier 재실행) | FABRICATION의 처방 | 모델 라우팅 부재 — Phase 5 | 위 findings §2 |
-| REDISPATCH_ALT_HARNESS (vendor 교체 재실행) | meta-harness 고유 수단 | 다중 runtime(Phase 5) 후 | 위 findings §2 |
+| 세밀한 실패 분류 (FABRICATION_SUSPECTED, SCOPE_CREEP, EVIDENCE 계열) | verifier 증거 계약 위의 분류 | **시한 도과 — 재지정 대기** (2026-08-09 발견): Phase 5에서 verifier(실제 semantic 평가자)가 실체화됐으나 분류는 미도입. 도입 시 정책 테이블(§2) 대조 | [REPAIR_UPSTREAM_FINDINGS §1~§2](../research/REPAIR_UPSTREAM_FINDINGS.md) |
+| ESCALATE_MODEL (상위 tier 재실행) | FABRICATION의 처방 | 모델 라우팅 부재 — **조건 유지, 로드맵 미배치** (Phase 5는 라우팅을 만들지 않고 지나갔다) | 위 findings §2 |
+| REDISPATCH_ALT_HARNESS (vendor 교체 재실행) | meta-harness 고유 수단 | **Phase 11** (다중 runtime 도입 후 — 2026-08-09 재지정) | 위 findings §2 |
 | lateral 전환 (persona 선택, 개입 예산 1회) | RecoveryPlanner | v1 미도입 — 접근 전환은 마지막 재시도의 지시문까지 | [ADR-0031](./0031-recover-v1-failure-and-retry-contract.md) §5, findings §5 |
 | OSCILLATION·NO_DRIFT·DIMINISHING_RETURNS 탐지 | 4패턴 해시·이력 기반 | v1은 SPINNING(동일 오류 3회)만 — 나머지는 실행 이력 축적 후 | findings §4 |
-| rollback / worktree 복구 | `core/worktree.py` | workspace 관리(Phase 5)와 함께 조사·결정 | [Open Questions §6](../research/OPEN_QUESTIONS.md) |
-| cancelled 상태 | 존재 | 취소 경로(Phase 5)와 함께 | [ADR-0025](./0025-execute-deliberate-divergences.md) 보류와 같은 시점 |
+| rollback / worktree 복구 | `core/worktree.py` | **Phase 9 실사용 진입** (2026-08-09 사용자 결정 — brownfield·worktree 격리·AC별 checkpoint 커밋과 한 묶음). 원래 시한 "workspace 관리(Phase 5)"는 Phase 5가 단발 실행 계약만 확정하고 지나가 낡았다 | [Open Questions §6](../research/OPEN_QUESTIONS.md) |
+| cancelled 상태 | 존재 | **Phase 7** (2026-08-09 사용자 결정 — 장기 실행 job 계약·취소와 한 묶음). 원래 시한 "취소 경로(Phase 5)"는 도과했다 | [ADR-0025](./0025-execute-deliberate-divergences.md) 보류와 같은 시점 |
 
 ### 미확인 — 대조하지 못했다. "차이 없음"이 아니다
 

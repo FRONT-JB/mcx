@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`) |
-| Automated tests | 581 passed (unit + integration) |
+| Automated tests | 582 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-09 |
 
@@ -47,7 +47,7 @@
 | `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | 진입(ADR-0026)·mechanical 계약(ADR-0028)·증거 필드(ADR-0027 §1) 확정 — 구현으로 검증. semantic verdict schema는 후속 slice |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도 예산·정체 중단 계약 확정 (ADR-0031·0032) — 구현으로 검증. rollback·oscillation 탐지는 보류 |
-| `adr/` | 34 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3, 0026~0032는 Phase 4, 0033~0034는 Phase 5) |
+| `adr/` | 38 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3, 0026~0032는 Phase 4, 0033~0036은 Phase 5, 0037~0038은 Phase 6) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -240,14 +240,17 @@ Verify Gate 미검사 조건)을 잡았다.
   (`Prompted*`, `CompletionEngine` protocol) — conformance 10건 + 실물
   스모크 3회 (RUNTIME findings §10, semantic 평가자가 read-only 봉투에서
   Grep으로 증거를 세어 인용)
-- [-] OpenCode adapter — **조사 완료·구현 이연** (사용자 결정 2026-08-08,
+- [-] OpenCode adapter — 조사 완료·구현 이연 (사용자 결정 2026-08-08,
   ADR-0003 범위 note 2). upstream 사용 시점·계약 재료·로컬 1.18.15
   드리프트 후보는 [RUNTIME findings §11](../research/RUNTIME_UPSTREAM_FINDINGS.md).
-  용도(종반 병렬 부수 작업)가 구체화되는 실수요 시점에 도입
-- [-] session/resume/cancel — 위와 같은 시점으로 이연 (ADR-0033 §6 보류
-  유지, 단발 실행 계약에는 불필요)
-- [-] local model vs provided agent capability mapping — OpenCode 도입
-  시점으로 이연 (실물 대상이 그때 생긴다)
+  **Phase 11로 배치 확정** (사용자 결정 2026-08-09) — "실수요 시점"이라는
+  조건부 시한은 발동 조건(병렬 실행 도입)이 로드맵에 없어 기약이 없었다
+- [-] session/resume/cancel — **Phase 7로 재지정** (사용자 결정 2026-08-09):
+  장기 실행 job 계약·취소와 한 묶음. 단발 실행 계약에는 불필요하다는 판단은
+  유지되나, 시한이 "OpenCode 실수요"에서 MCP로 앞당겨졌다 (ADR-0033 §6 이연분
+  합류)
+- [-] local model vs provided agent capability mapping — **Phase 11로 재지정**
+  (OpenCode adapter와 같은 자리 — 실물 대상이 그때 생긴다)
 
 ### Phase 6 — `mcx` CLI
 
@@ -294,7 +297,25 @@ Verify Gate 미검사 조건)을 잡았다.
 - [ ] CLI/MCP parity tests
 - [ ] recursion/security tests
 
-### Phase 8 — 실사용 진입: brownfield + 되돌리기 (사용자 결정 2026-08-09)
+### Phase 8 — plugin 패키징: 합성 계층 (사용자 결정 2026-08-09)
+
+목표: host가 Stage 순서를 알고 스스로 이어 붙인다. 지금은 사람이 24개 명령의
+순서를 알아야 하며, 도그푸딩 0003은 그 순서를 아는 사람이 60콜을 손으로
+이어 붙인 실행이었다.
+
+upstream 배포 실물은 **plugin = skills + MCP server + CLI 3층**이고, 품질
+루프와 합성 규칙이 skill 계층에 산다
+([CLI findings §2·§3](../research/CLI_UPSTREAM_FINDINGS.md)). 따라서 이
+Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08-09 대조에서
+"skill 래퍼와 manifest만 얹으면 된다"(Open Questions §8 원문)가 같은 문서
+§2의 조사 결과와 충돌함을 확인해 정정했다.
+
+- [ ] upstream skills 계층 조사 — 합성 규칙의 실제 내용과 CLI/MCP와의 경계
+- [ ] skill 계층 ADR — 무엇이 skill 소유이고 무엇이 Core 소유인가
+- [ ] skill 작성 + plugin manifest (Claude·Codex 양쪽 MCP 클라이언트)
+- [ ] 설치·발견·설정 UX ([Open Questions §8](../research/OPEN_QUESTIONS.md))
+
+### Phase 9 — 실사용 진입: brownfield + 되돌리기 (사용자 결정 2026-08-09)
 
 목표: 기존 코드베이스에 안전하게 적용한다. Evolve보다 먼저 — 실사용
 데이터가 쌓여야 진화 루프가 의미를 갖는다.
@@ -304,14 +325,31 @@ Verify Gate 미검사 조건)을 잡았다.
 - [ ] worktree 격리 (upstream `core/worktree.py` 대조)
 - [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조)
 - [ ] rollback 범위 (ADR-0032 보류 해제)
+- [ ] `changed_files` 수집 (ADR-0029 보류 — git 기반이라 이 자리)
+- [ ] secret redaction 정책의 실물 재대조 (Phase 7 진입 조건으로 쓴 ADR을
+  실 레포 사례로 검증 — 조사 기반 정책의 첫 실물 대조)
 
-### Phase 9 — Reflect/Evolve (사용자 결정 2026-08-09)
+### Phase 10 — Reflect/Evolve (사용자 결정 2026-08-09)
 
 목표: mission 간 진화 루프의 도입 여부를 조사로 결정하고 도입한다.
 
 - [ ] upstream `evolve_step`·wonder·reflect(4번째 stage 축) 조사
 - [ ] 도입 ADR (조사 결과가 부정적이면 제외 ADR로 기록)
 - [ ] 구현
+
+### Phase 11 — 병렬 실행 + OpenCode adapter (사용자 결정 2026-08-09)
+
+목표: 둘째 실행 Runtime을 붙인다. OpenCode의 upstream 용도는 종반의 **병렬**
+부수 작업인데 mcx는 병렬 실행 자체가 미도입(ADR-0024 §3, 선언 순서 순차)이라,
+병렬 Gate 결정이 선행하지 않으면 붙여도 쓸 자리가 없다 — 두 항목을 한 묶음으로
+둔 이유다. ADR-0003의 "초기 Runtime은 Codex/OpenCode" 선언은 여기서 이행된다
+(범위 note 2 해제).
+
+- [ ] 병렬 실행 도입 Gate ([Execute Guide](../07_EXECUTE.md) §17,
+  [Open Questions §4](../research/OPEN_QUESTIONS.md))
+- [ ] OpenCode adapter ([RUNTIME findings §11](../research/RUNTIME_UPSTREAM_FINDINGS.md))
+- [ ] local model vs provided agent capability mapping
+- [ ] `REDISPATCH_ALT_HARNESS` 재평가 (ADR-0032 보류 — 다중 runtime 후)
 
 ## Implementation HOLD
 
@@ -504,7 +542,9 @@ Phase 5는 2026-08-08 완료되었다 ([progress 0005](./0005_RUNTIME_ADAPTERS.m
 잔여 3항목(OpenCode adapter·session/resume/cancel·capability mapping)은
 OpenCode 사용 시점 조사(RUNTIME findings §11 — upstream도 자동 편입 없이
 사용자 구성 3진입로뿐) 후 사용자 결정으로 실수요 시점 이연이 확정되었다
-(ADR-0003 범위 note 2).
+(ADR-0003 범위 note 2). **2026-08-09 재지정** — 조건부 시한이 기약 없이
+밀리는 것을 막기 위해 전부 Phase로 배치했다: resume/cancel은 Phase 7,
+OpenCode adapter와 capability mapping은 Phase 11.
 
 Phase 6 선행 조사는 2026-08-08 완료되었다
 ([CLI_UPSTREAM_FINDINGS](../research/CLI_UPSTREAM_FINDINGS.md)): ①
@@ -531,7 +571,9 @@ upstream 파리티 동작으로 확인).
 다음 검증 가능한 목표 한 개: **status 박스 구현 (사용자 제안, ADR-0038
 개정).** 명령 단위 journal + `mcx status` 구간표 렌더 — 진행 중 단계·소요·
 통과 여부를 사용자가 볼 수 있게 한다 (OPEN_QUESTIONS §8 등록 항목, upstream
-`ooo status auto` 블록 정렬). 완료 후 Phase 6 종료 검토.
+`ooo status auto` 블록 정렬). 같은 작업에서 **semantic verdict 일괄 저장의
+가시성**(OPEN_QUESTIONS §5 미결 — "status 박스와 함께 처분"으로 등록됨)도
+처분한다. 완료 후 Phase 6 종료 검토.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -582,7 +624,7 @@ upstream 파리티 동작으로 확인).
   일어나지 않는다.
 - **상한 도달 시 최선의 시도가 현재 revision이 아니면 그것을 채택하는 경로가
   없다.** 승인은 현재 revision만 대상이므로, 이 경우 사용자는 이전 revision의
-  내용을 수락할 수 없다. 수정 후보 채택 절차(Phase 6·7)와 함께 다루며, 내용
+  내용을 수락할 수 없다. 수정 후보 채택 절차(Phase 7)와 함께 다루며, 내용
   동일성 판정이 필요해지면 content hash open decision을 그때 확정한다
   ([ADR-0021](../adr/0021-blueprint-state-and-revisions.md) §5).
 - **FAIL 이후의 출구가 없다.** 채점·승인이 모두 거부되므로 에스컬레이션(Brief
@@ -707,7 +749,7 @@ verdict(충족·score·불확신·게이밍)다. 나머지는 **계약 미달**�
 
 ## Phase 종료 검토
 
-Phase를 완료로 선언하기 전에 아래 여섯 질문에 답하고, 답을 그 phase의
+Phase를 완료로 선언하기 전에 아래 일곱 질문에 답하고, 답을 그 phase의
 progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관행의 기록이다 —
 지금까지의 이탈은 전부 사후 감사(사용자 질문, 도그푸딩 대조, 완료 당일
 감사)에서 잡혔고, 이 목록은 그 감사를 운이 아니라 절차로 만든다.
@@ -728,8 +770,14 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
    *(재발 방지 사례: closure 계약 문장은 영어 원문 — ADR-0020 §4)*
 6. **관측 대조** — 도그푸딩·런타임 관측과 모순되는 규칙이 없는가?
    *(실례: QA 동점 규칙이 관측과 반대 — ADR-0019 §5로 개정)*
+7. **시한 도과 점검** — **이 phase를 시한으로 지정한 보류·미확인 항목**이
+   ADR·Open Questions에 남아 있는가? 남았다면 이행했거나 새 시한으로
+   재지정했는가? *(실례: Phase 5를 시한으로 쓴 항목 7건 — rollback,
+   resume/cancel, changed_files, 실패 분류 3종 — 이 전부가 무처분으로 Phase 5
+   종료를 통과했고 2026-08-09 로드맵 대조에서야 발견됐다. 질문 4는 "표시가
+   있는가"만 물어 "표시된 시한이 지났는가"를 놓친다.)*
 
-최종 목표인 Phase 9까지 모든 구현 phase가 이 검토를 거친다. Phase 0은 문서
+최종 목표인 Phase 11까지 모든 구현 phase가 이 검토를 거친다. Phase 0은 문서
 기반이라 대상이 아니다.
 
 | Phase | 검토 상태 | 기록 |
@@ -738,11 +786,13 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 2 — Blueprint | **충족 (2026-08-08)** — 완료 선언 전 절차로 첫 수행. 계약 미달 1건 발견·수정(중복 AC, b00e0c2), 표시 누락 1건 추가(크기 제한), 미확인 이탈 1건 등록(previous_findings → ADR-0022) | [progress 0002](./0002_BLUEPRINT_VERTICAL_SLICE.md) |
 | Phase 3 — Execute | **충족 (2026-08-08)** — Test Matrix 누락 2행 테스트 추가(2f951e2), ADR-0024 과장 정정, §10 미검사 조건 표 추가, telemetry schema 시점 정정(§9 → Phase 4 전), 재시도 정책 미확인 등록(ADR-0025) | [progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md) |
 | Phase 4 — Verify/Recover | **충족 (2026-08-08)** — 예산 리셋 테스트 추가(0186450), directive 저장 vs 파생 충돌 해소, exit_conditions 유예 재평가, canonical Stage 저장 부재 등록, Verify Gate 미검사 조건 표 신설. Gate·Matrix 전수 대조 포함 | [progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) |
-| Phase 5 — Runtime adapters | **충족 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). 잔여 3항목은 OpenCode 사용 시점 조사 후 사용자 결정으로 실수요 이연 (ADR-0003 note 2) | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
-| Phase 6 — `mcx` CLI | 대기 (phase 진행 중 — 선행 조사 완료 2026-08-08, 표면 설계 ADR 대기) | [CLI findings](../research/CLI_UPSTREAM_FINDINGS.md), [ADR-0037](../adr/0037-mission-record-and-canonical-stage.md) |
+| Phase 5 — Runtime adapters | **충족 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). 잔여 3항목은 실수요 이연 후 2026-08-09 Phase 배치(7·11)로 재지정. **질문 7 미수행 — Phase 5를 시한으로 쓴 보류 7건이 무처분 통과** (2026-08-09 소급 처분) | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
+| Phase 6 — `mcx` CLI | 대기 (phase 진행 중 — 선행 조사·표면 설계·구현·도그푸딩 완료, status 박스만 남음. 질문 7의 대상: Phase 6을 시한으로 쓴 ADR-0029 `exit_conditions` 잔여) | [CLI findings](../research/CLI_UPSTREAM_FINDINGS.md), [ADR-0038](../adr/0038-mcx-cli-surface-contract.md) |
 | Phase 7 — MCP control surface | 대기 (진입 조건: redaction Security ADR) | — |
-| Phase 8 — 실사용 진입 (brownfield·되돌리기) | 대기 | — |
-| Phase 9 — Reflect/Evolve | 대기 | — |
+| Phase 8 — plugin 패키징 (합성 계층) | 대기 | — |
+| Phase 9 — 실사용 진입 (brownfield·되돌리기) | 대기 | — |
+| Phase 10 — Reflect/Evolve | 대기 | — |
+| Phase 11 — 병렬 실행 + OpenCode adapter | 대기 | — |
 
 ## Update protocol
 

@@ -37,8 +37,15 @@ Mission Control Core는 backend-neutral contract만 사용한다.
 > `runtime_profile.stages`)으로만 쓴다
 > ([RUNTIME findings §11](../research/RUNTIME_UPSTREAM_FINDINGS.md)). 계약
 > 재료(명령·이벤트·로컬 1.18.15 드리프트 후보)는 조사 완료 상태로 기록되어
-> 있어 도입 시 조사 비용이 거의 없다. session/resume/cancel(ADR-0033 §6)과
-> capability mapping도 같은 시점에 묶인다.
+> 있어 도입 시 조사 비용이 거의 없다.
+>
+> **시한 확정 (2026-08-09, 사용자 결정).** "실수요 시점"이라는 조건부 시한은
+> 발동 조건(병렬 실행 도입)이 로드맵에 없어 기약이 없었다 —
+> **Phase 11**(병렬 실행 Gate + OpenCode adapter)로 배치해 본 ADR의
+> "초기 Runtime은 Codex와 OpenCode" 선언이 이행되는 자리를 고정한다.
+> capability mapping은 같은 Phase, session/resume/cancel(ADR-0033 §6)은
+> **Phase 7**(장기 실행 job 계약)로 분리 배치했다 — 취소·재개는 둘째
+> Runtime이 아니라 MCP 장기 job이 요구하는 것이었다.
 
 ## Consequences
 

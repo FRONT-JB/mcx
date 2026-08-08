@@ -143,7 +143,10 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       semantics를 정의한다. → 열린 attempt 1개 규칙만 확정
       ([ADR-0024](../adr/0024-execute-v1-execution-model.md) §7). exact key
       schema는 여전히 미정
-- [ ] parallel execution 도입 Gate를 정의한다.
+- [ ] parallel execution 도입 Gate를 정의한다. → **시한 지정 (2026-08-09,
+      사용자 결정): Phase 11** — OpenCode adapter와 한 묶음. OpenCode의
+      upstream 용도가 종반 병렬 부수 작업이라, 병렬 Gate 없이 adapter만
+      붙이면 쓸 자리가 없다.
 - [x] **Execute 진입 경로가 하나임을 무엇이 보장하는지, Telemetry가 "무엇이
       이 작업을 만들었는가"를 기록하는지 결정한다.**
       → 작업 생성은 application use case 단일 경로 + Blueprint Gate `CLEAR`
@@ -216,7 +219,7 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       나머지 3패턴은 이력 축적 후
       ([ADR-0032](../adr/0032-recover-deliberate-divergences.md) 보류)
 - [ ] rollback 지원 범위를 결정한다. → **시한 재지정 (2026-08-09, 사용자
-      결정): Phase 8 실사용 진입** — brownfield·worktree 격리·AC별
+      결정): Phase 9 실사용 진입** — brownfield·worktree 격리·AC별
       checkpoint 커밋(upstream `AutoCommitPolicy`, 미등록이었음)과 한 묶음.
       원래 시한 "Phase 5 workspace 관리와 함께"는 Phase 5가 단발 실행
       계약만 확정하고 지나가 낡았다 (upstream `core/worktree.py` 조사 포함,
@@ -244,8 +247,9 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       (upstream stall 채택, ADR-0033 §4). cancel은 스트리밍과 함께, resume은
       upstream 정합 검증(바이너리 해시·모델 고정)과 대조해 도입 (§6 보류)
 - [ ] OpenCode local/provider/agent mode를 capability로 어떻게 표현할지
-      결정한다. (OpenCode adapter 도입 시 —
-      [RUNTIME_UPSTREAM_FINDINGS §6](./RUNTIME_UPSTREAM_FINDINGS.md) 미조사)
+      결정한다. → **시한 지정 (2026-08-09, 사용자 결정): Phase 11** —
+      OpenCode adapter와 같은 자리 (실물 대상이 그때 생긴다).
+      [RUNTIME_UPSTREAM_FINDINGS §6](./RUNTIME_UPSTREAM_FINDINGS.md) 미조사
 
 ## 8. MCP and CLI decisions
 
@@ -262,14 +266,21 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
       고정·CLI/MCP 미러 ([CLI_UPSTREAM_FINDINGS §5](./CLI_UPSTREAM_FINDINGS.md)),
       `AutoPipelineState.phase_started_at`/`last_progress_at`. 쓰기 주체는
       CLI뿐(ADR-0037 경계 유지) — ADR-0038 개정으로 도입.
-- [ ] plugin 설치·발견·설정 UX를 결정한다. — upstream의 배포 실물은
-      **plugin = skills + MCP server + CLI 3층**이며 skill이 MCP tool을
-      orchestrate한다 (`skills/seed/SKILL.md` frontmatter
+- [ ] plugin 설치·발견·설정 UX를 결정한다. → **시한 지정 (2026-08-09, 사용자
+      결정): Phase 8** — MCP(Phase 7) 직후, 실사용 진입(Phase 9) 앞.
+      upstream의 배포 실물은 **plugin = skills + MCP server + CLI 3층**이며
+      skill이 MCP tool을 orchestrate한다 (`skills/seed/SKILL.md` frontmatter
       `mcp_tool: ouroboros_generate_seed`,
-      [CLI_UPSTREAM_FINDINGS §3](./CLI_UPSTREAM_FINDINGS.md)). 우리 대응:
-      Phase 7 MCP server가 기반층이고, CLI/MCP가 같은 application service를
-      공유하므로 (ADR-0038 §1) skill 래퍼와 manifest만 얹으면 된다 — Claude·
-      Codex 양쪽 다 MCP 클라이언트라 같은 server가 붙는다.
+      [CLI_UPSTREAM_FINDINGS §3](./CLI_UPSTREAM_FINDINGS.md)). Phase 7 MCP
+      server가 기반층이고 CLI/MCP가 같은 application service를 공유한다
+      (ADR-0038 §1). Claude·Codex 양쪽 다 MCP 클라이언트라 같은 server가
+      붙는다.
+
+      **2026-08-09 정정.** 이 항목의 원문은 "skill 래퍼와 manifest만 얹으면
+      된다"였는데 §2의 조사 결과와 충돌한다 — upstream에서 **품질 루프와 합성
+      규칙이 skill 계층 소유**다 (합성 계층 둘: skill, `ooo auto`). 따라서
+      Phase 8은 manifest 작업이 아니라 합성 계층 도입이며, "무엇이 skill
+      소유이고 무엇이 Core 소유인가"의 경계 ADR이 선행한다.
 - [ ] **MCP host가 자기 편집 도구로 작업하고 Verify만 호출하는 경로를 어떻게
       다룰지 결정한다.** host는 에이전트이며 `mcx` 도구와 자기 도구를 동시에
       갖는다 — upstream에서 실제로 발생한 조건이다
@@ -335,13 +346,13 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
 
 ---
 
-## 10. Reflect/Evolve decisions (Phase 9 — 사용자 결정 2026-08-09)
+## 10. Reflect/Evolve decisions (Phase 10 — 사용자 결정 2026-08-09)
 
 2026-08-09 대조에서 **미등록 공백**으로 발견됐다: upstream의 stage 축은
 4개(interview/execute/evaluate/**reflect** — `orchestrator_stage.py`)이고
 `ooo evolve`의 mission 간 진화 루프("평가 결과가 다음 스펙을 개선")가
 제품 정체성의 절반인데, mcx에는 대응물도 제외 기록도 없었다. 사용자
-결정: 제외가 아니라 **전체 도입 조사 (Phase 9)**.
+결정: 제외가 아니라 **전체 도입 조사 (Phase 10)**.
 
 - [ ] upstream `evolve_step` MCP tool과 evolution loop의 실제 동작을
       조사한다 (`evolution/loop.py`).
