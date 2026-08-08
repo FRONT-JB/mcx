@@ -431,12 +431,22 @@ divergence). 프롬프트 클래스 7종은 vendor 중립(`Prompted*`)으로 개
 `CompletionEngine` protocol만 요구한다 — 같은 프롬프트 한 벌이 Codex와
 Claude 양쪽 엔진에서 돈다 (upstream의 persona/LLMAdapter 분리 정렬).
 
-다음 검증 가능한 목표 한 개: **혼합 vendor 도그푸딩 0002 (사용자 승인 필요
-— claude·codex 호출 비용 발생, 추정 루프당 호출 × 순환수 기준 25~45회).**
-사용자 확정 구조(claude 텍스트 + codex 실행) 그대로 작은 실제 미션을
-`CLEAR — MISSION COMPLETE`까지 완주해 ADR-0035 수정(감사 병렬·투영·QA
-궤적)의 효과와 Claude 프롬프트 품질을 실물 관측하고, 의도적 실패 1건으로
-아직 미관측인 Recover 실패→교정→재검증 경로를 처음 실물로 돈다.
+혼합 vendor 도그푸딩 0002는 2026-08-08 사용자 승인 하에 완료되었다
+([DOGFOODING_0002](../research/DOGFOODING_0002.md) — Verified by execution,
+48호출). 사용자 확정 구조(claude 텍스트 + codex 실행)로 미션
+`dogfood-0002`(dedupe CLI)가 `CLEAR — MISSION COMPLETE`까지 완주했고,
+**Recover 실패→교정→재검증 경로가 처음 실물로 돌았다** (투명한 결함 주입
+— missing artifact → packet 파생 → 실패 증거 실은 교정 → 재검증 통과).
+ADR-0035 효과 실측: 감사 wall-clock 1/2~1/3, 확정 사안 재차단 0건, QA가
+0.72→0.87→0.90으로 **실 AI 첫 PASS** (0001은 역행·소진 출구). 미관측
+잔여: 재시도 예산 소진·change_approach·동일 오류 해시 중단·BLOCKED/STALL
+분류 (교정 1회 성공).
+
+다음 검증 가능한 목표 한 개: **Phase 5 종료 검토.** 여섯 질문(구조 검사,
+부품/단계 구분, 미등록 이탈, 표시 없는 보류, 계약 문장 원문, 관측 대조)에
+증거로 답하고 progress record를 남긴다. 잔여 항목(OpenCode adapter,
+session/resume/cancel, capability mapping)의 처분 — Phase 5 범위 유지
+여부 — 은 검토에서 사용자 결정으로 올린다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
