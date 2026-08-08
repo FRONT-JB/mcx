@@ -76,6 +76,16 @@ class CompletionEngine(Protocol):
     (ADR-0034 정정, ADR-0036 §4).
     """
 
+    @property
+    def backend(self) -> str:
+        """이 엔진의 backend 이름 (예: ``claude``, ``codex``).
+
+        ``ExecutionRuntime.backend``와 같은 축이다 (ADR-0033 §1) — 원장의
+        호출 계수 키이고 (ADR-0038 §6.1), lane별 backend 지정이 쓰는 이름과
+        같다 (ADR-0039).
+        """
+        ...
+
     async def complete_json(
         self, *, prompt: str, schema: dict[str, Any], workspace: str | None = None
     ) -> dict[str, Any]:

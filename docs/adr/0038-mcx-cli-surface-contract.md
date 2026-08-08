@@ -170,6 +170,78 @@ mission. 원문이 근거로 든 upstream `ooo seed`의 명시 요구는 사실�
 - entry point: `[project.scripts] mcx = "mission_control.cli.main:run"`
   (ADR-0012 Divergence 2가 예약한 자리).
 
+### 6.1 명령 원장(journal)과 `mcx status` 렌더 — 개정 2 (2026-08-09, 사용자 결정)
+
+§7의 "status 스냅샷의 사람용 렌더" 보류가 실수요로 도래했다. 도그푸딩
+0003에서 semantic 판정 12분 동안 진행을 알 수 있는 표면이 없었다
+([DOGFOODING_0003 §5](../research/DOGFOODING_0003.md)).
+
+**a. 원장은 append-only JSONL이고 CLI만 쓴다.**
+`<state-dir>/state/journal_<mission>.jsonl`. 명령 시작에 `start` 한 줄,
+종료에 `end` 한 줄을 쓴다 — 한 줄을 나중에 고치지 않는다. 짝이 없는 `start`가
+곧 "진행 중"이며, 프로세스가 죽어도 그 사실이 남는다(중단된 명령이 조용히
+사라지지 않는다). `end`는 `exit_code`·`duration_seconds`·`calls`를 싣는다.
+쓰기 주체가 CLI뿐인 것은 mission record와 같은 경계다 (ADR-0037 §1) —
+Stage service는 원장을 모른다.
+
+`mcx status` 자신은 기록하지 않는다. 읽기 명령이 원장을 늘리면 원장이 관측
+행위를 작업으로 보고하게 된다.
+
+**b. 호출 수는 세어서 기록한다 — 명령 수로 근사하지 않는다.**
+`calls`는 backend 이름별 실제 port 호출 횟수다. CLI가 주입받은 adapter를
+계수 wrapper로 감싸고, 명령이 끝날 때 그 수를 `end` 줄에 싣는다. 명령 수에서
+추정하지 않는 이유는 명령 하나가 호출 N번인 경우(9-AC semantic 판정)가
+실재하기 때문이다. upstream도 같은 규율을 명문화한다 — per-AC token spend는
+"a real runtime-usage measurement (**never a character proxy**)"이고 run
+total로 접힌다 (`tui/events.py:594-599`, `run_total_tokens`).
+
+계수를 위해 `CompletionEngine`에 `backend` 이름을 둔다 — `ExecutionRuntime`이
+이미 갖고 있는 것과 같은 축이며 ([ADR-0033](./0033-first-runtime-adapter-contract.md) §1),
+[ADR-0039](./0039-stage-runtime-routing-table.md)의 lane별 backend 지정이
+쓰는 이름과 같다.
+
+**토큰·비용은 v1 범위 밖이다.** 우리 완성 port는 `structured_output`만
+돌려주고 usage envelope를 버린다 — 토큰을 쓰려면 port 반환형이 바뀐다.
+upstream 대응물은 있다 (`ACTokenAttribution`, `run_total_tokens`,
+`frugality_summary`) — 등록된 보류이며 §7에 둔다.
+
+**c. `mcx status`의 사람용 렌더 (기본) — 세 블록.**
+
+1. `Summary:` 헤더 — 한 줄 한 사실 (upstream `_format_auto_status` 정렬:
+   `Phase:`/`Terminal:`/`Last progress:`). Mission·의도, 진행 단계 (n/5)·경과·
+   backend별 호출 수, 다음 행동.
+2. 단계별 현황표 — 모든 로우 사이에 구분선이 들어가는 테두리 표
+   (`단계`|`요약`|`상태`). 상태 어휘는 **다섯 개로 닫힌다**: `✅` 완료 ·
+   `⏳` 진행 중 · `⛔` HOLD · `⏸` 대기 · `🔁` Recover. Recover 로우는
+   **진입한 적이 있을 때만** 나타난다.
+3. HOLD면 차단 블록 — 차단 이유는 **Gate decision의 `blocking_reasons`
+   원문**이고, Brief closure 감사가 차단 질문을 갖고 있으면 그 질문 원문을
+   그대로 싣는다. upstream status도 `Pending question:` 블록을 원문 그대로
+   싣는다 (`status.py:74-77`). MISSION COMPLETE면 대신 `📊` 사용 요약.
+
+**로우 상태는 결정적으로 파생한다** — 순서대로: 원장에 진행 중인 명령이 그
+단계의 것이면 `⏳`, 그 단계의 저장이 비었으면 `⏸`, 아니면 **Gate 재판정**
+결과가 `CLEAR`면 `✅`, `HOLD`면 `⛔`. 진입 조건 위반으로 Gate가 예외를 내면
+`⛔` + 그 이유(증거는 있는데 진입이 무효인 상태를 "대기"로 표시하지 않는다).
+`🔁`는 같은 AC의 두 번째 이후 시도가 있는 Recover 로우에 붙는다.
+
+- **status는 Gate를 재판정한다** — 저장된 판정을 신뢰하지 않는다. 다섯
+  `decide_gate`는 저장 상태만 읽는 결정적 함수이며 AI를 호출하지 않는다
+  (`brief_service.py:317-325` 등). ADR-0037의 "Gate 재계산이 이긴다"가
+  표시에서도 그대로다.
+- **"다음 행동"은 표시이지 결정이 아니다.** 단계별 고정 문구이며 CLI가 Gate·
+  retry·Recover를 고르지 않는다 (§1). upstream도 status 끝에
+  `diagnose_auto_pipeline_state(state).render_lines()`로 안내를 붙인다.
+
+**d. 표면 옵션**: `--full`(원장 전체 구간표 추가) · `--json`(개정 전 구조화
+출력 그대로 — 기계 소비자의 계약은 바뀌지 않는다) · `--plain`(테두리 ASCII,
+상태 `[v]/[~]/[!]/[ ]/[R]`).
+
+**e. 폭 계산과 고정**: 한글·CJK 폭은 `unicodedata.east_asian_width`로 센다.
+다섯 상태 이모지는 EAW가 `Ambiguous`인 것(`⏸` U+23F8)이 섞여 있어 **폭 2로
+명시 고정**한다 — 터미널 추정에 레이아웃을 맡기지 않는다. 레이아웃은 스냅샷
+테스트로 고정한다 (upstream `test_status_unified.py` 정렬).
+
 ### 7. 보류 (도입 시 upstream 대조 기준과 함께)
 
 - **합성 대화형 흐름** (brief→blueprint→execute를 한 명령으로) — upstream
@@ -181,10 +253,14 @@ mission. 원문이 근거로 든 upstream `ooo seed`의 명시 요구는 사실�
   evidence는 `--statement`다 (upstream도 CLI에 user identity 없음). MCP
   (Phase 7)에서 host가 대리 승인하는 경로가 생길 때 재평가
   (OPEN_QUESTIONS §3 잔여).
-- **status 스냅샷의 사람용 렌더** — v1은 구조화 JSON. 사람용 포맷은 실수요
-  시 upstream `_format_auto_status`(한 줄 한 사실) 대조.
-  → **실수요 도래 (2026-08-09, 사용자 제안)**: status 박스가 이 항목이다.
-  명령 단위 journal + 구간표 렌더로 개정 예정 (Open Questions §8).
+- ~~**status 스냅샷의 사람용 렌더**~~ → **개정 2로 도입 완료 (2026-08-09)** —
+  §6.1. `--json`이 기존 구조화 출력을 그대로 유지한다.
+- **토큰·비용 계측** — 우리 완성 port는 usage envelope를 버리므로 반환형
+  변경이 선행한다. upstream 대응물 `ACTokenAttribution`·`run_total_tokens`·
+  `frugality_summary` (`tui/events.py`). 도입 시 "실측이지 문자 수 근사가
+  아니다"는 upstream 규율을 함께 가져온다.
+- **원장의 보존 정책** — 지금은 mission당 무한 append다. 회전·상한은 upstream
+  event store 정책과 대조 후 (미조사).
 
 ## Cost
 
@@ -218,3 +294,16 @@ mission. 원문이 근거로 든 upstream `ooo seed`의 명시 요구는 사실�
 - import 방향: Stage service·domain(mission 제외)이 `domain/mission.py`와
   CLI 패키지에 의존하지 않는다 (ADR-0037 Verification).
 - 조립 기본값: 텍스트 lane Claude + 실행 Codex.
+
+개정 2 (§6.1):
+
+- 원장: 명령마다 `start`/`end` 두 줄. 중단된 명령은 `start`만 남고 status가
+  "진행 중"으로 표시한다. `mcx status`는 원장을 늘리지 않는다.
+- 호출 수: 계수 wrapper가 실제 port 호출을 세고 backend 이름별로 기록한다 —
+  명령 수와 다른 값이 나오는 경우(semantic N-AC)가 테스트로 고정된다.
+- 렌더: 세 화면(진행 중·HOLD·MISSION COMPLETE) 레이아웃이 스냅샷으로
+  고정되고, 한글 폭이 섞여도 테두리가 어긋나지 않는다.
+- 상태 어휘가 다섯 개를 넘지 않는다.
+- HOLD 블록의 이유는 Gate decision의 `blocking_reasons` 원문이다 — status가
+  이유를 지어내지 않는다.
+- `--json`은 개정 전 출력과 같다.

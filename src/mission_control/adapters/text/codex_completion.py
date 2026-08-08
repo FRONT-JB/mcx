@@ -59,6 +59,10 @@ class CodexCompletion:
         self._silence_timeout_seconds = silence_timeout_seconds
         self._max_attempts = max_attempts
 
+    @property
+    def backend(self) -> str:
+        return "codex"
+
     def build_command(
         self, *, last_message_path: str, schema_path: str, workspace: str | None = None
     ) -> tuple[str, ...]:

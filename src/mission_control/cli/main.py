@@ -22,13 +22,16 @@ from enum import Enum
 import json
 from pathlib import Path
 import sys
+import time
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel
 
-from mission_control.cli import composition
+from mission_control.cli import composition, status_render, status_view
+from mission_control.cli.calls import CallCounter
 from mission_control.cli.composition import Adapters, StateLayout
+from mission_control.cli.journal import MissionJournal
 from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import LoopAction
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
@@ -212,6 +215,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = stage_sub.add_parser("status", parents=[common], help="mission record와 Stage 요약")
     status.set_defaults(verb="show")
+    status.add_argument("--full", action="store_true", help="명령 단위 원장까지 보인다")
+    status.add_argument("--json", action="store_true", help="구조화 출력 (개정 2 이전과 동일)")
+    status.add_argument("--plain", action="store_true", help="테두리·상태를 ASCII로 그린다")
 
     return parser
 
@@ -307,12 +313,27 @@ def _load_draft(path: Path) -> BlueprintDraft:
     )
 
 
-async def _status(layout: StateLayout, mission_id: str) -> int:
+async def _status(
+    args: argparse.Namespace, layout: StateLayout, adapters: Adapters, mission_id: str
+) -> int:
+    """읽기 전용 요약. 원장을 늘리지 않는다 (ADR-0038 §6.1 a)."""
     record = await _load_record(layout, mission_id)
     if record is None:
         _note(f"error: mission record not found for {mission_id}")
         return 1
 
+    if args.json:
+        return await _status_json(layout, record, mission_id)
+
+    snapshot = await status_view.build_snapshot(
+        layout=layout, adapters=adapters, record=record, now=_now()
+    )
+    print(status_render.render(snapshot, full=args.full, plain=args.plain))
+    return 0
+
+
+async def _status_json(layout: StateLayout, record: MissionRecord, mission_id: str) -> int:
+    """개정 2 이전과 같은 구조화 출력 — 기계 소비자의 계약은 바뀌지 않는다."""
     from mission_control.adapters.persistence.file_blueprint_repository import (
         FileBlueprintRepository,
     )
@@ -351,6 +372,9 @@ async def _status(layout: StateLayout, mission_id: str) -> int:
                 "verify": verify is not None,
             },
             "mismatch": mismatch,
+            "journal": [jsonable(entry) for entry in MissionJournal(
+                root=layout.state, mission_id=mission_id
+            ).entries()],
         }
     )
     return 0
@@ -532,12 +556,17 @@ async def _dispatch_recover(
 
 
 async def dispatch(args: argparse.Namespace, adapters: Adapters) -> int:
-    """파싱된 명령을 service 호출로 위임하고 exit code를 돌려준다."""
+    """파싱된 명령을 service 호출로 위임하고 exit code를 돌려준다.
+
+    명령마다 원장 구간을 열고 닫는다 (ADR-0038 §6.1 a) — 예외로 끝나도
+    ``end`` 줄은 쓰인다. ``status``만 예외다: 읽기 명령이 원장을 늘리면
+    원장이 관측 행위를 작업으로 보고한다.
+    """
     layout = StateLayout.under(args.state_dir)
     args.mission = _resolve_mission(args, layout)
 
     if args.stage == "status":
-        return await _status(layout, args.mission)
+        return await _status(args, layout, adapters, args.mission)
 
     handlers = {
         "brief": _dispatch_brief,
@@ -546,7 +575,22 @@ async def dispatch(args: argparse.Namespace, adapters: Adapters) -> int:
         "verify": _dispatch_verify,
         "recover": _dispatch_recover,
     }
-    exit_code = await handlers[args.stage](args, layout, adapters)
+
+    counter = CallCounter()
+    journal = MissionJournal(root=layout.state, mission_id=args.mission)
+    started = time.monotonic()
+    sequence = journal.open(command=f"{args.stage} {args.verb}", at=_now())
+    exit_code = 1
+    try:
+        exit_code = await handlers[args.stage](args, layout, counter.wrap(adapters))
+    finally:
+        journal.close(
+            sequence=sequence,
+            at=_now(),
+            duration_seconds=time.monotonic() - started,
+            exit_code=exit_code,
+            calls=counter.counts,
+        )
 
     if exit_code == 0:
         await _record_transition(layout, args.mission, stage=args.stage, verb=args.verb)

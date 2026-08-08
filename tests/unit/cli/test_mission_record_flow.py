@@ -135,7 +135,8 @@ async def test_status_reports_record_and_mismatch(
 
     assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
     capsys.readouterr()
-    assert await amain(["status", *argv("m", tmp_path)], adapters) == 0
+    # --json은 개정 2 이전과 같은 계약이다 (ADR-0038 §6.1 d).
+    assert await amain(["status", "--json", *argv("m", tmp_path)], adapters) == 0
     output = capsys.readouterr().out
     assert '"mismatch": null' in output
 
@@ -143,6 +144,9 @@ async def test_status_reports_record_and_mismatch(
     stored = await repo.load("m")
     assert stored is not None
     await repo.save(stored.transit(destination=Stage.BLUEPRINT, at="t", reason="drift"))
+    assert await amain(["status", "--json", *argv("m", tmp_path)], adapters) == 0
+    assert "gate recomputation wins" in capsys.readouterr().out
+    # 사람용 렌더도 같은 어긋남을 표시한다.
     assert await amain(["status", *argv("m", tmp_path)], adapters) == 0
     assert "gate recomputation wins" in capsys.readouterr().out
 

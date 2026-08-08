@@ -70,6 +70,10 @@ class ClaudeCompletion:
         self._timeout_seconds = timeout_seconds
         self._max_attempts = max_attempts
 
+    @property
+    def backend(self) -> str:
+        return "claude"
+
     def build_command(self, *, schema_json: str, workspace: str | None = None) -> tuple[str, ...]:
         """완성 명령을 구성한다 — 봉투는 도구 카탈로그다.
 

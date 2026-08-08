@@ -242,8 +242,17 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       Verified). 0003 실측(순차 ~12분)이 비용·속도 요구사항 위반이라 gather
       정렬 + Barrier 테스트로 고정 (ADR-0030 정렬 note,
       [DOGFOODING_0003 §5](./DOGFOODING_0003.md)).
-- [ ] semantic verdict의 일괄 저장을 유지할지 결정한다. — 진행 중 가시성이
-      0이라 12분간 진척 확인 불가 (0003 §5). status 박스(§8)와 함께 처분.
+- [x] semantic verdict의 일괄 저장을 유지할지 결정한다. → **유지한다**
+      (2026-08-09, status 박스와 함께 처분). ① 0003이 제기한 것은 저장
+      방식이 아니라 **가시성**이었고, 명령 원장이 그것을 덮는다 — `verify
+      semantic`이 시작 시각과 함께 "진행 중"으로 표시된다
+      ([ADR-0038](../adr/0038-mcx-cli-surface-contract.md) §6.1). ② AC별
+      증분 저장은 부분 `SemanticAssessment`를 만들고, Gate가 미완성 판정
+      묶음을 읽을 수 있는 경로가 열린다 (ADR-0030 §3의 revision·policy 묶음
+      계약이 깨진다). ③ upstream도 `asyncio.gather` + 실패 시 전체 중단이라
+      결과 집합이 원자적으로 나온다 — 일괄 저장이 upstream 정렬이다.
+      **남은 것**: 명령 *안*의 진척(3/9)은 스트리밍 이벤트 층이 있어야
+      가능하며, 이미 등록된 보류다 (ADR-0027 §3, ADR-0033 §6).
 - [x] conditional consensus를 v1에 포함할지 결정한다. → 미포함 — escalation은
       HOLD가 전부. trigger 6조건·숙의 구조·배심 독립성은 도입 시 대조 기준으로
       기록 ([ADR-0030](../adr/0030-verify-semantic-verdict-contract.md) §5,
@@ -325,13 +334,19 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
 - [ ] async job/polling/notification 방식을 결정한다.
 - [ ] disconnect, cancel, timeout의 의미를 분리한다.
 - [ ] CLI와 MCP parity test 전략을 정의한다.
-- [ ] **status 박스를 도입한다 (사용자 제안 2026-08-09, 도그푸딩 0003).**
-      명령 단위 journal(명령·시작 시각·소요·exit code를 mission별 파일에
-      append — 시작 시 기록해 "진행 중"도 표현) + `mcx status`의 구간표
-      렌더. upstream 대응물: `ooo status auto`의 "한 줄 한 사실" 블록·스냅샷
-      고정·CLI/MCP 미러 ([CLI_UPSTREAM_FINDINGS §5](./CLI_UPSTREAM_FINDINGS.md)),
-      `AutoPipelineState.phase_started_at`/`last_progress_at`. 쓰기 주체는
-      CLI뿐(ADR-0037 경계 유지) — ADR-0038 개정으로 도입.
+- [x] **status 박스를 도입한다 (사용자 제안 2026-08-09, 도그푸딩 0003).**
+      → **구현 완료 (2026-08-09)** — [ADR-0038](../adr/0038-mcx-cli-surface-contract.md)
+      §6.1 개정 2. append-only JSONL 원장(`start`/`end` 두 줄, 짝 없는
+      `start`가 "진행 중") + 세 화면 렌더(진행 중·HOLD·MISSION COMPLETE),
+      `--full`/`--json`/`--plain`. 쓰기 주체는 CLI뿐이고 `mcx status`는
+      원장을 늘리지 않는다. 상태 어휘 5종은 테스트로 닫혀 있다.
+      upstream 대응물: `ooo status auto`의 "한 줄 한 사실" 블록·`Pending
+      question:` 원문 인용·스냅샷 고정
+      ([CLI_UPSTREAM_FINDINGS §5](./CLI_UPSTREAM_FINDINGS.md)),
+      `AutoPipelineState.phase_started_at`/`last_progress_at`.
+      **호출 수는 실측이다** — 명령 수 근사가 아니라 port 호출을 센다
+      (upstream `tui/events.py:594-599` "never a character proxy"). 토큰·비용
+      계측은 port 반환형 변경이 선행이라 ADR-0038 §7 보류로 등록했다.
 - [ ] plugin 설치·발견·설정 UX를 결정한다. → **시한 지정 (2026-08-09, 사용자
       결정): Phase 8** — MCP(Phase 7) 직후, 실사용 진입(Phase 9) 앞.
       upstream의 배포 실물은 **plugin = skills + MCP server + CLI 3층**이며
