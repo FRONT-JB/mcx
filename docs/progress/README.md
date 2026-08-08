@@ -676,6 +676,21 @@ verdict(충족·score·불확신·게이밍)다. 나머지는 **계약 미달**�
 
 ### 전 Stage 공통의 알려진 한계
 
+- **`executed-unverified`의 upstream 대응물이 미조사다 (2026-08-09 발견).**
+  이 개념은 프로젝트 슬로건("Executed is not verified")이자 Execute Gate의
+  축인데, [Open Questions §1](../research/OPEN_QUESTIONS.md)의 해당 조사
+  항목이 Phase 3을 지나도록 `[ ]`로 남아 있었다.
+  `UPSTREAM_MAPPING §4`의 "executed-but-unverified 상태"는 우리가 채택할
+  것의 목록이지 upstream 관측이 아니다. 대응물이 없다면 등록된 divergence
+  여야 한다 — Phase 6 종료 검토(질문 3)에서 처분한다.
+- **Stage→Runtime 바인딩 표현이 upstream과 대조되지 않았다 (2026-08-09
+  발견).** [ADR-0023](../adr/0023-execute-entry-and-provenance.md) Rejected
+  alternatives가 "바인딩 표현은 Phase 5에서 upstream의 닫힌 enum + 3단 해석
+  규칙과 대조해 정한다"고 약속했으나 Phase 5는 대조 없이 지나갔다. 현재
+  구현은 `cli/composition.py`의 하드코딩 조립(텍스트 Claude·실행 Codex)이고
+  upstream에는 `runtime_profile.stages` 구성 축이 있다 — 같은 검토에서
+  처분한다.
+
 - **canonical Stage 저장이 아직 없다 — 처분 완료, 도입은 Phase 6.** Entry
   Contract들의 "현재 Stage가 X다" 조건은 전 Stage에서 미강제이며, 실질
   보증은 각 진입의 Gate 재계산이다. upstream 대조

@@ -46,8 +46,12 @@ Ouroboros의 evaluate/reflect 진화 루프가 쓰는 구조이며, Mission Cont
 > `exit_conditions` 없이 완성되었다 — 핵심 조건("필수 AC가 모두 Verify에서
 > 만족")은 Gate의 AC 전수 요구가 이미 덮는다. 남는 조건들(project test/build
 > 통과, 사용자 acceptance)은 각각 repo 수준 명령 층(ADR-0028 §2 보류)과
-> 사용자 surface(Phase 6·7)에 종속되므로, 유예 시한을 그 도입 시점으로
+> 사용자 surface에 종속되므로, 유예 시한을 그 도입 시점으로
 > 옮긴다 ([ADR-0029](./0029-verify-deliberate-divergences.md) 보류 등록).
+>
+> **2026-08-09 시한 확정**: repo 명령 층은 여전히 로드맵 미배치이고, 사용자
+> acceptance는 **Phase 9 실사용 진입**이다. Phase 6 CLI는 비대화형 단발이라
+> acceptance 표면을 만들지 않았다 (원래 표기 "Phase 6·7"의 6은 소진됐다).
 
 유예는 축의 변경이 아니라 필드 추가로 해소되므로 되돌리기 비싼 항목이 아니다
 (`AGENTS.md` "되돌리기 비싼 결정" 목록 참조).

@@ -180,6 +180,8 @@ mission. 원문이 근거로 든 upstream `ooo seed`의 명시 요구는 사실�
   (OPEN_QUESTIONS §3 잔여).
 - **status 스냅샷의 사람용 렌더** — v1은 구조화 JSON. 사람용 포맷은 실수요
   시 upstream `_format_auto_status`(한 줄 한 사실) 대조.
+  → **실수요 도래 (2026-08-09, 사용자 제안)**: status 박스가 이 항목이다.
+  명령 단위 journal + 구간표 렌더로 개정 예정 (Open Questions §8).
 
 ## Cost
 

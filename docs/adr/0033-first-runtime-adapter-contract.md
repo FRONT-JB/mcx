@@ -96,7 +96,7 @@ upstream의 대응 블록(선언 계약 제시 + "Prior failure classification" 
 | resume (`codex exec resume` + 정합 검증) | thread id, 바이너리 해시·모델 고정, 재시도 3 | **Phase 7** (2026-08-09 사용자 결정 — MCP 장기 실행 job 계약과 한 묶음) — 도입 시 §5 대조 |
 | 도구 단위 allowlist 차단 | Codex에 없음 (sandbox 수준) | 그것을 지원하는 runtime 도입 시 |
 | cancel | 존재 | **Phase 7** (2026-08-09 사용자 결정 — 장기 실행 job 계약과 함께). 스트리밍은 별개 축(event 층)으로 분리 |
-| capability 선언 플래그(`RuntimeCapabilities` 대응) | 3플래그 | 둘째 adapter(OpenCode)에서 차이가 실제로 생길 때 |
+| capability 선언 플래그(`RuntimeCapabilities` 대응) | 3플래그 | **Phase 11** — 둘째 adapter(OpenCode)에서 차이가 실제로 생기는 자리 (2026-08-09 시한 확정) |
 | `--output-schema` 구조화 출력 | 존재 | text backend adapter에서 |
 
 ## Consequences

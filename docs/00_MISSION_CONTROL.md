@@ -1217,24 +1217,30 @@ migration 계획 없이 즉시 교체하지 않는다.
 | 첫 산출물은 이 Constitution이다. | Confirmed |
 | Brief 종료는 threshold·dimension floor·stability·최소 round를 모두 만족해야 하며, 그것만으로 `CLEAR`가 되지 않는다. | Confirmed (ADR-0009) |
 | 답변은 requirement authority(`decision`/`observation`)를 별도 축으로 가지며 observation은 요구사항을 만들지 않는다. | Confirmed (ADR-0010) |
+| Python 3.12 + uv + pydantic + pytest, layered layout. | Confirmed (ADR-0012) |
+| Persistence는 mission당 단일 JSON 문서의 파일 저장이다 (SQLite·event sourcing 아님). | Confirmed (ADR-0013, ADR-0024 §4) |
+| Blueprint QA는 통과 0.90 / FAIL 0.40 / 최대 5회이며, 승인 기록이 QA 근거를 보존한다. | Confirmed (ADR-0019) |
+| Recover 재시도 예산은 AC당 2회(새 revision이 리셋)이고, 동일 오류 해시 3회면 중단한다. | Confirmed (ADR-0031) |
+| Runtime protocol은 단발 실행(`backend` + `execute`)이다. 스트리밍·resume·cancel은 보류(Phase 7). | Confirmed (ADR-0033) |
+| 텍스트 lane의 기본 vendor는 Claude, 실행은 Codex다. | Confirmed (ADR-0036) |
+| `mcx` CLI 표면은 비대화형 단발 명령이고 exit code는 0(성공/CLEAR)·1(오류)·2(판정 부정)다. | Confirmed (ADR-0038) |
+| 병렬 실행과 조건부 consensus는 v1에 포함하지 않는다 — 병렬은 Phase 11, consensus 부재의 출구는 escalation `HOLD`다. | Confirmed (ADR-0024 §3, ADR-0030 §5) |
 
-### 아직 확정하지 않은 결정
+**2026-08-09 갱신.** 이 표는 Phase 1~6이 진행되는 동안 갱신되지 않아, 11개
+항목 중 10개가 이미 ADR로 확정된 상태에서 "미확정"으로 남아 있었다. 최상위
+문서가 낡으면 새 세션이 확정된 결정을 되돌리므로, 확정분을 위 표로 옮기고
+잔여만 남긴다.
 
 | 항목 | 결정 위치 |
 |---|---|
-| Blueprint QA 점수와 승인 세부 정책 | Blueprint Stage Guide |
-| 전체 상태·attempt의 정확한 serialization과 RecoveryDirective schema | Mission Lifecycle |
-| retry budget과 무진전 판정 | Mission Lifecycle / ADR |
-| Runtime protocol의 정확한 method | Runtime 문서 |
-| Codex/OpenCode adapter의 클래스명과 호출 방식 | Runtime 문서 |
-| Persistence 기술과 schema | Architecture / ADR |
-| Telemetry schema와 보존 정책 | Architecture / Telemetry 문서 |
-| CLI 옵션과 출력 형식 | CLI Reference |
-| MCP tool 목록과 transport 세부사항 | MCP 문서 |
-| Python 버전과 라이브러리 | Architecture / ADR |
-| 병렬 실행과 조건부 합의의 v1 포함 여부 | 별도 RFC |
+| RecoveryDirective의 exact serialization | [Open Questions §6](../docs/research/OPEN_QUESTIONS.md) — 진입과 packet 축은 ADR-0031로 확정, 필드명만 잔여 |
+| Telemetry event·bundle 층 schema와 보존·redaction 정책 | Open Questions §9 — report 층은 ADR-0027로 확정. redaction은 Phase 7 진입 조건 |
+| OpenCode adapter의 클래스명과 호출 방식 | Phase 11 (ADR-0003 시한 확정) |
+| MCP tool 목록과 transport 세부사항 | Phase 7 / MCP 문서 |
 
-미확정 항목을 구현 편의로 사실상 고정하지 않는다.
+미확정 항목을 구현 편의로 사실상 고정하지 않는다. 반대로, **확정된 항목을
+미확정으로 방치하지도 않는다** — Phase 종료 검토 질문 7이 이 표의 갱신
+여부를 함께 본다.
 
 ---
 

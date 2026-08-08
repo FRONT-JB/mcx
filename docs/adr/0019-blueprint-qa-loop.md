@@ -154,7 +154,9 @@ upstream의 "No candidate is accepted by default"와 같다. 자동 적용하면
 뒤집는** 경우를 사용자가 모르고 지나친다.
 
 이 ADR은 적용 절차의 **경계**만 정한다. 후보를 어떻게 제시하고 선택받을지는
-CLI/MCP surface(Phase 6·7)가 다룬다.
+**Phase 7 MCP surface**가 다룬다 — host 에이전트가 QA 지적으로부터 revision
+초안을 제안하고 채택은 사용자다 (2026-08-09 사용자 결정. Phase 6 CLI는
+비대화형 단발이라 제시 표면을 갖지 않는다 — ADR-0038 §2).
 
 ### 8. QA 결과는 승인 기록이 들고 있다
 

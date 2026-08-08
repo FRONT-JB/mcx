@@ -30,24 +30,70 @@
 §1의 Brief 관련 항목은 upstream test 조사(Phase 1 test case 설계 직전)와
 LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
+**2026-08-09 정정.** 위 문장의 두 잔여는 이렇게 처분됐다 — upstream **test
+조사는 수행되지 않았고**(Phase 1 시한 도과), 전 Stage 조사가 소스 읽기로
+진행됐다. 이 한계는 §1 머리말에 공통 조건으로 옮겼다. LICENSE는 발동 조건
+자체가 성립한 적이 없다(observe-only).
+
 ---
 
 ## 1. Upstream baseline
 
-- [-] baseline commit의 `pyproject.toml`과 package 경계를 기록한다.
-- [-] `ooo interview` skill, MCP handler, CLI path의 실제 종료 Gate를 end-to-end로 추적한다.
-- [-] architecture의 `ambiguity <= 0.2`와 current source의 user-controlled completion을 reconciliate한다.
-- [-] completion candidate streak와 user approval의 실제 호출 경로를 확인한다.
-- [-] answer provenance enum과 requirement authority 규칙을 확인한다.
-- [ ] Seed 생성 → QA → repair → approval path를 실제 handler/test로 추적한다.
-- [ ] Seed field와 immutability/revision behavior를 source/test에서 확인한다.
-- [ ] Run이 AC를 atomic-first로 시도하고 분해하는 정확한 조건을 확인한다.
-- [ ] executed-unverified에 대응하는 upstream state/event를 확인한다.
-- [ ] Evaluation pipeline의 current short-circuit와 consensus trigger를 tests로 확인한다.
-- [ ] Repair, resilience, evolve, seed repair의 경계를 비교한다.
-- [ ] Codex/OpenCode Runtime의 cancellation/resume/error normalization을 비교한다.
-- [ ] MCP authoring handler와 execution handler의 recursive dispatch guard를 확인한다.
-- [ ] pinned commit의 LICENSE와 copied code notice 요구를 구현 직전에 재확인한다.
+**2026-08-09 인덱스 갱신.** 이 목록은 Phase 1~6 동안 갱신되지 않아, 실제로는
+Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)로 남아 있었다 —
+다음 세션이 끝난 조사를 다시 하게 만드는 상태였다. 아래는 근거 문서와 대조한
+실제 상태다.
+
+**전 항목 공통 한계**: 조사 수단은 **소스 읽기**였고 upstream **테스트 대조는
+수행하지 않았다**. 원래 문구의 "tests로 확인"은 이행되지 않았으므로, 아래
+`[x]`는 "소스로 확인"을 뜻한다.
+
+- [x] baseline commit의 `pyproject.toml`과 package 경계를 기록한다. →
+      [INTERVIEW_UPSTREAM_FINDINGS](./INTERVIEW_UPSTREAM_FINDINGS.md)
+- [x] `ooo interview` skill, MCP handler, CLI path의 실제 종료 Gate를
+      end-to-end로 추적한다. → 위 findings, ADR-0009
+- [x] architecture의 `ambiguity <= 0.2`와 current source의 user-controlled
+      completion을 reconciliate한다. → ADR-0009 (네 조건 모두 필요)
+- [x] completion candidate streak와 user approval의 실제 호출 경로를
+      확인한다. → ADR-0009·ADR-0011
+- [x] answer provenance enum과 requirement authority 규칙을 확인한다. →
+      ADR-0010
+- [x] Seed 생성 → QA → repair → approval path를 실제 handler로 추적한다. →
+      [SEED_UPSTREAM_FINDINGS](./SEED_UPSTREAM_FINDINGS.md)
+- [-] Seed field와 immutability/revision behavior를 source에서 확인한다. →
+      필드·불변성은 확인(ADR-0017·0021). **잔여 3건**은
+      [SEED findings §11](./SEED_UPSTREAM_FINDINGS.md): revision lineage와
+      `parent_seed`의 의미, `GradeGate`의 등급 소비 규칙,
+      `SeedRepairer.converge`의 bounded stop 조건
+- [x] Run이 AC를 atomic-first로 시도하고 분해하는 정확한 조건을 확인한다. →
+      [RUN_UPSTREAM_FINDINGS §6](./RUN_UPSTREAM_FINDINGS.md) (분해는 예외
+      경로, 자식 2~5·깊이 2·repair 1)
+- [ ] **executed-unverified에 대응하는 upstream state/event를 확인한다.** →
+      **미조사 (2026-08-09 확인).** `UPSTREAM_MAPPING §4`의 "executed-but-
+      unverified 상태"는 **우리가 채택할 것의 목록**이지 upstream 관측이
+      아니다. 이 개념은 프로젝트 슬로건("Executed is not verified")이자
+      Execute Gate의 축인데 upstream 대응물이 확인되지 않았다 — 대응물이
+      없다면 등록된 divergence여야 한다
+- [x] Evaluation pipeline의 short-circuit와 consensus trigger를 확인한다. →
+      [VERIFY findings §6~§7](./VERIFY_UPSTREAM_FINDINGS.md) (trigger 6조건),
+      [EVALUATE findings](./EVALUATE_UPSTREAM_FINDINGS.md) (3단 파이프라인)
+- [-] Repair, resilience, evolve, seed repair의 경계를 비교한다. → repair·
+      resilience는 [REPAIR findings §4~§5](./REPAIR_UPSTREAM_FINDINGS.md).
+      **evolve 경계는 §10(Phase 10)으로 이관**, seed repair는 위 §11 잔여
+- [-] Codex/OpenCode Runtime의 cancellation/resume/error normalization을
+      비교한다. → Codex는
+      [RUNTIME findings §5](./RUNTIME_UPSTREAM_FINDINGS.md) (thread 기반
+      resume, 정합 검증). **OpenCode는 Phase 11**
+- [x] MCP authoring handler와 execution handler의 recursive dispatch guard를
+      확인한다. → [RUNTIME findings](./RUNTIME_UPSTREAM_FINDINGS.md):
+      `allowed_tools=[]` + `strict_mcp_config=True`로 재귀·도구 차단,
+      이중 dispatch 격리(`:497-503`). 우리 ADR-0004와 같은 축
+- [x] pinned commit의 LICENSE와 copied code notice 요구를 재확인한다. →
+      MIT © Q00 (2025), [research README](./README.md) baseline snapshot에
+      기록. **발동 조건은 "코드 복사 또는 상당한 포팅 전"**
+      ([UPSTREAM_MAPPING](./UPSTREAM_MAPPING.md) §라이선스)이며, mcx는
+      observe-only라 조건이 발동한 적이 없다 — 원래 문구의 "구현 직전"은
+      조건을 잘못 좁혀 적은 것이라 실제 조건으로 정정했다
 
 ---
 
