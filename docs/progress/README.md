@@ -7,8 +7,8 @@
 | Project phase | Phase 3 — Execute vertical slice COMPLETE; Phase 4 준비 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 COMPLETE (2026-08-08, [종료 검토](./0002_BLUEPRINT_VERTICAL_SLICE.md)); Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)) |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute service, ports), `adapters/persistence/` (brief·blueprint·execute) |
-| Automated tests | 388 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner) |
+| Automated tests | 440 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -181,11 +181,15 @@ schema 시점, 고아 attempt, 재시도 정책)을 잡았다. `[-]` 항목은 v
 
 목표: evidence-driven completion과 bounded correction을 검증한다.
 
-- [ ] mechanical verification
+- [x] mechanical verification — 승인된 `verify_command`의 직접 실행과 증거
+  보존, 진입은 Execute Gate `CLEAR` 재확인 (ADR-0026·0028, commit d663c7b,
+  `test_verify_flow.py` — 실제 subprocess)
 - [ ] semantic AC verdict
 - [ ] failure packet
 - [ ] Recover attempt history/budget
-- [ ] MISSION COMPLETE Gate
+- [-] MISSION COMPLETE Gate — HOLD 판정과 blocker(미검증·실패·판정 불가·
+  semantic 부재)는 구현. `CLEAR`는 semantic verdict가 생겨야 도달 가능
+  (`gate.py` docstring 명시)
 
 ### Phase 5 — Concrete Runtime adapters
 
@@ -285,11 +289,18 @@ Phase 4 첫 slice 계약은 2026-08-08 고정되었다
 Blueprint의 `verify_command`뿐이고, 증거 필드(`VerificationRun`/
 `VerificationEvidence`)가 확정되었다.
 
-다음 검증 가능한 목표 한 개: **Verify 첫 vertical slice
-([Verify Guide](../08_VERIFY.md) §13 Slice 1~2)를 구현한다** — 진입은 Execute
-Gate `CLEAR` 재확인(ADR-0026), `verify_command` 실행과 증거 보존(ADR-0028
-§3~§4), 성공 계약 없는 AC의 판정 불가 구분까지. semantic verdict는 후속
-slice다.
+Verify 첫 vertical slice는 2026-08-08 구현되었다 (commit d663c7b, 440 tests).
+승인된 Blueprint의 `verify_command`가 실제 subprocess로 실행되고, 증거가 파일
+보존 + 참조로 남으며, mechanical이 전부 통과해도 semantic 부재가 Gate에
+blocker로 드러난다. 실행 attempt의 성공 주장은 어느 경로로도 증거가 되지
+않는다.
+
+다음 검증 가능한 목표 한 개: **Verify semantic 층
+([Verify Guide](../08_VERIFY.md) §13 Slice 3~4)의 계약을 고정한다** — 선행은
+upstream semantic(Stage 2) 프롬프트 계약과 consensus(Stage 3) reviewer 독립성
+규칙의 조사다 ([ADR-0029](../adr/0029-verify-deliberate-divergences.md) 미확인
+표). semantic verdict schema(uncertainty 표현 포함, [Open Questions
+§5](../research/OPEN_QUESTIONS.md))를 ADR로 확정한 뒤 구현한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
