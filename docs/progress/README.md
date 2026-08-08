@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex) |
-| Automated tests | 496 passed (unit + integration) |
+| Automated tests | 507 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -47,7 +47,7 @@
 | `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | 진입(ADR-0026)·mechanical 계약(ADR-0028)·증거 필드(ADR-0027 §1) 확정 — 구현으로 검증. semantic verdict schema는 후속 slice |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도 예산·정체 중단 계약 확정 (ADR-0031·0032) — 구현으로 검증. rollback·oscillation 탐지는 보류 |
-| `adr/` | 33 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3, 0026~0032는 Phase 4, 0033은 Phase 5 선행 결정) |
+| `adr/` | 34 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3, 0026~0032는 Phase 4, 0033~0034는 Phase 5) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -215,8 +215,11 @@ Verify Gate 미검사 조건)을 잡았다.
 - [-] Codex adapter conformance — **ExecutionRuntime adapter 완료**
   (ADR-0033, commit 33fa5ba): 명령 구성·프롬프트 렌더링·thread id·침묵
   timeout·실패 정규화가 stub CLI conformance 13건으로 고정, Core 무변경
-  통합 증명 포함. 잔여: text backend adapter(위임 port들), 실물 CLI 스모크
-  (실제 codex 실행 — 사용자 승인 필요)
+  통합 증명 포함. **text backend 시작** (ADR-0034, commit 32a3f17): 공통
+  완성 엔진(읽기 전용 sandbox, transient만 재시도) + semantic 평가자
+  (upstream 정렬 프롬프트, ac_key 바인딩). 잔여: 나머지 위임 port들(질문
+  생성기·clarity·Blueprint 생성·QA·closure), 실물 CLI 스모크(사용자 승인
+  필요)
 - [ ] OpenCode adapter conformance
 - [ ] session/resume/cancel (ADR-0033 §6 보류 — 도입 시 upstream 정합
   검증과 대조)
@@ -364,12 +367,16 @@ CLI conformance로 고정되었고, Core 변경 없이 fake 자리에 끼워짐�
 테스트로 증명되었다. **실물 codex CLI 스모크(실제 AI 실행·비용 발생)는
 사용자 승인 후 수행한다.**
 
-다음 검증 가능한 목표 한 개: **Codex text backend adapter의 계약을 고정하고
-구현한다** — 위임 port들(질문 생성기·clarity 평가자·Blueprint 생성기·QA
-채점자·semantic 평가자)이 실제 값을 갖는 지점. 선행은 upstream
-`--output-schema` 구조화 출력 계약 조사
-([RUNTIME_UPSTREAM_FINDINGS §7](../research/RUNTIME_UPSTREAM_FINDINGS.md)
-미조사)와 완성 adapter의 transient 재시도 계약(ADR-0033 §4가 예고)이다.
+Codex text backend는 2026-08-08 시작되었다 (ADR-0034, commit 32a3f17) —
+공통 완성 엔진(`--output-schema` strict, 읽기 전용 sandbox, transient만
+재시도)과 첫 port(semantic 평가자)가 stub conformance 11건으로 고정되었다.
+
+다음 검증 가능한 목표 한 개: **실물 codex CLI 스모크를 수행한다 (사용자
+승인 필요 — 실제 AI 실행·비용 발생).** 지금까지의 플래그·이벤트 형태는
+upstream 소스에서 온 가정이다 — 실행 adapter 1회(작은 워크스페이스에서
+단순 AC)와 semantic 평가자 1회를 실제 codex로 돌려 가정을 사실로 바꾸고,
+불일치가 있으면 RUNTIME findings와 adapter를 정정한다. 스모크가 끝나야
+나머지 위임 port들을 같은 가정 위에 쌓을 수 있다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

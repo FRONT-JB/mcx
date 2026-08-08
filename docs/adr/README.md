@@ -55,6 +55,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0031](./0031-recover-v1-failure-and-retry-contract.md) | Recover v1 — 실패 packet, AC당 재시도 2회, 실패 증거 전달, 동일 오류 3회 중단. | Accepted |
 | [0032](./0032-recover-deliberate-divergences.md) | Recover에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
 | [0033](./0033-first-runtime-adapter-contract.md) | 첫 adapter는 Codex ExecutionRuntime — `codex exec` 단발, sandbox 권한, 침묵 timeout, 자체 재시도 없음. | Accepted |
+| [0034](./0034-codex-text-backend-contract.md) | text backend는 완성 엔진 하나를 공유 — 읽기 전용 sandbox, transient만 재시도, 구조화 출력 실패는 예외. 첫 port는 semantic 평가자. | Accepted |
 
 ## Template
 
