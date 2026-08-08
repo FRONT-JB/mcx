@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex) |
-| Automated tests | 507 passed (unit + integration) |
+| Automated tests | 518 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -215,11 +215,12 @@ Verify Gate 미검사 조건)을 잡았다.
 - [-] Codex adapter conformance — **ExecutionRuntime adapter 완료**
   (ADR-0033, commit 33fa5ba): 명령 구성·프롬프트 렌더링·thread id·침묵
   timeout·실패 정규화가 stub CLI conformance 13건으로 고정, Core 무변경
-  통합 증명 포함. **text backend 시작** (ADR-0034, commit 32a3f17): 공통
-  완성 엔진(읽기 전용 sandbox, transient만 재시도) + semantic 평가자
-  (upstream 정렬 프롬프트, ac_key 바인딩). 잔여: 나머지 위임 port들(질문
-  생성기·clarity·Blueprint 생성·QA·closure), 실물 CLI 스모크(사용자 승인
-  필요)
+  통합 증명 포함. **text backend 완료** (ADR-0034, commits 32a3f17·c1f78db):
+  공통 완성 엔진 + 위임 port 7종 전부(semantic 평가자, 질문 생성기, clarity
+  채점자, closer·challenger, Blueprint 생성기·QA 채점자) — quality bar는
+  upstream 영어 원문으로 교체(ADR-0019 §4 재평가 이행). 실물 스모크 완료
+  (RUNTIME findings §8). **다섯 Stage 전부가 실제 AI로 구동 가능하다.**
+  잔여: 실 AI 전체 파이프라인 관측(도그푸딩)
 - [ ] OpenCode adapter conformance
 - [ ] session/resume/cancel (ADR-0033 §6 보류 — 도입 시 upstream 정합
   검증과 대조)
@@ -380,11 +381,16 @@ schema 왕복, `-C` 경계), 불일치 2건이 발견·정정되었다 — `--fu
 workspace 안에서 검증 명령을 직접 재현하고 확신 있는 판정을 반환했다 —
 **semantic 판정 품질의 첫 실물 관측이다.**
 
-다음 검증 가능한 목표 한 개: **나머지 위임 port들의 Codex adapter를
-구현한다** — 질문 생성기·clarity 평가자(Brief), Blueprint 생성기·QA
-채점자(Blueprint), closure 3-lane. 전부 공통 완성 엔진 위의 프롬프트+변환
-이며, 프롬프트가 곧 계약인 지점은 각 구현에서 upstream 원문과 대조한다
-(ADR-0034 §5 잔여). 완료 시 다섯 Stage 전부가 실제 AI로 구동 가능해진다.
+위임 port 7종의 Codex adapter는 2026-08-08 완료되었다 (commit c1f78db,
+518 tests) — 다섯 Stage 전부가 실제 AI로 구동 가능하다. quality bar는
+upstream 영어 원문으로 교체되었다 (ADR-0019 §4 재평가 이행).
+
+다음 검증 가능한 목표 한 개: **실 AI 전체 파이프라인 도그푸딩 (사용자 승인
+필요 — codex 다수 호출·비용 발생).** 작은 실제 미션 하나를 Brief 질문
+생성부터 `CLEAR — MISSION COMPLETE`까지 전부 실제 codex로 돌려, 각 위임
+port의 프롬프트 품질과 다섯 Stage 순환을 실물로 관측한다. 관측 결과(질문
+품질, 채점 분포, 명세 범위 준수, 판정 정확도)를 research에 기록하고
+프롬프트·계약 불일치를 정정한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
