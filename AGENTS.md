@@ -11,6 +11,8 @@ Mission Control은 `Q00/ouroboros`의 워크플로(Interview → Seed → Run �
 Evaluate → Repair) 설계를 참고해 작은 Python 시스템으로 구성하는 프로젝트다.
 CLI 이름은 `mcx`다.
 
+> **mcx — coordinates AI coding missions. Executed is not verified.**
+>
 > Mission Control is not an AI. It does not generate or review code.
 > It coordinates missions.
 

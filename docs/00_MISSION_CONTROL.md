@@ -1,5 +1,7 @@
 # Mission Control Project Constitution
 
+> **mcx — coordinates AI coding missions. Executed is not verified.**
+>
 > **Mission Control is not an AI.**<br>
 > **Mission Control does not generate code.**<br>
 > **Mission Control does not review code.**<br>
