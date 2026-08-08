@@ -31,6 +31,7 @@ from mission_control.domain.brief.requirement import (
 )
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.execute.state import ExecuteState
+from mission_control.domain.verify.evidence import CommandExecution, VerifyState
 
 
 class BriefRepository(Protocol):
@@ -161,6 +162,53 @@ class ExecutionRuntime(Protocol):
 
     async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:
         """요청된 AC 하나를 실행하고 결과를 반환한다."""
+        ...
+
+
+class VerifyRepository(Protocol):
+    """Verify 상태의 durable 저장소. :class:`BriefRepository`와 같은 보장이다."""
+
+    async def load(self, mission_id: str) -> VerifyState | None:
+        """저장된 Verify 상태를 반환한다. 없으면 ``None``."""
+        ...
+
+    async def save(self, state: VerifyState) -> None:
+        """Verify 상태를 durable하게 기록한다."""
+        ...
+
+
+class MechanicalRunner(Protocol):
+    """검증 명령을 실제로 실행하는 adapter의 계약 (ADR-0028 §3).
+
+    실행 대상 명령은 항상 use case가 승인된 Blueprint에서 읽어 전달한다 —
+    이 port에 명령을 공급하는 다른 경로는 없다 (ADR-0028 §2). artifacts
+    검사가 명령 실행보다 먼저인 순서는 use case가 지킨다.
+    """
+
+    async def missing_artifacts(
+        self, *, workspace: str, artifacts: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        """workspace 아래 존재하지 않는 artifact 경로 전부를 반환한다."""
+        ...
+
+    async def run(self, *, command: str, workspace: str, timeout_seconds: int) -> CommandExecution:
+        """명령을 shell로 실행하고 합류(stdout+stderr) 출력을 반환한다.
+
+        timeout 초과 시 프로세스(그룹)를 정리하고 ``timed_out=True``로
+        반환한다 — 예외가 아니다. 시작 자체가 불가능한 경우만 예외다.
+        """
+        ...
+
+
+class VerificationOutputStore(Protocol):
+    """검증 명령의 원문 출력을 상태 문서 밖에 보존한다 (ADR-0028 §4).
+
+    상태에는 여기서 돌려준 참조만 남는다 — 큰 출력이 mission 상태 문서를
+    오염시키지 않게 하는 upstream의 파일 트리 배치와 같다.
+    """
+
+    async def preserve(self, *, mission_id: str, sequence: int, ac_key: str, content: str) -> str:
+        """출력을 보존하고 참조 문자열을 반환한다."""
         ...
 
 

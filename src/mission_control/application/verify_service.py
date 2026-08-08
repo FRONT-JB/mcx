@@ -1,0 +1,176 @@
+"""Verify use case — 진입 확인, mechanical 검증 실행, Gate 판정의 조율.
+
+**진입 확인이 모든 일보다 먼저다.** Verify는 Blueprint Gate와 Execute Gate의
+``CLEAR``를 재평가한 뒤에만 시작한다 (ADR-0026 §1). 실행 기록이 없는 작업은
+여기 도달하지 못한다 — upstream evaluate가 요구하지 않아 §12.3 사고의 통로가
+되었던 지점이다.
+
+**증거는 직접 실행에서만 나온다.** Flight Controller의 ``result_summary``는
+어느 경로로도 증거가 되지 않는다 (ADR-0028 §1). 이 use case가 승인된
+Blueprint의 성공 계약을 읽어 runner에 넘기고, 그 결과만 기록한다.
+
+계약: ``docs/08_VERIFY.md`` §3, §5.1, §8
+결정: ``docs/adr/0026-verify-entry-requires-lineage.md``,
+``docs/adr/0028-verify-v1-mechanical-contract.md``
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from mission_control.application.blueprint_service import BlueprintNotFoundError
+from mission_control.application.brief_service import BriefNotFoundError
+from mission_control.application.execute_service import BlueprintNotClearedError
+from mission_control.application.ports import (
+    BlueprintRepository,
+    BriefRepository,
+    ExecuteRepository,
+    MechanicalRunner,
+    VerificationOutputStore,
+    VerifyRepository,
+)
+from mission_control.domain.blueprint.gate import evaluate_blueprint_gate
+from mission_control.domain.blueprint.spec import Blueprint
+from mission_control.domain.errors import MissionControlError
+from mission_control.domain.execute.gate import evaluate_execute_gate
+from mission_control.domain.execute.state import AttemptStatus, ExecuteState
+from mission_control.domain.verify.evidence import (
+    VERIFY_COMMAND_TIMEOUT_SECONDS,
+    CommandExecution,
+    VerificationEvidence,
+    VerificationRun,
+    VerifyState,
+    judge_run,
+)
+from mission_control.domain.verify.gate import VerifyGateDecision, evaluate_verify_gate
+
+
+class ExecuteNotClearedError(MissionControlError):
+    """Execute Gate가 ``CLEAR``가 아닌데 Verify를 시작하려 했다.
+
+    실행되지 않았거나, 결과를 알 수 없거나, 실행이 실패한 작업 위에서는
+    검증이 시작되지 않는다 (ADR-0026 §1).
+    """
+
+    def __init__(self, *, mission_id: str, reasons: tuple[str, ...]) -> None:
+        joined = "; ".join(reasons)
+        super().__init__(f"mission {mission_id} is not cleared for Verify: {joined}")
+        self.mission_id = mission_id
+        self.reasons = reasons
+
+
+@dataclass(frozen=True, slots=True)
+class VerifyService:
+    """Verify Stage의 application 경계."""
+
+    briefs: BriefRepository
+    blueprints: BlueprintRepository
+    executes: ExecuteRepository
+    repository: VerifyRepository
+    runner: MechanicalRunner
+    outputs: VerificationOutputStore
+
+    async def run_mechanical(self, *, mission_id: str) -> VerifyState:
+        """성공 계약이 있는 모든 AC를 검증하고 기록된 상태를 반환한다.
+
+        검사 순서는 AC마다 artifacts → 명령이다 (ADR-0028 §3). 성공 계약이
+        없는 AC는 run을 만들지 않는다 — 그 부재는 Gate가 판정 불가로
+        드러낸다. 저장이 성공한 뒤에만 검증이 기록되었다고 보고한다.
+        """
+        blueprint, execute_state = await self._cleared_pipeline(mission_id)
+        workspace = execute_state.attempts[-1].envelope.workspace
+        state = await self._state(mission_id)
+
+        runs: list[VerificationRun] = []
+        for criterion in blueprint.acceptance_criteria:
+            if not criterion.is_mechanically_verifiable:
+                continue
+
+            missing = await self.runner.missing_artifacts(
+                workspace=workspace, artifacts=criterion.expected_artifacts
+            )
+            execution: CommandExecution | None = None
+            output_ref: str | None = None
+            if not missing and criterion.verify_command is not None:
+                execution = await self.runner.run(
+                    command=criterion.verify_command,
+                    workspace=workspace,
+                    timeout_seconds=VERIFY_COMMAND_TIMEOUT_SECONDS,
+                )
+                output_ref = await self.outputs.preserve(
+                    mission_id=mission_id,
+                    sequence=state.sequence,
+                    ac_key=criterion.key,
+                    content=execution.output,
+                )
+            runs.append(
+                judge_run(
+                    criterion=criterion,
+                    missing_artifacts=missing,
+                    execution=execution,
+                    output_ref=output_ref,
+                )
+            )
+
+        evidence = VerificationEvidence(
+            mission_id=mission_id,
+            blueprint_revision=blueprint.revision,
+            execution_attempt_numbers=self._executed_attempt_numbers(
+                execute_state, blueprint.revision
+            ),
+            runs=tuple(runs),
+        )
+        recorded = state.record(evidence)
+        await self.repository.save(recorded)
+        return recorded
+
+    async def decide_gate(self, *, mission_id: str) -> VerifyGateDecision:
+        """저장된 증거로 MISSION COMPLETE 여부를 판정한다.
+
+        진입 조건을 먼저 재확인한다 — Brief·Blueprint·실행 상태가 그 사이
+        바뀌었다면 증거의 판정 이전에 진입 자체가 무효다.
+        """
+        blueprint, _ = await self._cleared_pipeline(mission_id)
+        state = await self._state(mission_id)
+        return evaluate_verify_gate(evidence=state.evidence, blueprint=blueprint)
+
+    async def _state(self, mission_id: str) -> VerifyState:
+        stored = await self.repository.load(mission_id)
+        return stored if stored is not None else VerifyState.start(mission_id=mission_id)
+
+    async def _cleared_pipeline(self, mission_id: str) -> tuple[Blueprint, ExecuteState]:
+        """Blueprint Gate와 Execute Gate의 ``CLEAR``를 차례로 재확인한다."""
+        blueprint_state = await self.blueprints.load(mission_id)
+        if blueprint_state is None:
+            raise BlueprintNotFoundError(mission_id)
+        brief = await self.briefs.load(mission_id)
+        if brief is None:
+            raise BriefNotFoundError(mission_id)
+
+        blueprint_decision = evaluate_blueprint_gate(
+            state=blueprint_state, brief_revision=brief.revision
+        )
+        if blueprint_decision.outcome != "CLEAR":
+            raise BlueprintNotClearedError(
+                mission_id=mission_id, reasons=blueprint_decision.blocking_reasons
+            )
+
+        blueprint = blueprint_state.current
+        stored = await self.executes.load(mission_id)
+        execute_state = stored if stored is not None else ExecuteState.start(mission_id=mission_id)
+        execute_decision = evaluate_execute_gate(state=execute_state, blueprint=blueprint)
+        if execute_decision.outcome != "CLEAR":
+            raise ExecuteNotClearedError(
+                mission_id=mission_id, reasons=execute_decision.blocking_reasons
+            )
+        return blueprint, execute_state
+
+    @staticmethod
+    def _executed_attempt_numbers(state: ExecuteState, revision: int) -> tuple[int, ...]:
+        """현재 revision에서 실행된 attempt 번호들 — evidence의 lineage."""
+        return tuple(
+            attempt.number
+            for attempt in state.attempts
+            if attempt.blueprint_revision == revision
+            and attempt.status is AttemptStatus.EXECUTED_UNVERIFIED
+        )
