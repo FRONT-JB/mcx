@@ -129,6 +129,30 @@ stage를 만든다. AC가 하나면 분석 없이 단일 level이다 (`:397-400`
 실행 계획은 `StagedExecutionPlan` — stage의 순차 나열이고 stage 안은 병렬
 가능(`ExecutionStage.is_parallel`).
 
+### 8.1 병렬성 구분은 Seed 생성 시점이 아니라 Run 시점이다
+
+"AC를 만들 때 병렬 가능 여부를 구분하는가"를 확인한 결과 — **아니다**.
+Seed 쪽에는 그 축이 아예 없고, 구분은 전부 Run 시점 파생이다.
+
+- **AC 스키마에 dependency·병렬 필드가 없다.** `AcceptanceCriterionSpec`의
+  필드는 description / semantic_ac_key / verify_command / expected_artifacts /
+  output_assertion / investment 전부다 (`core/seed.py:452-476`). metadata
+  dict도 없다. pydantic 기본 동작(extra ignore)이라 seed YAML의 AC dict에
+  `depends_on`을 손으로 써넣어도 파싱 시 조용히 소실된다.
+- **Seed 생성 프롬프트도 요구하지 않는다.** seed-architect의 AC 출력 계약은
+  `description`/`verify`/`artifacts`/`expect` 4필드 고정이고
+  (`agents/seed-architect.md` §3), granularity contract가 이유를 명시한다 —
+  "deciding means is the execution engine's work at runtime, and it decides
+  them better with the outcome in hand than with your guess at the path".
+  순서·경로의 사전 계획을 Seed의 일에서 의도적으로 제외한 것이다.
+- **위 선언(구조) 신호 채널은 seed 경로에서 생산자가 없다.** runner는
+  `seed.acceptance_criteria`를 그대로 넘기고 (`runner.py:10343`),
+  `_normalize_specs`가 metadata를 빈 채로 감싼다
+  (`dependency_analyzer.py:458`). `ACDependencySpec`을 analyzer 밖에서
+  만드는 곳은 src 전체에 없다. 즉 `depends_on`/serial 류 metadata 키는
+  API로는 존재하지만 v0.50.8의 Seed→Run 경로에서는 **실효 신호가 Run 시점
+  LLM 추론 + 토폴로지 계층화뿐**이다.
+
 ## 9. Capability scope — dispatch 계약의 digest 바인딩
 
 dispatch마다 넘어가는 것: prompt, **tools 목록**, system prompt, workspace
