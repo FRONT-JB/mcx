@@ -8,8 +8,10 @@ import pytest
 
 from mission_control.application.blueprint_service import BlueprintNotFoundError
 from mission_control.application.execute_service import BlueprintNotClearedError
+from mission_control.application.ports import SemanticEvaluationRequest
 from mission_control.application.verify_service import (
     ExecuteNotClearedError,
+    VerdictMismatchError,
     VerifyService,
 )
 from mission_control.domain.blueprint.qa import QaAssessment, QaPolicy
@@ -30,8 +32,13 @@ from mission_control.domain.brief.closure import (
 )
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.execute.state import CapabilityEnvelope, ExecuteState
-from mission_control.domain.verify.evidence import CommandExecution, VerifyState
+from mission_control.domain.verify.evidence import (
+    CommandExecution,
+    VerdictWithoutEvidenceError,
+    VerifyState,
+)
 from mission_control.domain.verify.gate import VerifyGateBlockingCondition
+from mission_control.domain.verify.verdict import CriterionVerdict, SemanticPolicy
 
 BRIEF_POLICY = ClarityPolicy.greenfield_v1()
 QA_POLICY = QaPolicy.blueprint_v1()
@@ -180,12 +187,42 @@ class RecordingOutputStore:
         return f"ref-{ac_key}-{sequence}"
 
 
+class ScriptedEvaluator:
+    """AC별로 정해진 verdict를 돌려주고 요청을 기록하는 평가자."""
+
+    def __init__(self, *, overrides: dict[str, CriterionVerdict] | None = None) -> None:
+        self.overrides = overrides or {}
+        self.requests: list[SemanticEvaluationRequest] = []
+
+    async def assess(self, request: SemanticEvaluationRequest) -> CriterionVerdict:
+        self.requests.append(request)
+        key = request.criterion.key
+        return self.overrides.get(
+            key,
+            CriterionVerdict(
+                ac_key=key,
+                satisfied=True,
+                score=0.9,
+                uncertainty=0.1,
+                reward_hacking_risk=0.0,
+                reasoning="계약이 증거로 입증된다",
+            ),
+        )
+
+
 def _service(
     *,
     runner: ScriptedRunner | None = None,
+    evaluator: ScriptedEvaluator | None = None,
     executed: ExecuteState | None = None,
     with_blueprint: bool = True,
-) -> tuple[VerifyService, InMemoryBriefRepository, InMemoryVerifyRepository, ScriptedRunner]:
+) -> tuple[
+    VerifyService,
+    InMemoryBriefRepository,
+    InMemoryVerifyRepository,
+    ScriptedRunner,
+    ScriptedEvaluator,
+]:
     briefs = InMemoryBriefRepository()
     briefs.states["m-1"] = _cleared_brief()
     blueprints = InMemoryBlueprintRepository()
@@ -199,6 +236,7 @@ def _service(
     )
     verifies = InMemoryVerifyRepository()
     the_runner = runner if runner is not None else ScriptedRunner()
+    the_evaluator = evaluator if evaluator is not None else ScriptedEvaluator()
     service = VerifyService(
         briefs=briefs,
         blueprints=blueprints,
@@ -206,19 +244,21 @@ def _service(
         repository=verifies,
         runner=the_runner,
         outputs=RecordingOutputStore(),
+        evaluator=the_evaluator,
+        policy=SemanticPolicy.verify_v1(),
     )
-    return service, briefs, verifies, the_runner
+    return service, briefs, verifies, the_runner, the_evaluator
 
 
 class TestEntry:
     async def test_a_missing_blueprint_is_reported(self) -> None:
-        service, _, _, runner = _service(with_blueprint=False)
+        service, _, _, runner, _ = _service(with_blueprint=False)
         with pytest.raises(BlueprintNotFoundError):
             await service.run_mechanical(mission_id="m-1")
         assert runner.ran_commands == []
 
     async def test_a_moved_brief_blocks_verification(self) -> None:
-        service, briefs, _, runner = _service()
+        service, briefs, _, runner, _ = _service()
         briefs.states["m-1"] = briefs.states["m-1"].record_answer(
             answer="새 결정", authority="decision", question="추가 질문?"
         )
@@ -228,13 +268,13 @@ class TestEntry:
 
     async def test_unexecuted_work_blocks_verification(self) -> None:
         """실행 기록 없는 작업은 검증에 도달하지 못한다 (ADR-0026 §1)."""
-        service, _, _, runner = _service(executed=_executed_state(COMMANDED.key))
+        service, _, _, runner, _ = _service(executed=_executed_state(COMMANDED.key))
         with pytest.raises(ExecuteNotClearedError):
             await service.run_mechanical(mission_id="m-1")
         assert runner.ran_commands == []
 
     async def test_the_gate_rechecks_the_entry(self) -> None:
-        service, briefs, _, _ = _service()
+        service, briefs, _, _, _ = _service()
         await service.run_mechanical(mission_id="m-1")
         briefs.states["m-1"] = briefs.states["m-1"].record_answer(
             answer="새 결정", authority="decision", question="추가 질문?"
@@ -245,7 +285,7 @@ class TestEntry:
 
 class TestRunMechanical:
     async def test_only_contract_criteria_produce_runs(self) -> None:
-        service, _, verifies, runner = _service()
+        service, _, verifies, runner, _ = _service()
         state = await service.run_mechanical(mission_id="m-1")
 
         assert state.evidence is not None
@@ -259,7 +299,7 @@ class TestRunMechanical:
     async def test_missing_artifacts_skip_the_command(self) -> None:
         """artifacts 검사가 명령 실행보다 먼저다 (ADR-0028 §3)."""
         runner = ScriptedRunner(missing=("report.md",))
-        service, _, _, _ = _service(runner=runner)
+        service, _, _, _, _ = _service(runner=runner)
         state = await service.run_mechanical(mission_id="m-1")
 
         assert state.evidence is not None
@@ -269,7 +309,7 @@ class TestRunMechanical:
         assert run.missing_artifacts == ("report.md",)
 
     async def test_the_output_is_preserved_with_a_reference(self) -> None:
-        service, _, _, _ = _service()
+        service, _, _, _, _ = _service()
         state = await service.run_mechanical(mission_id="m-1")
 
         assert state.evidence is not None
@@ -278,12 +318,63 @@ class TestRunMechanical:
         assert run.output_ref == f"ref-{COMMANDED.key}-1"
 
     async def test_evidence_carries_the_execution_lineage(self) -> None:
-        service, _, _, _ = _service()
+        service, _, _, _, _ = _service()
         state = await service.run_mechanical(mission_id="m-1")
 
         assert state.evidence is not None
         assert state.evidence.execution_attempt_numbers == (1, 2, 3)
         assert state.evidence.blueprint_revision == 1
+
+
+class TestAssessSemantics:
+    async def test_semantic_needs_the_mechanical_evidence_first(self) -> None:
+        """증거 없는 판정은 도메인이 거부한다 (ADR-0030 §4)."""
+        service, _, _, _, _ = _service()
+        with pytest.raises(VerdictWithoutEvidenceError):
+            await service.assess_semantics(mission_id="m-1")
+
+    async def test_every_criterion_is_judged_with_its_mechanical_run(self) -> None:
+        service, _, _, _, evaluator = _service()
+        await service.run_mechanical(mission_id="m-1")
+        state = await service.assess_semantics(mission_id="m-1")
+
+        assert state.verdicts is not None
+        assert {verdict.ac_key for verdict in state.verdicts.verdicts} == {
+            COMMANDED.key,
+            ARTIFACTS_ONLY.key,
+            PROSE.key,
+        }
+        by_key = {req.criterion.key: req for req in evaluator.requests}
+        assert by_key[COMMANDED.key].mechanical_run is not None
+        assert by_key[PROSE.key].mechanical_run is None
+
+    async def test_a_mislabeled_verdict_is_rejected(self) -> None:
+        """평가자가 다른 AC의 verdict를 돌려주면 기록되지 않는다."""
+        wrong = CriterionVerdict(
+            ac_key="ac_0000000000000000",
+            satisfied=True,
+            score=0.9,
+            uncertainty=0.1,
+            reward_hacking_risk=0.0,
+            reasoning="엉뚱한 판정",
+        )
+        service, _, verifies, _, _ = _service(
+            evaluator=ScriptedEvaluator(overrides={COMMANDED.key: wrong})
+        )
+        await service.run_mechanical(mission_id="m-1")
+        with pytest.raises(VerdictMismatchError):
+            await service.assess_semantics(mission_id="m-1")
+        assert verifies.states["m-1"].verdicts is None
+
+    async def test_both_layers_passing_reach_mission_complete(self) -> None:
+        """v1이 처음으로 도달하는 CLEAR — MISSION COMPLETE (ADR-0030 §4)."""
+        service, _, _, _, _ = _service()
+        await service.run_mechanical(mission_id="m-1")
+        await service.assess_semantics(mission_id="m-1")
+
+        decision = await service.decide_gate(mission_id="m-1")
+        assert decision.outcome == "CLEAR"
+        assert decision.mission_complete is True
 
 
 class TestNoSelfApproval:
@@ -292,7 +383,7 @@ class TestNoSelfApproval:
         runner = ScriptedRunner(
             executions={"pytest -k list": CommandExecution(exit_code=1, output="1 failed")}
         )
-        service, _, _, _ = _service(runner=runner)
+        service, _, _, _, _ = _service(runner=runner)
         await service.run_mechanical(mission_id="m-1")
 
         decision = await service.decide_gate(mission_id="m-1")

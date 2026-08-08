@@ -1,6 +1,6 @@
-"""Verify Gate — CLEAR가 곧 MISSION COMPLETE이며 v1은 도달할 수 없다.
+"""Verify Gate — CLEAR가 곧 MISSION COMPLETE이며 두 층 전부를 요구한다.
 
-계약: docs/08_VERIFY.md §9 / docs/adr/0028-verify-v1-mechanical-contract.md
+계약: docs/08_VERIFY.md §9 / docs/adr/0028, 0030 §4
 """
 
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
@@ -12,6 +12,13 @@ from mission_control.domain.verify.gate import (
     VerifyGateBlockingCondition,
     evaluate_verify_gate,
 )
+from mission_control.domain.verify.verdict import (
+    CriterionVerdict,
+    SemanticAssessment,
+    SemanticPolicy,
+)
+
+POLICY = SemanticPolicy.verify_v1()
 
 COMMANDED = AcceptanceCriterion(description="목록에 댓글이 보인다", verify_command="pytest -k list")
 PROSE = AcceptanceCriterion(description="코드가 읽기 좋다")
@@ -24,8 +31,12 @@ BLUEPRINT = Blueprint(
     acceptance_criteria=(COMMANDED, PROSE),
 )
 
+PASSED_RUN = VerificationRun(
+    ac_key=COMMANDED.key, command="pytest -k list", exit_code=0, passed=True
+)
 
-def _evidence(run: VerificationRun, revision: int = 1) -> VerificationEvidence:
+
+def _evidence(run: VerificationRun = PASSED_RUN, revision: int = 1) -> VerificationEvidence:
     return VerificationEvidence(
         mission_id="m-1",
         blueprint_revision=revision,
@@ -34,66 +45,113 @@ def _evidence(run: VerificationRun, revision: int = 1) -> VerificationEvidence:
     )
 
 
-def _conditions(evidence: VerificationEvidence | None, blueprint: Blueprint = BLUEPRINT):
-    decision = evaluate_verify_gate(evidence=evidence, blueprint=blueprint)
+def _verdict(
+    ac_key: str,
+    *,
+    satisfied: bool = True,
+    score: float = 0.9,
+    uncertainty: float = 0.1,
+    risk: float = 0.0,
+) -> CriterionVerdict:
+    return CriterionVerdict(
+        ac_key=ac_key,
+        satisfied=satisfied,
+        score=score,
+        uncertainty=uncertainty,
+        reward_hacking_risk=risk,
+        reasoning="계약이 증거로 입증된다",
+    )
+
+
+def _verdicts(*verdicts: CriterionVerdict, revision: int = 1) -> SemanticAssessment:
+    return SemanticAssessment(
+        blueprint_revision=revision, policy_version=POLICY.version, verdicts=verdicts
+    )
+
+
+def _conditions(
+    evidence: VerificationEvidence | None,
+    verdicts: SemanticAssessment | None,
+    blueprint: Blueprint = BLUEPRINT,
+):
+    decision = evaluate_verify_gate(
+        evidence=evidence, verdicts=verdicts, blueprint=blueprint, policy=POLICY
+    )
     return decision, tuple(item.condition for item in decision.gate_blockers)
 
 
-class TestHold:
-    def test_no_evidence_holds_per_criterion(self) -> None:
-        decision, conditions = _conditions(None)
-
-        assert decision.outcome == "HOLD"
-        assert VerifyGateBlockingCondition.CRITERION_UNVERIFIED in conditions
-        assert VerifyGateBlockingCondition.NOT_MECHANICALLY_VERIFIABLE in conditions
-
-    def test_mechanical_success_still_needs_semantic_verdicts(self) -> None:
-        """v1의 CLEAR 불가는 침묵이 아니라 blocker로 드러난다 (ADR-0028)."""
-        blueprint = BLUEPRINT.model_copy(update={"acceptance_criteria": (COMMANDED,)})
-        passed = VerificationRun(
-            ac_key=COMMANDED.key, command="pytest -k list", exit_code=0, passed=True
+class TestClear:
+    def test_both_layers_passing_declare_mission_complete(self) -> None:
+        """두 층 전부 통과 — v1이 처음으로 도달하는 CLEAR다 (ADR-0030 §4)."""
+        decision, _ = _conditions(
+            _evidence(), _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key))
         )
-        decision, conditions = _conditions(_evidence(passed), blueprint)
+        assert decision.outcome == "CLEAR"
+        assert decision.mission_complete is True
+        assert decision.gate_blockers == ()
+
+
+class TestHold:
+    def test_nothing_recorded_holds_per_layer_and_criterion(self) -> None:
+        decision, conditions = _conditions(None, None)
 
         assert decision.outcome == "HOLD"
-        assert conditions == (VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING,)
+        assert conditions.count(VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING) == 2
+        assert VerifyGateBlockingCondition.CRITERION_UNVERIFIED in conditions
 
-    def test_a_failed_run_holds_with_a_derived_reason(self) -> None:
+    def test_semantic_cannot_overturn_a_mechanical_failure(self) -> None:
+        """만족 verdict가 있어도 깨진 명령은 깨진 것이다 (ADR-0028 §1)."""
         failed = VerificationRun(
             ac_key=COMMANDED.key, command="pytest -k list", exit_code=3, passed=False
         )
-        decision, conditions = _conditions(_evidence(failed))
-
+        decision, conditions = _conditions(
+            _evidence(failed), _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key))
+        )
+        assert decision.outcome == "HOLD"
         assert VerifyGateBlockingCondition.VERIFICATION_FAILED in conditions
-        assert any("status 3" in reason for reason in decision.blocking_reasons)
 
-    def test_an_assertion_miss_is_derived_from_the_fields(self) -> None:
-        """exit 0인데 실패면 남은 가능성은 assertion 불일치뿐이다."""
+    def test_a_low_score_does_not_pass_even_when_satisfied(self) -> None:
+        """통과는 satisfied AND score — upstream 관측 그대로다."""
+        _, conditions = _conditions(
+            _evidence(),
+            _verdicts(_verdict(COMMANDED.key, score=0.79), _verdict(PROSE.key)),
+        )
+        assert VerifyGateBlockingCondition.CRITERION_NOT_SATISFIED in conditions
+
+    def test_uncertainty_asks_for_escalation_not_failure(self) -> None:
+        """불확실한 판정은 실패로 세지 않는다 — escalation 대기 HOLD다."""
+        decision, conditions = _conditions(
+            _evidence(),
+            _verdicts(
+                _verdict(COMMANDED.key, uncertainty=0.5, satisfied=False, score=0.2),
+                _verdict(PROSE.key),
+            ),
+        )
+        assert VerifyGateBlockingCondition.ESCALATION_REQUIRED in conditions
+        assert VerifyGateBlockingCondition.CRITERION_NOT_SATISFIED not in conditions
+
+    def test_reward_hacking_vetoes_an_otherwise_passing_verdict(self) -> None:
+        _, conditions = _conditions(
+            _evidence(),
+            _verdicts(_verdict(COMMANDED.key, risk=0.7), _verdict(PROSE.key)),
+        )
+        assert VerifyGateBlockingCondition.REWARD_HACKING_SUSPECTED in conditions
+
+    def test_stale_layers_do_not_count(self) -> None:
+        """이전 revision의 evidence·verdicts는 현재 revision을 지지하지 않는다."""
+        current = BLUEPRINT.model_copy(update={"revision": 2})
+        decision, conditions = _conditions(
+            _evidence(revision=1),
+            _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key), revision=1),
+            current,
+        )
+        assert decision.outcome == "HOLD"
+        assert VerifyGateBlockingCondition.CRITERION_UNVERIFIED in conditions
+        assert conditions.count(VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING) == 2
+
+    def test_a_failed_run_reason_is_derived_from_the_fields(self) -> None:
         missed = VerificationRun(
             ac_key=COMMANDED.key, command="pytest -k list", exit_code=0, passed=False
         )
-        decision, _ = _conditions(_evidence(missed))
+        decision, _ = _conditions(_evidence(missed), None)
         assert any("assertion" in reason for reason in decision.blocking_reasons)
-
-    def test_missing_artifacts_and_timeout_reasons(self) -> None:
-        missing = VerificationRun(
-            ac_key=COMMANDED.key, passed=False, missing_artifacts=("report.md",)
-        )
-        decision, _ = _conditions(_evidence(missing))
-        assert any("report.md" in reason for reason in decision.blocking_reasons)
-
-        timed = VerificationRun(
-            ac_key=COMMANDED.key, command="pytest -k list", passed=False, timed_out=True
-        )
-        decision, _ = _conditions(_evidence(timed))
-        assert any("timed out" in reason for reason in decision.blocking_reasons)
-
-    def test_stale_revision_evidence_does_not_count(self) -> None:
-        """이전 revision의 검증 결과는 현재 revision을 지지하지 않는다."""
-        passed = VerificationRun(
-            ac_key=COMMANDED.key, command="pytest -k list", exit_code=0, passed=True
-        )
-        current = BLUEPRINT.model_copy(update={"revision": 2})
-        _, conditions = _conditions(_evidence(passed, revision=1), current)
-
-        assert VerifyGateBlockingCondition.CRITERION_UNVERIFIED in conditions

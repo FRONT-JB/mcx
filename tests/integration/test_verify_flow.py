@@ -27,7 +27,11 @@ from mission_control.adapters.verification.local_mechanical_runner import (
     LocalMechanicalRunner,
 )
 from mission_control.application.execute_service import ExecuteService
-from mission_control.application.ports import ExecutionOutcome, ExecutionRequest
+from mission_control.application.ports import (
+    ExecutionOutcome,
+    ExecutionRequest,
+    SemanticEvaluationRequest,
+)
 from mission_control.application.verify_service import (
     ExecuteNotClearedError,
     VerifyService,
@@ -51,6 +55,7 @@ from mission_control.domain.brief.closure import (
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.execute.state import CapabilityEnvelope
 from mission_control.domain.verify.gate import VerifyGateBlockingCondition
+from mission_control.domain.verify.verdict import CriterionVerdict, SemanticPolicy
 
 BRIEF_POLICY = ClarityPolicy.greenfield_v1()
 QA_POLICY = QaPolicy.blueprint_v1()
@@ -67,6 +72,20 @@ class ScriptedRuntime:
 
     async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:
         return ExecutionOutcome(succeeded=True, result_summary="구현 완료라고 주장")
+
+
+class ApprovingEvaluator:
+    """모든 AC를 확신 있게 만족으로 판정하는 결정적 평가자."""
+
+    async def assess(self, request: SemanticEvaluationRequest) -> CriterionVerdict:
+        return CriterionVerdict(
+            ac_key=request.criterion.key,
+            satisfied=True,
+            score=0.9,
+            uncertainty=0.1,
+            reward_hacking_risk=0.0,
+            reasoning="계약이 증거로 입증된다",
+        )
 
 
 def _cleared_brief() -> BriefState:
@@ -137,12 +156,13 @@ def _verify_service(root: Path) -> VerifyService:
         repository=FileVerifyRepository(root=root),
         runner=LocalMechanicalRunner(),
         outputs=FileVerificationOutputStore(root=root / "outputs"),
+        evaluator=ApprovingEvaluator(),
+        policy=SemanticPolicy.verify_v1(),
     )
 
 
-async def test_real_commands_produce_evidence_and_semantic_remains(
-    tmp_path: Path,
-) -> None:
+async def test_both_layers_reach_mission_complete(tmp_path: Path) -> None:
+    """실제 명령 실행 → 증거 → semantic 판정 → 첫 MISSION COMPLETE."""
     store, workspace = tmp_path / "store", tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "report.md").write_text("done", encoding="utf-8")
@@ -159,11 +179,18 @@ async def test_real_commands_produce_evidence_and_semantic_remains(
     assert echo_run.output_ref is not None
     assert "OK" in Path(echo_run.output_ref).read_text(encoding="utf-8")
 
-    decision = await _verify_service(store).decide_gate(mission_id="m-1")
-    assert decision.outcome == "HOLD"
-    assert tuple(blocker.condition for blocker in decision.gate_blockers) == (
+    # mechanical만으로는 CLEAR가 아니다 — verdict 부재가 AC마다 드러난다.
+    held = await _verify_service(store).decide_gate(mission_id="m-1")
+    assert held.outcome == "HOLD"
+    assert tuple(blocker.condition for blocker in held.gate_blockers) == (
+        VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING,
         VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING,
     )
+
+    await _verify_service(store).assess_semantics(mission_id="m-1")
+    decision = await _verify_service(store).decide_gate(mission_id="m-1")
+    assert decision.outcome == "CLEAR"
+    assert decision.mission_complete is True
 
 
 async def test_a_worker_claim_fails_against_the_real_command(tmp_path: Path) -> None:
@@ -192,17 +219,16 @@ async def test_verification_needs_the_execution_to_be_complete(tmp_path: Path) -
         await _verify_service(store).run_mechanical(mission_id="m-1")
 
 
-async def test_evidence_survives_a_fresh_process(tmp_path: Path) -> None:
+async def test_evidence_and_verdicts_survive_a_fresh_process(tmp_path: Path) -> None:
     store, workspace = tmp_path / "store", tmp_path / "workspace"
     workspace.mkdir()
     (workspace / "report.md").write_text("done", encoding="utf-8")
     await _store_approved_pipeline(store, (ECHOING, REPORTING))
     await _execute_all(store, workspace, count=2)
     await _verify_service(store).run_mechanical(mission_id="m-1")
+    await _verify_service(store).assess_semantics(mission_id="m-1")
 
     second_process = _verify_service(store)
     decision = await second_process.decide_gate(mission_id="m-1")
 
-    assert tuple(blocker.condition for blocker in decision.gate_blockers) == (
-        VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING,
-    )
+    assert decision.mission_complete is True

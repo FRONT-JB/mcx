@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
 from mission_control.domain.errors import MissionControlError
+from mission_control.domain.verify.verdict import SemanticAssessment
 
 #: 판정용 발췌 길이. upstream `_VERIFY_OUTPUT_TAIL_CHARS`와 같다
 #: (VERIFY_UPSTREAM_FINDINGS §2).
@@ -25,6 +26,22 @@ OUTPUT_TAIL_CHARS = 2_000
 
 #: verify_command 하나의 실행 제한. upstream 기본값 채택 (ADR-0028 §3).
 VERIFY_COMMAND_TIMEOUT_SECONDS = 600
+
+
+class VerdictWithoutEvidenceError(MissionControlError):
+    """같은 revision의 mechanical 증거 없이 semantic 판정을 기록하려 했다.
+
+    verdict는 검증된 증거에 바인딩된다 (ADR-0030 §4). 증거 없는 판정을
+    받아들이면 semantic이 mechanical을 대체하는 문이 열린다.
+    """
+
+    def __init__(self, *, mission_id: str, assessed_revision: int) -> None:
+        super().__init__(
+            f"mission {mission_id} has no mechanical evidence for blueprint "
+            f"revision {assessed_revision}; semantic verdicts need that evidence first"
+        )
+        self.mission_id = mission_id
+        self.assessed_revision = assessed_revision
 
 
 class UnverifiableCriterionError(MissionControlError):
@@ -185,8 +202,8 @@ class VerificationEvidence(BaseModel):
 class VerifyState(BaseModel):
     """하나의 Mission에 대한 Verify durable 상태.
 
-    v1은 최신 evidence 하나만 유지한다. 재검증 이력의 보존은 실패 packet을
-    설계하는 Recover와 함께 결정한다 (progress README 알려진 한계).
+    v1은 최신 evidence·verdicts 하나씩만 유지한다. 재검증 이력의 보존은 실패
+    packet을 설계하는 Recover와 함께 결정한다 (progress README 알려진 한계).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -195,16 +212,40 @@ class VerifyState(BaseModel):
     #: 쓰기 순서. 저장소는 이 값으로 덮어쓰기를 판정한다 (ADR-0014와 같은 축).
     sequence: int = 1
     evidence: VerificationEvidence | None = None
+    verdicts: SemanticAssessment | None = None
 
     @classmethod
     def start(cls, *, mission_id: str) -> VerifyState:
         return cls(mission_id=mission_id)
 
     def record(self, evidence: VerificationEvidence) -> VerifyState:
-        """새 검증 묶음으로 교체한다. 이전 evidence는 유지하지 않는다."""
+        """새 검증 묶음으로 교체한다. 이전 evidence는 유지하지 않는다.
+
+        기존 semantic verdicts도 함께 무효가 된다 — verdict는 판정 당시의
+        증거 위에서 내려진 것이고, 재검증은 그 증거를 교체하기 때문이다
+        (ADR-0030 §4의 바인딩).
+        """
         if evidence.mission_id != self.mission_id:
             raise ValueError(
                 f"evidence for mission {evidence.mission_id} cannot be recorded "
                 f"on mission {self.mission_id}"
             )
-        return self.model_copy(update={"sequence": self.sequence + 1, "evidence": evidence})
+        return self.model_copy(
+            update={"sequence": self.sequence + 1, "evidence": evidence, "verdicts": None}
+        )
+
+    def record_verdicts(self, assessment: SemanticAssessment) -> VerifyState:
+        """semantic 판정 묶음을 기록한다.
+
+        판정은 mechanical 증거 위에서만 내려진다 — 같은 blueprint revision의
+        evidence가 없으면 verdict가 딛고 설 근거가 없다 (ADR-0030 §3~§4).
+        """
+        if (
+            self.evidence is None
+            or self.evidence.blueprint_revision != assessment.blueprint_revision
+        ):
+            raise VerdictWithoutEvidenceError(
+                mission_id=self.mission_id,
+                assessed_revision=assessment.blueprint_revision,
+            )
+        return self.model_copy(update={"sequence": self.sequence + 1, "verdicts": assessment})

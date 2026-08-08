@@ -31,7 +31,12 @@ from mission_control.domain.brief.requirement import (
 )
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.execute.state import ExecuteState
-from mission_control.domain.verify.evidence import CommandExecution, VerifyState
+from mission_control.domain.verify.evidence import (
+    CommandExecution,
+    VerificationRun,
+    VerifyState,
+)
+from mission_control.domain.verify.verdict import CriterionVerdict
 
 
 class BriefRepository(Protocol):
@@ -209,6 +214,38 @@ class VerificationOutputStore(Protocol):
 
     async def preserve(self, *, mission_id: str, sequence: int, ac_key: str, content: str) -> str:
         """출력을 보존하고 참조 문자열을 반환한다."""
+        ...
+
+
+class SemanticEvaluationRequest(BaseModel):
+    """AC 하나의 semantic 판정을 위한 bounded 입력 (ADR-0030 §3).
+
+    upstream 프롬프트 계약과 같은 축이다 — AC(성공 계약 포함), 방향 필드,
+    그리고 **mechanical 증거**. worker의 ``result_summary``는 여기에도 없다
+    (ADR-0028 §1과 같은 이유) — 평가자가 근거로 삼을 수 있는 것은 계약과
+    직접 실행된 증거뿐이다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    goal: str
+    constraints: tuple[str, ...]
+    non_goals: tuple[str, ...]
+    criterion: AcceptanceCriterion
+    #: 이 AC의 mechanical 검증 기록. 성공 계약이 없는 AC는 ``None``.
+    mechanical_run: VerificationRun | None = None
+
+
+class SemanticEvaluator(Protocol):
+    """AC 충족을 판정하는 평가자의 계약 (ADR-0030 §3).
+
+    반환하는 verdict의 ``ac_key``는 요청된 criterion의 key와 일치해야 한다 —
+    use case가 불일치를 거부한다. Phase 5 전까지 구현은 결정적 test double
+    이다.
+    """
+
+    async def assess(self, request: SemanticEvaluationRequest) -> CriterionVerdict:
+        """요청된 AC 하나를 판정한다."""
         ...
 
 

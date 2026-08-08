@@ -26,6 +26,8 @@ from mission_control.application.ports import (
     BriefRepository,
     ExecuteRepository,
     MechanicalRunner,
+    SemanticEvaluationRequest,
+    SemanticEvaluator,
     VerificationOutputStore,
     VerifyRepository,
 )
@@ -43,6 +45,23 @@ from mission_control.domain.verify.evidence import (
     judge_run,
 )
 from mission_control.domain.verify.gate import VerifyGateDecision, evaluate_verify_gate
+from mission_control.domain.verify.verdict import (
+    CriterionVerdict,
+    SemanticAssessment,
+    SemanticPolicy,
+)
+
+
+class VerdictMismatchError(MissionControlError):
+    """평가자가 요청된 AC가 아닌 다른 key의 verdict를 돌려주었다.
+
+    잘못 귀속된 판정을 받아들이면 한 AC의 판정이 다른 AC의 완료 근거가 된다.
+    """
+
+    def __init__(self, *, expected: str, received: str) -> None:
+        super().__init__(f"evaluator returned a verdict for {received} while judging {expected}")
+        self.expected = expected
+        self.received = received
 
 
 class ExecuteNotClearedError(MissionControlError):
@@ -69,6 +88,8 @@ class VerifyService:
     repository: VerifyRepository
     runner: MechanicalRunner
     outputs: VerificationOutputStore
+    evaluator: SemanticEvaluator
+    policy: SemanticPolicy
 
     async def run_mechanical(self, *, mission_id: str) -> VerifyState:
         """성공 계약이 있는 모든 AC를 검증하고 기록된 상태를 반환한다.
@@ -124,15 +145,58 @@ class VerifyService:
         await self.repository.save(recorded)
         return recorded
 
+    async def assess_semantics(self, *, mission_id: str) -> VerifyState:
+        """모든 AC의 semantic 판정을 받아 기록된 상태를 반환한다.
+
+        판정은 mechanical 증거 위에서만 내려진다 — 현재 revision의 evidence가
+        없으면 도메인이 기록을 거부한다 (``VerdictWithoutEvidenceError``).
+        평가자의 verdict는 요청한 AC에 귀속되어야 하며 불일치는 거부한다.
+        """
+        blueprint, _ = await self._cleared_pipeline(mission_id)
+        state = await self._state(mission_id)
+
+        verdicts: list[CriterionVerdict] = []
+        for criterion in blueprint.acceptance_criteria:
+            verdict = await self.evaluator.assess(
+                SemanticEvaluationRequest(
+                    goal=blueprint.goal,
+                    constraints=blueprint.constraints,
+                    non_goals=blueprint.non_goals,
+                    criterion=criterion,
+                    mechanical_run=(
+                        state.evidence.run_for(criterion.key)
+                        if state.evidence is not None
+                        else None
+                    ),
+                )
+            )
+            if verdict.ac_key != criterion.key:
+                raise VerdictMismatchError(expected=criterion.key, received=verdict.ac_key)
+            verdicts.append(verdict)
+
+        assessment = SemanticAssessment(
+            blueprint_revision=blueprint.revision,
+            policy_version=self.policy.version,
+            verdicts=tuple(verdicts),
+        )
+        recorded = state.record_verdicts(assessment)
+        await self.repository.save(recorded)
+        return recorded
+
     async def decide_gate(self, *, mission_id: str) -> VerifyGateDecision:
-        """저장된 증거로 MISSION COMPLETE 여부를 판정한다.
+        """저장된 두 층의 증거로 MISSION COMPLETE 여부를 판정한다.
 
         진입 조건을 먼저 재확인한다 — Brief·Blueprint·실행 상태가 그 사이
         바뀌었다면 증거의 판정 이전에 진입 자체가 무효다.
         """
         blueprint, _ = await self._cleared_pipeline(mission_id)
         state = await self._state(mission_id)
-        return evaluate_verify_gate(evidence=state.evidence, blueprint=blueprint)
+        return evaluate_verify_gate(
+            evidence=state.evidence,
+            verdicts=state.verdicts,
+            blueprint=blueprint,
+            policy=self.policy,
+        )
 
     async def _state(self, mission_id: str) -> VerifyState:
         stored = await self.repository.load(mission_id)
