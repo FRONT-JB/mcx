@@ -7,8 +7,8 @@
 | Project phase | Phase 4 — Verify·Recover vertical slice COMPLETE; Phase 5 준비 |
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)) |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner) |
-| Automated tests | 483 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex) |
+| Automated tests | 496 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -212,9 +212,14 @@ Verify Gate 미검사 조건)을 잡았다.
 
 목표: 동일 Core contract를 Codex와 OpenCode에서 실행한다.
 
-- [ ] Codex adapter conformance
+- [-] Codex adapter conformance — **ExecutionRuntime adapter 완료**
+  (ADR-0033, commit 33fa5ba): 명령 구성·프롬프트 렌더링·thread id·침묵
+  timeout·실패 정규화가 stub CLI conformance 13건으로 고정, Core 무변경
+  통합 증명 포함. 잔여: text backend adapter(위임 port들), 실물 CLI 스모크
+  (실제 codex 실행 — 사용자 승인 필요)
 - [ ] OpenCode adapter conformance
-- [ ] session/resume/cancel
+- [ ] session/resume/cancel (ADR-0033 §6 보류 — 도입 시 upstream 정합
+  검증과 대조)
 - [ ] local model vs provided agent capability mapping
 
 ### Phase 6 — `mcx` CLI
@@ -353,11 +358,18 @@ ExecutionRuntime**(`codex exec` 단발, 프롬프트 stdin, sandbox 권한 —
 bypass 경로 없음, 침묵 900초 timeout, adapter 자체 재시도 없음), 스트리밍·
 resume·cancel·도구 단위 차단은 보류 등록.
 
-다음 검증 가능한 목표 한 개: **Codex ExecutionRuntime adapter를 구현한다** —
-명령 구성(CLI 실물 없이 검증 가능해야 함), 프롬프트 렌더링(성공 계약·
-previous_failure 블록은 영어 원문), JSONL thread id → native_session_id,
-침묵 timeout과 process group 정리, 실패의 outcome 정규화까지. conformance
-test는 [Runtime 문서](../03_RUNTIME.md) §15의 첫 적용이다.
+Codex ExecutionRuntime adapter는 2026-08-08 구현되었다 (commit 33fa5ba,
+496 tests) — 명령 구성·프롬프트·thread id·침묵 timeout·실패 정규화가 stub
+CLI conformance로 고정되었고, Core 변경 없이 fake 자리에 끼워짐이 통합
+테스트로 증명되었다. **실물 codex CLI 스모크(실제 AI 실행·비용 발생)는
+사용자 승인 후 수행한다.**
+
+다음 검증 가능한 목표 한 개: **Codex text backend adapter의 계약을 고정하고
+구현한다** — 위임 port들(질문 생성기·clarity 평가자·Blueprint 생성기·QA
+채점자·semantic 평가자)이 실제 값을 갖는 지점. 선행은 upstream
+`--output-schema` 구조화 출력 계약 조사
+([RUNTIME_UPSTREAM_FINDINGS §7](../research/RUNTIME_UPSTREAM_FINDINGS.md)
+미조사)와 완성 adapter의 transient 재시도 계약(ADR-0033 §4가 예고)이다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
