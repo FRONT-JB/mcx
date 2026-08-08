@@ -42,6 +42,13 @@ exit_conditions, metadata를 가진다. 조사에서 두 가지가 드러났다.
 Ouroboros의 evaluate/reflect 진화 루프가 쓰는 구조이며, Mission Control에서
 대응 필요가 생기는 시점은 Verify(Phase 4)다. 나머지는 아직 대응 개념이 없다.
 
+> **2026-08-08 시한 재평가 (Phase 4 종료 검토)**: Phase 4 Verify는
+> `exit_conditions` 없이 완성되었다 — 핵심 조건("필수 AC가 모두 Verify에서
+> 만족")은 Gate의 AC 전수 요구가 이미 덮는다. 남는 조건들(project test/build
+> 통과, 사용자 acceptance)은 각각 repo 수준 명령 층(ADR-0028 §2 보류)과
+> 사용자 surface(Phase 6·7)에 종속되므로, 유예 시한을 그 도입 시점으로
+> 옮긴다 ([ADR-0029](./0029-verify-deliberate-divergences.md) 보류 등록).
+
 유예는 축의 변경이 아니라 필드 추가로 해소되므로 되돌리기 비싼 항목이 아니다
 (`AGENTS.md` "되돌리기 비싼 결정" 목록 참조).
 

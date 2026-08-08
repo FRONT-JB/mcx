@@ -84,6 +84,14 @@ Recover에 진입하려면 다음이 필요하다.
 저장하고 전이를 commit한다. directive나 failure evidence가 없으면 source Stage의
 `HOLD`를 유지하며 repair를 dispatch하지 않는다.
 
+**v1 확정 (2026-08-08)**: 위 초안의 "저장된 RecoveryDirective" 요구는 채택하지
+않았다 — 실패 packet은 이미 durable한 기록(attempt·VerificationRun·verdict)에서
+**결정적으로 파생**되며, 파생본을 따로 저장하면 두 진실이 생긴다
+([ADR-0031](./adr/0031-recover-v1-failure-and-retry-contract.md) §1). 진입
+근거는 Execute/Verify Gate의 `HOLD` 재평가이고, 근거 없는 교정 dispatch는
+거부된다(`NothingToRecoverError`·`NoRetryableFailureError`). directive의 저장이
+필요해지는 시점(장기 실행 job의 승인 기록 — Phase 7 MCP)에 재평가한다.
+
 ---
 
 ## 4. Failure taxonomy

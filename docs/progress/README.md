@@ -4,11 +4,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 3 — Execute vertical slice COMPLETE; Phase 4 준비 |
+| Project phase | Phase 4 — Verify·Recover vertical slice COMPLETE; Phase 5 준비 |
 | Mission status | ACTIVE |
-| Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 COMPLETE (2026-08-08, [종료 검토](./0002_BLUEPRINT_VERTICAL_SLICE.md)); Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)) |
+| Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner) |
-| Automated tests | 482 passed (unit + integration) |
+| Automated tests | 483 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -59,6 +59,7 @@
 - [0001 — Brief Vertical Slice](./0001_BRIEF_VERTICAL_SLICE.md)
 - [0002 — Blueprint Vertical Slice](./0002_BLUEPRINT_VERTICAL_SLICE.md)
 - [0003 — Execute Vertical Slice](./0003_EXECUTE_VERTICAL_SLICE.md)
+- [0004 — Verify·Recover Vertical Slice](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)
 
 ## Phase roadmap
 
@@ -177,9 +178,15 @@ schema 시점, 고아 attempt, 재시도 정책)을 잡았다. `[-]` 항목은 v
   (ADR-0023 §3, `test_state.py` 누락 거부). event/report/bundle schema는
   미정 ([Open Questions §9](../research/OPEN_QUESTIONS.md))
 
-### Phase 4 — Verify and Recover
+### Phase 4 — Verify and Recover — COMPLETE
 
 목표: evidence-driven completion과 bounded correction을 검증한다.
+
+2026-08-08 완료. Gate·evidence·종료 검토는
+[progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)에 있다. 검토가 테스트
+공백 1건(revision 예산 리셋, 0186450), 문서 충돌 1건(directive 저장 vs 파생),
+시한 도래 유예 1건(exit_conditions), 미표시 한계 2건(canonical Stage 저장,
+Verify Gate 미검사 조건)을 잡았다.
 
 - [x] mechanical verification — 승인된 `verify_command`의 직접 실행과 증거
   보존, 진입은 Execute Gate `CLEAR` 재확인 (ADR-0026·0028, commit d663c7b,
@@ -332,10 +339,19 @@ packet이 기록에서 결정적으로 파생되고, 교정 재시도가 실패 
 **다섯 Stage 전부가 파일 저장소를 거쳐 이어진다** — 실패 → 교정 → 재검증 →
 `MISSION COMPLETE`의 전체 순환이 실제 명령으로 검증되었다.
 
-다음 검증 가능한 목표 한 개: **Phase 4 종료 검토를 수행하고 progress record
-0004를 남긴다.** 여섯 질문에 더해 이번 특별 대조 항목: Verify·Recover Guide의
-Test Matrix 전 행과 Gate 조건들(08 §9·§12, 09 §5·§11~§12)을 assertion과
-대조하고, 검사되지 않는 조건을 "강제되지 않는 것" 표로 남긴다.
+Phase 4는 2026-08-08 완료되었다
+([progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) — 종료 검토와
+Gate·Test Matrix 전수 대조 포함). Brief → Blueprint → Execute → Verify →
+Recover 다섯 Stage 전부가 파일 저장소를 거쳐 이어지고, 실패 → 교정 → 재검증 →
+`MISSION COMPLETE`의 전체 순환이 실제 명령으로 검증되었다.
+
+다음 검증 가능한 목표 한 개: **Phase 5 첫 결정을 닫는다 — Runtime protocol과
+첫 concrete adapter.** 선행은 upstream adapter 계약 조사
+([Open Questions §7](../research/OPEN_QUESTIONS.md): protocol method·streaming
+shape, capability descriptor, timeout/cancel/resume)이며,
+[Runtime 문서](../03_RUNTIME.md)를 대조해 첫 adapter(Codex 또는 OpenCode)의
+순서와 계약을 ADR로 확정한다. Execute Guide §17의 보류(capability 차단,
+timeout, execution_id 재평가)와 Phase 5 이관 항목들이 이 결정에 걸려 있다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -408,6 +424,40 @@ Test Matrix 전 행과 Gate 조건들(08 §9·§12, 09 §5·§11~§12)을 assert
 | 대상 AC와 **변경 artifact**를 추적할 수 있다 | AC는 `ac_key`로 추적된다. 변경 artifact는 **개념 자체가 없다** — §9 telemetry schema 결정 대기 |
 | 필수 Runtime events와 명령 결과가 보존되어 있다 | **검사하지 않는다.** event·command result 층이 없다 — §9 결정 대기. 지금의 `CLEAR`는 이 보존을 보장하지 않는다 |
 | Verify가 독립적으로 판정할 충분한 입력이 있다 | **검사하지 않는다.** "충분"의 정의가 Verify 계약(Phase 4) 소유다. 현재는 `EXECUTED_UNVERIFIED` 존재까지만 |
+
+### Verify Gate CLEAR 조건 중 강제되지 않는 것
+
+[Verify Guide](../08_VERIFY.md) §9는 `CLEAR — MISSION COMPLETE` 조건 9개를
+규정한다. `evaluate_verify_gate`가 검사하는 것은 mechanical 통과와 AC별
+verdict(충족·score·불확신·게이밍)다. 나머지는 **계약 미달**이며 여기 명시한다
+([progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) 종료 검토에서 추가).
+
+| 조건 | 상태 |
+|---|---|
+| 적용 가능한 검사 생략의 정책 근거 | repo 수준 검사 층 자체가 보류 (ADR-0028 §2) — 그 도입과 함께 |
+| Exit Conditions 충족 | 필드 유예 재평가 완료 — 핵심은 AC 전수 요구가 덮고, 잔여는 도입 시점 이동 (ADR-0017 note, ADR-0029) |
+| Constraint 위반·Non-goal 구현 없음 | **결정적 검사 없음** — semantic 평가자의 입력에는 있으나 판정 필드가 없다. scope drift 탐지(Phase 5)와 함께 |
+| workspace revision 추적 | **검사 없음** — snapshot/revision 방식이 미결정 ([Open Questions §5](../research/OPEN_QUESTIONS.md)) |
+| unresolved risk의 명시적 근거 | **검사 없음** — risk 표현은 reward_hacking_risk뿐 |
+
+### Recover의 알려진 한계
+
+- **spec-gap 분류가 없다.** 제품 결정 누락·AC 모순의 Brief/Blueprint routing은
+  사용자가 기존 경로(Brief 재개, Blueprint revise)로 직접 수행한다 — 자동
+  분류·route는 미도입 (09 §14 해당 행 대상 없음).
+- **progress 기록이 없다.** 실패 수 감소 같은 신호를 기록하지 않으며, 유일한
+  결정적 신호는 동일 오류 해시의 제거다 (ADR-0031).
+- **`previous_failure`의 프롬프트 렌더링은 Phase 5 소관.** v1은 구조화 필드의
+  전달까지 — fake runtime이 그것을 무시해도 탐지되지 않는다 (envelope와 같은
+  강제 수준).
+
+### 전 Stage 공통의 알려진 한계
+
+- **canonical Stage 저장이 없다.** Entry Contract들의 "현재 Stage가 X다"
+  조건이 전 Stage에서 미강제이며, 실질 보증은 각 진입의 Gate 재계산이다.
+  Phase 1이 "Phase 2에서 다룬다"고 미룬 뒤 재론되지 않았음을 Phase 4 종료
+  검토가 발견했다. 처분: Lifecycle 소유 결정으로 **Phase 6(CLI) 전**에
+  확정한다 ([progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) 질문 4).
 
 ### Execute의 알려진 한계
 
@@ -501,7 +551,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 1 — Brief | 소급 충족 — 완료 당일 감사(ADR-0015·0016), 관측 대조에 따른 closure 소급(ADR-0020), 등록된 이탈은 ADR-0011과 ADR-0020 §5 | [progress 0001](./0001_BRIEF_VERTICAL_SLICE.md) |
 | Phase 2 — Blueprint | **충족 (2026-08-08)** — 완료 선언 전 절차로 첫 수행. 계약 미달 1건 발견·수정(중복 AC, b00e0c2), 표시 누락 1건 추가(크기 제한), 미확인 이탈 1건 등록(previous_findings → ADR-0022) | [progress 0002](./0002_BLUEPRINT_VERTICAL_SLICE.md) |
 | Phase 3 — Execute | **충족 (2026-08-08)** — Test Matrix 누락 2행 테스트 추가(2f951e2), ADR-0024 과장 정정, §10 미검사 조건 표 추가, telemetry schema 시점 정정(§9 → Phase 4 전), 재시도 정책 미확인 등록(ADR-0025) | [progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md) |
-| Phase 4 — Verify/Recover | 대기 | — |
+| Phase 4 — Verify/Recover | **충족 (2026-08-08)** — 예산 리셋 테스트 추가(0186450), directive 저장 vs 파생 충돌 해소, exit_conditions 유예 재평가, canonical Stage 저장 부재 등록, Verify Gate 미검사 조건 표 신설. Gate·Matrix 전수 대조 포함 | [progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) |
 | Phase 5 — Runtime adapters | 대기 | — |
 | Phase 6 — `mcx` CLI | 대기 | — |
 | Phase 7 — MCP control surface | 대기 | — |

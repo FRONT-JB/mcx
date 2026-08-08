@@ -34,6 +34,7 @@
 | coverage 판정 (coverage_threshold 0.7) | Stage 1 축 | v1 미도입 | [ADR-0028](./0028-verify-v1-mechanical-contract.md) §5 |
 | consensus (Stage 3: trigger 6조건, ADVOCATE/DEVIL/JUDGE 숙의, 배심 독립성 4-label) | 존재 — uncertainty·drift escalation의 해소 경로 | v1 미도입 — escalation은 `HOLD`가 전부. 도입 시 임계(0.3)·"votes beat purity"·독립성 라벨과 대조 | [ADR-0030](./0030-verify-semantic-verdict-contract.md) §5, [VERIFY_UPSTREAM_FINDINGS §7](../research/VERIFY_UPSTREAM_FINDINGS.md) |
 | `not_observed` 류 관찰 status와 observation adapter | UI/API 관찰 경로 | v1 미도입 — verdict는 bool + uncertainty (upstream 정렬). 관찰 status는 observation adapter(Guide §13 Slice 5) 도입 시 재평가 | [ADR-0030](./0030-verify-semantic-verdict-contract.md) §1 |
+| `exit_conditions` (Mission 전체 종료 조건) | seed 필드 + 진화 루프 소비 | ADR-0017 유예의 시한(Phase 4)이 도래해 재평가 — 핵심 조건은 Gate의 AC 전수 요구가 덮고, 잔여(project 검사, 사용자 acceptance)는 repo 명령 층·Phase 6·7 surface 도입 시 | [ADR-0017](./0017-blueprint-schema-baseline.md) 2026-08-08 재평가 |
 
 ### 미확인 — 대조하지 못했다. "차이 없음"이 아니다
 
