@@ -44,10 +44,10 @@
 | `04_MCP.md` | Draft | tool schema와 transport 결정 전 Core boundary 유지 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
 | `06_BLUEPRINT.md` | Draft | schema·QA·revision policy는 ADR-0017~0019·0021로 확정, Phase 2 종료 검토에서 구현 evidence 대조 |
-| `07_EXECUTE.md` | Draft | work unit/dependency/runtime contract 결정 |
+| `07_EXECUTE.md` | Draft | 첫 slice 계약 확정 (ADR-0023~0025) — 구현으로 검증. runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 23 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023은 Phase 3 선행 결정) |
+| `adr/` | 25 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -243,12 +243,18 @@ Execute 시작 전 결정은 2026-08-08 닫혔다
 [RUN_UPSTREAM_FINDINGS](../research/RUN_UPSTREAM_FINDINGS.md)) — 작업 생성은
 단일 use case 경로, provenance 네 항목은 선언 필드.
 
-다음 검증 가능한 목표 한 개: **Run Stage 본 조사를 수행하고 Execute 첫
-vertical slice를 [Execute Guide](../07_EXECUTE.md)에 고정한다.** work
-derivation(AC tree), dependency readiness, capability scope를 upstream과
-대조하고(Open Questions §4 잔여 항목), Phase 1·2와 같은 방식으로 첫 slice의
-계약과 Test Matrix를 확정한 뒤 구현을 시작한다. Execute divergence 등록부
-ADR 신설도 이때다 (ADR-0023 §3의 이관 예정 항목 포함).
+Run 본 조사와 첫 slice 계약은 2026-08-08 고정되었다 —
+[RUN_UPSTREAM_FINDINGS §7~§10](../research/RUN_UPSTREAM_FINDINGS.md),
+[ADR-0024](../adr/0024-execute-v1-execution-model.md) (AC가 곧 실행 단위,
+순차 + 실패 중단, attempt 상태 셋, provenance 선언 필드),
+[ADR-0025](../adr/0025-execute-deliberate-divergences.md) (Execute divergence
+등록부).
+
+다음 검증 가능한 목표 한 개: **Execute 첫 vertical slice를 구현한다.**
+ExecuteState(attempt 이력·상태 전이·provenance)와 Execute Gate, ExecuteService
+(Blueprint Gate `CLEAR` 요구 → dispatch 전 지속 → 결정적 fake runtime →
+결과 기록), 파일 저장소. 계약은 [Execute Guide](../07_EXECUTE.md) §6·§7·§13과
+ADR-0024의 Verification 목록이다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

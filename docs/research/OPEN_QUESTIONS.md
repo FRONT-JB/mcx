@@ -93,12 +93,25 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
 ## 4. Execute decisions
 
-- [ ] work item의 canonical 이름과 schema를 결정한다.
-- [ ] atomic-first size 판단과 분해 한도를 정의한다.
-- [ ] dependency graph와 ready calculation을 정의한다.
+- [x] work item의 canonical 이름과 schema를 결정한다. → 별도 엔티티 없음.
+      AC key가 실행 단위이고 기록은 attempt
+      ([ADR-0024](../adr/0024-execute-v1-execution-model.md) §1)
+- [-] atomic-first size 판단과 분해 한도를 정의한다. → v1 분해 미도입.
+      도입 시 upstream 한도(자식 2~5, 깊이 2, repair 1)와 대조
+      ([ADR-0024](../adr/0024-execute-v1-execution-model.md) §2,
+      [ADR-0025](../adr/0025-execute-deliberate-divergences.md) 보류)
+- [-] dependency graph와 ready calculation을 정의한다. → v1 미도입 — 선언
+      순서 순차 + 실패 중단. upstream 모델(선언 ∪ LLM, 토폴로지 level)은
+      [RUN_UPSTREAM_FINDINGS §8](./RUN_UPSTREAM_FINDINGS.md)에 기록
+      ([ADR-0024](../adr/0024-execute-v1-execution-model.md) §3)
 - [ ] 첫 concrete Runtime Adapter 순서를 결정한다.
-- [ ] workspace/file scope 표현을 결정한다.
-- [ ] required idempotency의 exact key, scope, retention, duplicate result semantics를 정의한다.
+- [-] workspace/file scope 표현을 결정한다. → v1 envelope는 workspace 경로 +
+      도구 목록 ([ADR-0024](../adr/0024-execute-v1-execution-model.md) §6).
+      exact 표현과 차단은 Phase 5
+- [-] required idempotency의 exact key, scope, retention, duplicate result
+      semantics를 정의한다. → 열린 attempt 1개 규칙만 확정
+      ([ADR-0024](../adr/0024-execute-v1-execution-model.md) §7). exact key
+      schema는 여전히 미정
 - [ ] parallel execution 도입 Gate를 정의한다.
 - [x] **Execute 진입 경로가 하나임을 무엇이 보장하는지, Telemetry가 "무엇이
       이 작업을 만들었는가"를 기록하는지 결정한다.**

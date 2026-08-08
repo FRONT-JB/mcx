@@ -199,7 +199,13 @@ AC-01
 4. 분해된 작업은 원래 AC로 다시 추적되어야 한다.
 5. 분해 깊이와 개수는 bounded해야 한다.
 
-정확한 크기 판단과 분해 한도는 구현 전 ADR로 확정한다.
+**v1 확정 (2026-08-08)**: 분해를 도입하지 않고 1~2단계(그대로 실행)만 구현한다
+([ADR-0024](./adr/0024-execute-v1-execution-model.md) §2). upstream도 분해는
+기본이 아니라 preflight/bounce의 예외 경로이며 기본 처분이 ATOMIC이다
+(`upstream 관측` —
+[RUN_UPSTREAM_FINDINGS §7](./research/RUN_UPSTREAM_FINDINGS.md)). 분해 도입
+시 upstream 한도(자식 2~5, 라이브 깊이 2, repair 1)와 대조한다
+([ADR-0025](./adr/0025-execute-deliberate-divergences.md) 보류 등록).
 
 ### 6.3 Dependency ordering
 
@@ -216,6 +222,15 @@ EU-01 API contract
 의존 artifact가 존재하지 않거나 명백히 실패한 상태에서 후속 작업을 실행해서는
 안 된다.
 
+**v1 확정 (2026-08-08)**: dependency 파생을 도입하지 않는다 — 선언 순서 순차
+실행이고, 직전 attempt가 실행 실패면 후속 dispatch를 거부한다
+([ADR-0024](./adr/0024-execute-v1-execution-model.md) §3). upstream은 선언
+신호와 LLM 추론의 합집합으로 의존을 만들고 결정적 토폴로지로 ready를 계산하는데
+(`upstream 관측` —
+[RUN_UPSTREAM_FINDINGS §8](./research/RUN_UPSTREAM_FINDINGS.md)), 우리 Blueprint
+AC에는 선언 신호로 읽을 metadata가 없고 LLM 추론은 결정적 slice 밖이다.
+upstream도 신호가 없으면 의존 없음으로 진행한다.
+
 ### 6.4 v1 execution baseline
 
 첫 구현은 순차 실행을 기본값으로 삼는다.
@@ -230,7 +245,13 @@ EU-01 API contract
 
 ## 7. Provisional data contracts
 
-아래 구조는 의미를 설명하기 위한 초안이며 최종 Python API가 아니다.
+아래 구조는 의미를 설명하기 위한 초안이며 최종 Python API가 아니다. 단,
+다음은 확정됐다 — 실행 단위는 별도 엔티티가 아니라 승인된 Blueprint의 AC
+key이고, 실행 기록은 그 key에 대한 attempt이며, attempt 상태는
+`DISPATCHED` / `EXECUTED_UNVERIFIED` / `EXECUTION_FAILED` 셋으로 시작하고,
+provenance 네 항목(생성 경로·실행 주체·lineage·시도)이 선언 필드다
+([ADR-0023](./adr/0023-execute-entry-and-provenance.md) §3,
+[ADR-0024](./adr/0024-execute-v1-execution-model.md) §1·§4·§5).
 
 Execute start처럼 side effect가 있는 application command는 application-command
 boundary에서 idempotency key를 반드시 검증한다. application/Core가 기존 결과 반환,
@@ -459,6 +480,11 @@ Next action:
 | Idempotency | 동일 application command key 재전송 | 기존 결과 재사용, 중복 attempt/invocation 금지 |
 | Retry | pre-side-effect safe transport failure | 같은 attempt의 제한된 transport retry와 event 기록 |
 | Retry | side effect 발생 또는 불명확 | adapter retry 금지, outcome 반환 후 application이 새 attempt 판단 |
+| Sequence | 직전 attempt가 `EXECUTION_FAILED` (`upstream 대응물 없음` — upstream은 dependency graph로 판단, v1 최소 규칙은 [ADR-0024](./adr/0024-execute-v1-execution-model.md) §3) | 후속 AC dispatch 거부 |
+| Attempt | dispatch 전 저장 실패 (`upstream 미확인`, [ADR-0024](./adr/0024-execute-v1-execution-model.md) §4) | dispatch가 일어나지 않는다 |
+| Attempt | 결과 수신 전 프로세스 종료 후 재개 (`upstream 대응물 없음` — upstream은 stall/resume, 우리 v1은 상태 자체가 의미, [ADR-0024](./adr/0024-execute-v1-execution-model.md) §4) | `DISPATCHED`로 남은 attempt가 "결과 불명"으로 드러난다 |
+| Attempt | 열린 attempt가 있는 상태의 새 dispatch (`upstream 대응물 없음`, [ADR-0024](./adr/0024-execute-v1-execution-model.md) §7) | 거부 |
+| Telemetry | provenance 네 항목 중 누락 (`upstream 대응물 없음` — upstream은 payload 관례, [ADR-0023](./adr/0023-execute-entry-and-provenance.md) §3) | 기록 생성 거부 |
 
 ### Contract tests
 
@@ -480,14 +506,15 @@ Next action:
 ### Slice 1 — Domain-only execution plan
 
 - 승인 Seed fixture를 읽는다.
-- AC를 순차 work item으로 변환한다.
-- dependency readiness를 계산한다.
-- Runtime을 호출하지 않고 plan을 테스트한다.
+- AC key 목록이 곧 실행 순서다 — 별도 work item 변환도 dependency 계산도
+  없다 ([ADR-0024](./adr/0024-execute-v1-execution-model.md) §1·§3).
+- attempt 상태 전이와 순차·실패 중단 규칙을 Runtime 없이 테스트한다.
 
 ### Slice 2 — Deterministic fake runtime
 
-- 성공, 실패, timeout을 재현하는 test double을 만든다.
-- attempt lifecycle과 Telemetry를 검증한다.
+- 성공과 실패를 재현하는 test double을 만든다 (timeout은 발생 경로가 없어
+  Phase 5 — [ADR-0025](./adr/0025-execute-deliberate-divergences.md) 보류).
+- attempt lifecycle과 Telemetry provenance를 검증한다.
 - executed-unverified 상태를 보장한다.
 
 ### Slice 3 — First concrete adapter
@@ -553,15 +580,25 @@ Next action:
 
 Execute 구현 전에 다음을 ADR 또는 Runtime/Lifecycle 문서에서 확정한다.
 
-- work item의 canonical 명칭과 schema
-- 작업 크기 판정과 최대 분해 깊이
-- dependency graph 표현
+- ~~work item의 canonical 명칭과 schema~~ → 별도 엔티티 없음. AC key가 단위,
+  기록은 attempt ([ADR-0024](./adr/0024-execute-v1-execution-model.md) §1)
+- ~~작업 크기 판정과 최대 분해 깊이~~ → v1 분해 미도입, 도입 시 upstream
+  한도와 대조 ([ADR-0024](./adr/0024-execute-v1-execution-model.md) §2,
+  [ADR-0025](./adr/0025-execute-deliberate-divergences.md) 보류)
+- ~~dependency graph 표현~~ → v1 미도입 — 선언 순서 순차 + 실패 중단
+  ([ADR-0024](./adr/0024-execute-v1-execution-model.md) §3). 도입 시 순환
+  처리는 upstream과 달리 HOLD
+  ([ADR-0025](./adr/0025-execute-deliberate-divergences.md) Divergence)
 - 첫 concrete Runtime Adapter의 순서
 - 기본 timeout과 cancellation grace period
-- read/write/tool capability 표현
+- read/write/tool capability 표현 (v1 envelope는 workspace + 도구 목록 —
+  [ADR-0024](./adr/0024-execute-v1-execution-model.md) §6. exact 표현은 Phase 5)
 - 파일 scope 위반 감지 방식
 - Runtime handle 저장과 resume semantics
-- idempotency key의 exact schema, namespace, store/retention과 Runtime 전달 token mapping
+- idempotency key의 exact schema, namespace, store/retention과 Runtime 전달
+  token mapping (열린 attempt 1개 규칙은
+  [ADR-0024](./adr/0024-execute-v1-execution-model.md) §7 — key schema 결정을
+  대체하지 않는다)
 - 병렬 실행을 도입할 Gate
 - 실행 workspace 격리 방식
 - command output 크기와 계층별 exact redaction field policy

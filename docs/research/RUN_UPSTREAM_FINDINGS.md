@@ -1,11 +1,10 @@
-# Run Upstream Findings — 진입 경로와 Telemetry provenance
+# Run Upstream Findings — 진입 경로, provenance, work 파생
 
 > Checked: 2026-08-08. Baseline: `Q00/ouroboros@9486c78` (v0.50.8), 로컬 clone
 > (`~/.claude/plugins/marketplaces/ouroboros`).<br>
-> Scope: [Open Questions §4](./OPEN_QUESTIONS.md)의 굵은 항목 — Execute 진입
-> 경로 단일성과 Telemetry provenance — 에 한정한다. **Run Stage 전체 조사가
-> 아니다.** work derivation, dependency, capability scope 조사는 Phase 3
-> 시작 시 수행한다.
+> Scope: §1~§6은 [Open Questions §4](./OPEN_QUESTIONS.md)의 굵은 항목(진입
+> 경로·provenance), §7~§10은 같은 날 후속 조사(work 파생·dependency·capability
+> — Execute 첫 slice의 재료)다.
 > Evidence level: 별도 표기 없으면 **Verified** (소스 확인).
 
 ## 1. Stage→Runtime 바인딩 테이블 — 닫힌 enum과 3단 해석 규칙
@@ -88,14 +87,72 @@ CAS, 시작 경쟁, 최종 수용 one-winner)를 직렬화한다. "수용되는 
 호출될 때 매핑을 읽고, 세션은 매핑의 존재를 모른다. 세 계층 중 누구도 "실행이
 경로 밖에서 일어났다"를 알 수 없으며, 경고도 Telemetry도 Gate도 없다.
 
-## 6. 조사하지 않은 것
+## 7. Work 파생 — 실행 단위는 AC 자체다
+
+seed의 `acceptance_criteria` 목록이 곧 작업 목록이다. AC 하나가 실행 capsule
+하나로 dispatch되며(§3), 별도의 "task" 개념으로 변환되지 않는다. 실행 내용은
+seed에서 만든 system prompt(전략은 `task_type`으로 선택,
+`runner.py:500-507`)와 AC 문장, 그리고 도구 목록이다.
+
+**분해(decomposition)는 기본 경로가 아니라 예외 경로다.**
+
+- 트리거는 두 곳뿐이다 — `PREFLIGHT`(실행 전 평가)와 `BOUNCE`(실패 후,
+  원인 enum: TOO_BIG/BAD_SPEC/ENVIRONMENT/MODEL/UNKNOWN)
+  (`decomposition_policy.py:73-117`).
+- 처분은 ATOMIC / SPLIT / UNKNOWN / ESCALATED. 즉 upstream의 기본 가정은
+  "AC는 그대로 실행 가능"이고, 분해는 판정을 거친 예외다 — 우리
+  [Execute Guide](../07_EXECUTE.md) §6.2의 atomic-first가 이것이다.
+- 한도는 상수로 고정: 자식 2~5개, 라이브 깊이 기본 2, durable replay 한도
+  깊이 4(최대 780 노드), repair 1회
+  (`decomposition_policy.py:19-32`, `decomposition_limits.py`).
+- 분해된 자식은 parent/root node id로 원 AC에 추적된다
+  (`evidence/runtime_metadata.py`의 ownership metadata 키:
+  `parent_node_id`, `root_ac_index`, `node_id` 등).
+
+## 8. Dependency — 선언 ∪ LLM 추론, ready는 결정적 토폴로지
+
+`dependency_analyzer.py` (902줄). 두 신호를 합집합한다.
+
+- **선언(구조) 신호**: AC metadata의 `depends_on`/`blocked_by`/`requires` 류
+  키, `provides` alias, 공유 runtime 자원 claim(write 충돌 시 직렬화)
+  (`:24-56`).
+- **LLM 추론 pass**: adapter가 있으면 AC 문장들에서 의존을 추론해 선언 신호에
+  **더한다**. LLM 실패는 분석 실패가 아니다 — `structured_fallback`으로
+  선언 신호만으로 진행한다 (`:408-424`).
+
+ready 계산은 결정적이다 (`_compute_execution_levels`, `:645-687`):
+in-degree 0인 노드들이 한 level이 되는 토폴로지 워크. **순환이 발견되면 hard
+fail이 아니라 경고 후 남은 전부를 같은 level로 실행한다** (`:672-678`).
+serial-only 제약(metadata 플래그, 자원 write 충돌)은 level을 쪼개 자기만의
+stage를 만든다. AC가 하나면 분석 없이 단일 level이다 (`:397-400`).
+
+실행 계획은 `StagedExecutionPlan` — stage의 순차 나열이고 stage 안은 병렬
+가능(`ExecutionStage.is_parallel`).
+
+## 9. Capability scope — dispatch 계약의 digest 바인딩
+
+dispatch마다 넘어가는 것: prompt, **tools 목록**, system prompt, workspace
+(`cwd`), approval mode (`leaf_dispatcher.py:363-380`,
+`adapter.py RuntimeHandle`). 상한 상수: 전략 도구 256개, 허용 도구 1,024개
+등 (`runner.py:224-229`).
+
+`authority_scope`는 권한 목록 자체가 아니라 **권한을 낳는 모든 입력의 sha256
+fingerprint**다 — base_scope + dispatch_contract + execution_policy
+(`ac_execution_capsule.py:79-95`). capsule에 digest로 박혀 재개 시 불일치를
+거부하는 데 쓰인다(§3). 프롬프트에 싣지 않는 context는
+`ACContextReference`(workspace/seed/dependency/artifact/gate 5종)로 참조만
+전달하고, 예산이 고정되어 있다 — 참조 256개, context 12,000자
+(`ac_execution_capsule.py:30-33`, `:117-130`).
+
+## 10. 조사하지 않은 것
 
 - evaluate(Verify) 경로가 채점 전에 실행 lineage의 존재를 요구하는지 —
   [Open Questions §5](./OPEN_QUESTIONS.md)의 결정 재료이며 Phase 4 전에
   조사한다.
-- work derivation(AC tree), dependency readiness, capability scope — Run
-  Stage 본 조사(Phase 3 시작 시).
 - `runtime` handle 직렬화(`to_persisted_dict`)의 정확한 필드 목록.
+- decomposition의 SPLIT 판정을 실제로 누가 내리는지(LLM 프롬프트 계약)와
+  preflight 평가의 기준 — 분해를 도입할 때 조사한다.
+- `ooo run`의 재개(resume)·취소 계약 — Runtime adapter(Phase 5)에서 조사한다.
 
 ## Mission Control 함의
 

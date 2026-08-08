@@ -81,9 +81,9 @@ MCP host가 자기 도구로 작업하는 경로의 취급은 §8의 결정이�
 관례로 담고 스키마에는 actor 컬럼이 없다. 우리는 선언 필드로 강제한다 —
 관례는 emitter가 빠뜨려도 아무것도 잡지 못하고, "무엇이 승인/실행 대상인가를
 스키마로 답할 수 있어야 한다"는 [ADR-0017](./0017-blueprint-schema-baseline.md)
-§4와 같은 이유다. 이 차이는 Execute Stage divergence 등록부에 등록한다 —
-등록부 ADR은 Phase 3 시작 시(Run 본 조사와 함께) 신설하며, 그때까지 이 문단이
-등록 위치다.
+§4와 같은 이유다. 이 차이는 Execute Stage divergence 등록부
+([ADR-0025](./0025-execute-deliberate-divergences.md))에 등록되었다 —
+2026-08-08 이관 완료.
 
 ## Consequences
 
