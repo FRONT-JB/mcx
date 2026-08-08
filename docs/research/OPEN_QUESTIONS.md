@@ -160,12 +160,27 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
 ## 6. Recover decisions
 
-- [ ] failure taxonomy enum을 결정한다.
-- [ ] Recover Stage activation과 RecoveryDirective의 exact serialization을 정의한다.
-- [ ] retry budget과 progress signal을 결정한다.
-- [ ] identical failure/oscillation 탐지 방식을 결정한다.
-- [ ] rollback 지원 범위를 결정한다.
-- [ ] blocked/cancelled/unrecoverable 상태를 결정한다.
+- [x] failure taxonomy enum을 결정한다. → 원천 4종(실행 실패/mechanical
+      실패/semantic 불충족/escalation 대기) + 결정적 분류 `BLOCKED`·`STALL`·
+      미분류. upstream 6종 중 verifier 증거 계약이 필요한 것들은 보류
+      ([ADR-0031](../adr/0031-recover-v1-failure-and-retry-contract.md) §2~§3,
+      [REPAIR_UPSTREAM_FINDINGS §1~§2](./REPAIR_UPSTREAM_FINDINGS.md))
+- [-] Recover Stage activation과 RecoveryDirective의 exact serialization을
+      정의한다. → 진입(Execute/Verify Gate `HOLD` 근거)과 packet 축은 확정
+      (ADR-0031 §1·§6), exact 필드명은 구현 slice에서 Guide §6 목록과 대조
+- [x] retry budget과 progress signal을 결정한다. → AC당 교정 재시도 2회
+      (upstream `ac_retry_attempts` 채택), 새 revision이 리셋. progress
+      signal은 v1에서 동일 오류 해시 제거가 유일한 결정적 신호
+      (ADR-0031 §4, [REPAIR_UPSTREAM_FINDINGS §3](./REPAIR_UPSTREAM_FINDINGS.md))
+- [-] identical failure/oscillation 탐지 방식을 결정한다. → 동일 실패는
+      오류 해시 3회(upstream SPINNING 채택, ADR-0031 §3). oscillation 등
+      나머지 3패턴은 이력 축적 후
+      ([ADR-0032](../adr/0032-recover-deliberate-divergences.md) 보류)
+- [ ] rollback 지원 범위를 결정한다. (Phase 5 workspace 관리와 함께 —
+      upstream `core/worktree.py` 조사 포함, ADR-0032 보류)
+- [-] blocked/cancelled/unrecoverable 상태를 결정한다. → `BLOCKED`는 결정적
+      인식 + `HOLD`(ADR-0031 §3), unrecoverable은 예산 소진 `HOLD`.
+      cancelled는 취소 경로(Phase 5)와 함께
 
 ## 7. Runtime decisions
 

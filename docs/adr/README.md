@@ -52,6 +52,8 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0028](./0028-verify-v1-mechanical-contract.md) | Verify v1 mechanical 검증 — 실행 주체는 Verify, 명령은 승인된 `verify_command`뿐, 실행 계약과 증거 필드 확정. | Accepted |
 | [0029](./0029-verify-deliberate-divergences.md) | Verify에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
 | [0030](./0030-verify-semantic-verdict-contract.md) | semantic verdict는 AC 단위 bool+score+uncertainty이고, 임계 셋(0.8/0.3/0.7)은 upstream 채택이다. | Accepted |
+| [0031](./0031-recover-v1-failure-and-retry-contract.md) | Recover v1 — 실패 packet, AC당 재시도 2회, 실패 증거 전달, 동일 오류 3회 중단. | Accepted |
+| [0032](./0032-recover-deliberate-divergences.md) | Recover에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
 
 ## Template
 

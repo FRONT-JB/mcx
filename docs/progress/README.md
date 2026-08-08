@@ -46,8 +46,8 @@
 | `06_BLUEPRINT.md` | Draft | schema·QA·revision policy는 ADR-0017~0019·0021로 확정, Phase 2 종료 검토에서 구현 evidence 대조 |
 | `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | 진입(ADR-0026)·mechanical 계약(ADR-0028)·증거 필드(ADR-0027 §1) 확정 — 구현으로 검증. semantic verdict schema는 후속 slice |
-| `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 30 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정, 0026~0030은 Phase 4 선행 결정) |
+| `09_RECOVER.md` | Draft | 실패 packet·재시도 예산·정체 중단 계약 확정 (ADR-0031·0032) — 구현으로 검증. rollback·oscillation 탐지는 보류 |
+| `adr/` | 32 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정, 0026~0032는 Phase 4 선행 결정) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -311,11 +311,20 @@ semantic slice는 2026-08-08 구현되었다 (commit 153f8d7, 458 tests) — ver
 처음 도달했다 (결정적 fake 평가자 기준). Brief → Blueprint → Execute →
 Verify 네 Stage가 파일 저장소를 거쳐 end-to-end로 이어진다.
 
-다음 검증 가능한 목표 한 개: **Recover 첫 slice의 선행 조사와 계약을
-고정한다** — upstream bounce/repair의 실패 증거 전달 방식
-([ADR-0025](../adr/0025-execute-deliberate-divergences.md) 미확인)과 failure
-taxonomy·retry budget([Open Questions §6](../research/OPEN_QUESTIONS.md))을
-소스에서 확인하고, 실패 packet과 Recover 진입·예산의 계약을 ADR로 확정한다.
+Recover 첫 slice 계약은 2026-08-08 고정되었다
+([REPAIR_UPSTREAM_FINDINGS](../research/REPAIR_UPSTREAM_FINDINGS.md),
+[ADR-0031](../adr/0031-recover-v1-failure-and-retry-contract.md)·
+[ADR-0032](../adr/0032-recover-deliberate-divergences.md)) — 실패 packet은
+원천 4종 + 결정적 분류(BLOCKED·STALL), 재시도 예산은 AC당 2회(revision
+리셋), 재시도는 실패 증거를 가지고 가며(마지막 시도엔 접근 전환 지시), 동일
+오류 해시 3회면 중단한다. 전부 upstream 값 채택이다. ADR-0025의 마지막
+미확인(실패 증거 전달)도 이 조사로 해소되었다.
+
+다음 검증 가능한 목표 한 개: **Recover 첫 vertical slice를 구현한다** —
+FailurePacket 파생(실행·mechanical·semantic 실패에서), 재시도 예산·동일 오류
+중단·BLOCKED 인식, `ExecutionRequest.previous_failure` 확장과 교정 재시도
+경로, Recover Gate(`CLEAR` → Verify 재검증)까지. 완료 시 다섯 Stage 전부가
+end-to-end로 이어지고 Phase 4 종료 검토에 들어갈 수 있다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

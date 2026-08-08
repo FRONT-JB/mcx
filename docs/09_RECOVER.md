@@ -171,6 +171,14 @@ Flight Controller가 Non-goal을 구현하거나 허용되지 않은 파일·외
 
 정확한 탐지 식과 threshold는 실행 이력을 수집한 뒤 ADR에서 결정한다.
 
+**v1 확정 (2026-08-08)**: 첫 slice는 "같은 오류 반복"만 탐지한다 — 같은 AC의
+연속 실패에서 오류 해시가 **3회** 동일하면 재시도를 중단하고 `HOLD`한다
+(`upstream 관측` — SPINNING 임계 채택,
+[REPAIR_UPSTREAM_FINDINGS §4](./research/REPAIR_UPSTREAM_FINDINGS.md)).
+나머지 세 패턴(진동·무진전·수확 체감)은 실행 이력 축적 후 도입한다
+([ADR-0031](./adr/0031-recover-v1-failure-and-retry-contract.md) §3,
+[ADR-0032](./adr/0032-recover-deliberate-divergences.md) 보류).
+
 ---
 
 ## 5. Recovery routing
@@ -201,6 +209,14 @@ Recover가 자동으로 Blueprint를 변경하지 않는다.
 ## 6. Recovery packet
 
 Recover가 Flight Controller에 전달하는 정보는 “다시 해라”보다 구체적이어야 한다.
+
+**v1 확정 (2026-08-08)**: packet의 축은 lineage(mission·revision·AC), 실패
+원천 4종(실행 실패/mechanical 실패/semantic 불충족/escalation 대기), 결정적
+분류(`BLOCKED`·`STALL`·미분류), 오류 발췌, 증거 참조, 소진 시도 수다
+([ADR-0031](./adr/0031-recover-v1-failure-and-retry-contract.md) §1~§3 —
+upstream 6종 분류 중 verifier 증거 계약이 필요한 것들은
+[ADR-0032](./adr/0032-recover-deliberate-divergences.md) 보류). 아래 목록의
+정확한 필드 이름은 구현 slice에서 이 목록과 대조해 확정한다.
 
 ```text
 mission identity
@@ -286,6 +302,16 @@ failure_id
 - retry budget을 무한대로 두지 않는다.
 - budget 소진 전에 progress를 평가한다.
 - 소진되면 `HOLD`하고 필요한 사용자 결정을 제시한다.
+
+**v1 확정 (2026-08-08)**: 예산은 **AC당 교정 재시도 2회**(`upstream 관측` —
+`ac_retry_attempts` 기본값,
+[VERIFY_UPSTREAM_FINDINGS §2](./research/VERIFY_UPSTREAM_FINDINGS.md))이고,
+새 Blueprint revision이 승인되면 리셋된다. 재시도 요청에는 실패 분류와
+마지막 오류 tail이 실리며 **마지막 시도에는 접근 전환 지시**가 붙는다
+(`upstream 관측` — 재시도 프롬프트 3요소,
+[REPAIR_UPSTREAM_FINDINGS §3](./research/REPAIR_UPSTREAM_FINDINGS.md)).
+계약은 [ADR-0031](./adr/0031-recover-v1-failure-and-retry-contract.md)
+§4~§5가 고정한다.
 
 ### Progress signal 후보
 

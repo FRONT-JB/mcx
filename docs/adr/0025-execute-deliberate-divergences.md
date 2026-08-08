@@ -41,7 +41,7 @@
 | 분해 SPLIT 판정의 실제 주체와 preflight 기준 | 분해 도입 시 조사 (§10) |
 | resume/cancel 계약 | Phase 5에서 조사 (§10) |
 | ~~runtime handle 직렬화의 정확한 필드 목록~~ | **2026-08-08 확인 완료** — backend/kind/native_session_id/cwd/approval_mode/metadata ([EVALUATE_UPSTREAM_FINDINGS §7](../research/EVALUATE_UPSTREAM_FINDINGS.md)) |
-| 실행 실패 후 같은 AC 재시도의 정책 | 우리 v1은 상한 없이 동일 요청을 재시도한다 (실패 증거 전달 없음). **상한은 2026-08-08 확인** — upstream은 `ac_retry_attempts`로 실패 AC의 재dispatch를 제한하며 실제 run 경로 기본 2회 ([VERIFY_UPSTREAM_FINDINGS §2](../research/VERIFY_UPSTREAM_FINDINGS.md)). 실패 증거의 전달 방식(bounce/repair)은 여전히 미조사 — Recover(Phase 4) 전에 조사한다 |
+| ~~실행 실패 후 같은 AC 재시도의 정책~~ | **2026-08-08 확인 완료** — 상한은 `ac_retry_attempts` 기본 2회 ([VERIFY_UPSTREAM_FINDINGS §2](../research/VERIFY_UPSTREAM_FINDINGS.md)), 실패 증거는 재시도 프롬프트에 분류+오류 tail+마지막 시도의 전환 지시로 전달 ([REPAIR_UPSTREAM_FINDINGS §3](../research/REPAIR_UPSTREAM_FINDINGS.md)). 우리 채택은 [ADR-0031](./0031-recover-v1-failure-and-retry-contract.md) §4~§5 — Execute의 "동일 요청 무제한 재시도" 한계가 Recover에서 해소된다 |
 
 ## Consequences
 
