@@ -168,6 +168,19 @@ Mechanical failure가 발생하면 기본적으로 semantic approval을 통해 �
 뒤집지 않는다. 단, 그 검사가 현재 미션에 적용되지 않는다는 명시적 정책 근거가
 있다면 Gate report에 예외를 기록해야 한다.
 
+**v1 확정 (2026-08-08)**: 실행 주체는 Verify use case이며 worker 보고는
+증거가 아니다 (`upstream 관측` — orchestrator가 직접 검사,
+[VERIFY_UPSTREAM_FINDINGS §1](./research/VERIFY_UPSTREAM_FINDINGS.md)). v1이
+실행하는 명령은 **승인된 Blueprint의 `verify_command`뿐**이고, "command
+allowlist 또는 승인 정책" 중 v1의 정책은 승인 경로다 — repo 수준 명령
+(위 후보 검사 목록의 lint/build/test)은 보류이며 도입 시 upstream의 4겹
+안전 모델과 대조한다
+([ADR-0028](./adr/0028-verify-v1-mechanical-contract.md) §1~§2,
+[ADR-0029](./adr/0029-verify-deliberate-divergences.md) 등록). 실행 계약 —
+artifacts 검사가 명령보다 먼저, shell 실행, timeout 600초(upstream 기본값
+채택), exit 0 + output_assertion substring, 성공 계약 없는 AC는 통과가
+아니라 **판정 불가**로 구분 — 은 ADR-0028 §3이 고정한다.
+
 ### 5.2 Layer 2 — Semantic verification
 
 테스트가 통과해도 제품 요구사항을 만족하지 않을 수 있다. Semantic verification은
@@ -271,6 +284,15 @@ class VerificationReport:
 ```
 
 정확한 schema와 score 방향은 Architecture 및 Verify ADR에서 확정한다.
+
+**v1 확정 (2026-08-08)**: mechanical 증거의 필드는 확정됐다 —
+`VerificationRun`(ac_key, command, exit_code, passed, timed_out,
+missing_artifacts, output_ref, output_tail)과 `VerificationEvidence`
+(mission_id, blueprint_revision, execution_attempt_numbers, runs). 원문
+출력은 파일로 보존하고 상태에는 참조만 남긴다
+([ADR-0028](./adr/0028-verify-v1-mechanical-contract.md) §4,
+[ADR-0027](./adr/0027-telemetry-layers-and-v1-schema.md) §1). semantic
+verdict schema는 후속 slice에서 확정한다.
 
 ---
 
@@ -439,7 +461,11 @@ Next:
 | Identity | workspace revision 불일치 | stale result로 분류, CLEAR 금지 |
 | Mechanical | lint 실패 | semantic approval로 우회하지 않고 HOLD |
 | Mechanical | 실행할 검사 없음 | “통과”와 구분된 상태 기록 |
-| Mechanical | 명령 allowlist 위반 | 실행 차단과 policy evidence |
+| Mechanical | 명령 allowlist 위반 (v1 대상 없음 — 실행 명령은 승인된 `verify_command`뿐, [ADR-0028](./adr/0028-verify-v1-mechanical-contract.md) §2. repo 명령 도입 시 upstream 4겹 모델과 대조) | 실행 차단과 policy evidence |
+| Mechanical | `verify_command` exit 0 + `output_assertion` 존재 (`upstream 관측` — [VERIFY_UPSTREAM_FINDINGS §2](./research/VERIFY_UPSTREAM_FINDINGS.md)) | run이 passed로 기록 |
+| Mechanical | `expected_artifacts` 누락 (`upstream 관측` — 명령보다 먼저, 누락 전부 한 번에, §2) | 명령 실행 없이 누락 전부 보고, passed 아님 |
+| Mechanical | `verify_command` timeout (`upstream 관측` — 600초 기본, §2) | timed_out 기록과 프로세스 정리, CLEAR 금지 |
+| Mechanical | 성공 계약 없는 AC ([ADR-0028](./adr/0028-verify-v1-mechanical-contract.md) §3) | 통과가 아니라 판정 불가로 구분 |
 | Semantic | 모든 AC 충족 | evidence가 충분할 때 CLEAR 후보 |
 | Semantic | 테스트는 통과하지만 AC 미충족 | HOLD |
 | Semantic | Non-goal 구현 감지 | scope drift HOLD |
@@ -468,12 +494,19 @@ Next:
 - AC verdict와 VerificationReport 의미를 정의한다.
 - fake evidence로 Gate policy를 테스트한다.
 - no-self-approval invariant를 테스트한다.
+- **v1 확정**: 증거 필드는 [ADR-0028](./adr/0028-verify-v1-mechanical-contract.md)
+  §4 (`VerificationRun`/`VerificationEvidence`), 진입은
+  [ADR-0026](./adr/0026-verify-entry-requires-lineage.md) (Execute Gate
+  `CLEAR` 재확인).
 
 ### Slice 2 — Mechanical runner
 
 - 고정된 안전 명령 fixture를 실행한다.
 - exit code, output, duration, artifact를 보존한다.
 - failure short-circuit를 테스트한다.
+- **v1 확정**: 실행 계약은 [ADR-0028](./adr/0028-verify-v1-mechanical-contract.md)
+  §3 — 승인된 `verify_command`만, artifacts 먼저, shell + timeout 600초,
+  판정 불가 구분.
 
 ### Slice 3 — Deterministic semantic fixture
 

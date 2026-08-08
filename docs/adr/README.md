@@ -49,6 +49,8 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0025](./0025-execute-deliberate-divergences.md) | Execute에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
 | [0026](./0026-verify-entry-requires-lineage.md) | Verify 진입은 Execute Gate `CLEAR`(실행 lineage)를 요구한다 — upstream은 요구하지 않는다. | Accepted |
 | [0027](./0027-telemetry-layers-and-v1-schema.md) | Telemetry 세 층은 소비자가 정의하고 생산자의 Phase에서 확정한다. report 층 v1 스키마 확정. | Accepted |
+| [0028](./0028-verify-v1-mechanical-contract.md) | Verify v1 mechanical 검증 — 실행 주체는 Verify, 명령은 승인된 `verify_command`뿐, 실행 계약과 증거 필드 확정. | Accepted |
+| [0029](./0029-verify-deliberate-divergences.md) | Verify에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
 
 ## Template
 

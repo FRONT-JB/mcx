@@ -125,8 +125,18 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
 ## 5. Verify decisions
 
-- [ ] project-specific mechanical command 발견 방식을 결정한다.
-- [ ] command allowlist와 custom command 승인 정책을 결정한다.
+- [-] project-specific mechanical command 발견 방식을 결정한다. → v1은 발견
+      없음 — 승인된 Blueprint의 `verify_command`만 실행
+      ([ADR-0028](../adr/0028-verify-v1-mechanical-contract.md) §2). upstream의
+      발견 방식(AI detector가 `.ouroboros/mechanical.toml` 작성, "toml만
+      신뢰")은 repo 명령 도입 시의 대조 기준으로 기록
+      ([VERIFY_UPSTREAM_FINDINGS §3](./VERIFY_UPSTREAM_FINDINGS.md))
+- [x] command allowlist와 custom command 승인 정책을 결정한다. → v1의 명령
+      정당성 경계는 **승인 경로**다 — Verify use case에 명령 입력이 없고
+      항상 승인된 Blueprint에서 읽는다. allowlist(upstream 4겹 모델)는 승인
+      없이 들어오는 repo 명령의 방어이며 그 층의 도입 시 함께 온다
+      ([ADR-0028](../adr/0028-verify-v1-mechanical-contract.md) §2,
+      [VERIFY_UPSTREAM_FINDINGS §4~§5](./VERIFY_UPSTREAM_FINDINGS.md))
 - [ ] semantic verdict schema와 uncertainty 표현을 결정한다.
 - [ ] UI/API/CLI observation adapter의 우선순위를 결정한다.
 - [ ] conditional consensus를 v1에 포함할지 결정한다.
