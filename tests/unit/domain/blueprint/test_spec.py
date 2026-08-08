@@ -143,6 +143,28 @@ class TestImmutabilityAndShape:
         with pytest.raises(ValidationError):
             _blueprint(goal="")
 
+    def test_duplicate_criterion_contracts_are_rejected(self) -> None:
+        """중복 계약을 허용하면 Verify 증거가 어느 항목의 것인지 판정할 수 없다.
+
+        key는 내용 digest이므로 내용이 같으면 위치가 달라도 중복이다
+        (docs/06_BLUEPRINT.md §7.2, Test Matrix "duplicate AC IDs").
+        """
+        criterion = AcceptanceCriterion(description="목록에 보인다", verify_command="pytest")
+        twin = AcceptanceCriterion(description="목록에 보인다", verify_command="pytest")
+
+        with pytest.raises(ValidationError, match="duplicate acceptance criterion"):
+            _blueprint(acceptance_criteria=(criterion, twin))
+
+    def test_distinct_contracts_with_the_same_description_are_allowed(self) -> None:
+        """중복 판정은 문장이 아니라 계약 전체다. 확인 방법이 다르면 다른 계약이다."""
+        by_test = AcceptanceCriterion(description="목록에 보인다", verify_command="pytest")
+        by_artifact = AcceptanceCriterion(
+            description="목록에 보인다", expected_artifacts=("screenshot.png",)
+        )
+
+        blueprint = _blueprint(acceptance_criteria=(by_test, by_artifact))
+        assert len(blueprint.acceptance_criteria) == 2
+
     def test_brief_revision_is_carried(self) -> None:
         """어느 Brief revision에서 나왔는지 없으면 승인 lineage가 끊긴다."""
         blueprint = _blueprint(brief_revision=7)

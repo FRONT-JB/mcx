@@ -117,6 +117,23 @@ class Blueprint(BaseModel):
     non_goals: tuple[str, ...] = ()
     acceptance_criteria: tuple[AcceptanceCriterion, ...] = ()
 
+    @model_validator(mode="after")
+    def _criterion_keys_are_unique(self) -> Blueprint:
+        """같은 성공 계약이 두 번 실리는 것을 거부한다 (``docs/06_BLUEPRINT.md`` §7.2).
+
+        key가 내용 digest이므로 중복 key는 중복 계약이다. 허용하면 Execute의
+        결과와 Verify의 증거가 두 항목 중 어느 쪽에 붙는지 판정할 수 없고,
+        ``criterion_for``가 조용히 첫 번째만 돌려준다.
+        """
+        seen: set[str] = set()
+        for item in self.acceptance_criteria:
+            if item.key in seen:
+                raise ValueError(
+                    f"duplicate acceptance criterion contract: {item.description!r}"
+                )
+            seen.add(item.key)
+        return self
+
     @property
     def criterion_keys(self) -> tuple[str, ...]:
         return tuple(item.key for item in self.acceptance_criteria)
