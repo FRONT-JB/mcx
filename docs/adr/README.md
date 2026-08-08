@@ -47,6 +47,8 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0023](./0023-execute-entry-and-provenance.md) | Execute 작업 생성은 단일 use case 경로이고, Telemetry는 생성 주체를 선언 필드로 기록한다. | Accepted |
 | [0024](./0024-execute-v1-execution-model.md) | Execute v1은 AC가 곧 실행 단위이고, 선언 순서 순차 실행에 attempt 상태 셋으로 시작한다. | Accepted |
 | [0025](./0025-execute-deliberate-divergences.md) | Execute에서 upstream과 다르게 가는 지점을 기록한다. | Accepted |
+| [0026](./0026-verify-entry-requires-lineage.md) | Verify 진입은 Execute Gate `CLEAR`(실행 lineage)를 요구한다 — upstream은 요구하지 않는다. | Accepted |
+| [0027](./0027-telemetry-layers-and-v1-schema.md) | Telemetry 세 층은 소비자가 정의하고 생산자의 Phase에서 확정한다. report 층 v1 스키마 확정. | Accepted |
 
 ## Template
 

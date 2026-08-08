@@ -47,7 +47,7 @@
 | `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
-| `adr/` | 25 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정) |
+| `adr/` | 27 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정, 0026~0027은 Phase 4 선행 결정) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -268,12 +268,20 @@ Test Matrix 누락 2행(2f951e2로 테스트 추가), ADR-0024 Verification 과�
 변경 artifact, 명령 결과, 이벤트)의 처분은 **결격이 아니라 Open Questions §9
 결정 대기**이며, 시한은 Phase 4 진입 전으로 고정되었다.
 
-다음 검증 가능한 목표 한 개: **Verify 진입 전 결정 두 개를 닫는다 —
-[Open Questions §5](../research/OPEN_QUESTIONS.md)(Execute Telemetry 없는
-작업의 Verify `CLEAR` 여부)와 §9(telemetry event/report/bundle schema).**
-upstream evaluate가 채점 전에 실행 lineage를 요구하는지
-([RUN_UPSTREAM_FINDINGS §10](../research/RUN_UPSTREAM_FINDINGS.md) 미조사
-항목)를 소스에서 확인하고, 그 위에서 두 결정을 ADR로 확정한다.
+Verify 진입 전 결정 두 개는 2026-08-08 닫혔다
+([EVALUATE_UPSTREAM_FINDINGS](../research/EVALUATE_UPSTREAM_FINDINGS.md)) —
+upstream evaluate는 실행 lineage를 요구하지 않음을 소스로 확인했고(§12.3
+사고의 직접 원인), 우리는 Verify 진입이 Execute Gate `CLEAR`를 요구하는
+의도적 divergence로 확정했다
+([ADR-0026](../adr/0026-verify-entry-requires-lineage.md)). telemetry 세 층은
+소비자·시점을 배치하고 report 층 v1 스키마를 확정했다
+([ADR-0027](../adr/0027-telemetry-layers-and-v1-schema.md)).
+
+다음 검증 가능한 목표 한 개: **Phase 4 Verify 첫 slice의 계약을
+[Verify Guide](../08_VERIFY.md)에 고정한다** — ADR-0026(진입)·0027(report
+스키마 최종 필드명)을 반영하고, mechanical verification의 Test Matrix 행에
+upstream 근거를 표시한 뒤 구현에 들어간다. mechanical.toml 스키마와 명령 발견
+규칙의 upstream 조사(EVALUATE_UPSTREAM_FINDINGS §8)가 선행이다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

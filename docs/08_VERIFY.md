@@ -76,6 +76,13 @@ Verify 진입에는 다음이 필요하다.
 
 필수 입력이 없으면 내용을 추측하지 않고 `HOLD`한다.
 
+**확정 (2026-08-08)**: 진입은 Execute Gate `CLEAR — Clear for Verify`의
+재평가를 요구하며, 실행 attempt 기록이 없는 작업은 진입 자체가 막힌다
+(`upstream 대응물 없음` — upstream evaluate는 lineage를 요구하지 않고, 그
+개방이 §12.3 사고의 통로였다.
+[EVALUATE_UPSTREAM_FINDINGS §2](./research/EVALUATE_UPSTREAM_FINDINGS.md),
+등록은 [ADR-0026](./adr/0026-verify-entry-requires-lineage.md)).
+
 ### Verification input identity
 
 Verify report는 최소한 다음 identity tuple에 고정된다.

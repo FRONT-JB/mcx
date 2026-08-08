@@ -131,10 +131,14 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 - [ ] UI/API/CLI observation adapter의 우선순위를 결정한다.
 - [ ] conditional consensus를 v1에 포함할지 결정한다.
 - [ ] workspace snapshot/revision 검증 방식을 결정한다.
-- [ ] **Execute Telemetry 없이 나타난 작업을 Verify가 CLEAR할 수 있는지
-      결정한다.** AC가 통과해도 그 작업을 무엇이 만들었는지 기록이 없으면
-      완료 선언의 근거가 비어 있다
-      ([SEED_UPSTREAM_FINDINGS §12.3](./SEED_UPSTREAM_FINDINGS.md)).
+- [x] **Execute Telemetry 없이 나타난 작업을 Verify가 CLEAR할 수 있는지
+      결정한다.** → **없다 — 진입 자체가 막힌다.** Verify 진입이 Execute Gate
+      `CLEAR`를 요구한다. upstream evaluate는 lineage를 요구하지 않음을 소스로
+      확인했고(§12.3 사고의 직접 원인 —
+      [EVALUATE_UPSTREAM_FINDINGS §2](./EVALUATE_UPSTREAM_FINDINGS.md)), 이
+      차이는 의도적 divergence로 등록했다
+      ([ADR-0026](../adr/0026-verify-entry-requires-lineage.md)). 기록 밖
+      artifact 평가는 v1 범위 밖이며 §8 결정의 제약으로 남는다.
 
 ## 6. Recover decisions
 
@@ -200,10 +204,18 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
 - [-] atomic state transition과 crash recovery 요구를 정의한다. (Execute
       범위는 ADR-0024 §4로 확정 — 지속이 dispatch보다 먼저, 크래시 후
       `DISPATCHED`로 남음이 곧 "결과 불명". Mission 전체 수준은 미정)
-- [ ] Telemetry event/report/bundle schema를 결정한다. (**Phase 4 진입 전**,
-      §5와 함께)
-- [ ] retention, redaction, output-size 정책을 결정한다.
-- [ ] Mission replay와 resume의 최소 보장 수준을 결정한다.
+- [x] Telemetry event/report/bundle schema를 결정한다. → 층별 소유·시점 확정
+      ([ADR-0027](../adr/0027-telemetry-layers-and-v1-schema.md), upstream
+      실물은 [EVALUATE_UPSTREAM_FINDINGS](./EVALUATE_UPSTREAM_FINDINGS.md)):
+      report 층은 v1 스키마까지 확정(Verify가 생산·소비, Phase 4에서 최종
+      필드명), attempt 시각은 Phase 4에서 Clock port와 함께, event 층은
+      생산자(스트리밍 adapter)와 함께 Phase 5, bundle은 Phase 4 semantic
+      설계에서.
+- [-] retention, redaction, output-size 정책을 결정한다. → 발췌·출력 한도는
+      report 층 구현 시 upstream 상수와 대조(ADR-0027 §5). secret redaction은
+      Phase 5(Runtime 문서·Security ADR).
+- [ ] Mission replay와 resume의 최소 보장 수준을 결정한다. (Phase 5 —
+      resume 계약과 함께, ADR-0025 보류와 같은 시점)
 
 ---
 
