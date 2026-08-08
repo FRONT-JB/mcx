@@ -4,10 +4,10 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 4 — Verify·Recover vertical slice COMPLETE; Phase 5 준비 |
+| Project phase | Phase 5 — Runtime adapters: 구현·도그푸딩 2회 완료, [종료 검토](./0005_RUNTIME_ADAPTERS.md) 수행. 완료 선언은 잔여 3항목 처분(사용자 결정) 대기 |
 | Mission status | ACTIVE |
-| Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)) |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex) |
+| Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 검토 수행 (2026-08-08, [progress 0005](./0005_RUNTIME_ADAPTERS.md)) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종) |
 | Automated tests | 530 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
@@ -60,6 +60,7 @@
 - [0002 — Blueprint Vertical Slice](./0002_BLUEPRINT_VERTICAL_SLICE.md)
 - [0003 — Execute Vertical Slice](./0003_EXECUTE_VERTICAL_SLICE.md)
 - [0004 — Verify·Recover Vertical Slice](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)
+- [0005 — Runtime Adapters 종료 검토](./0005_RUNTIME_ADAPTERS.md)
 
 ## Phase roadmap
 
@@ -171,7 +172,10 @@ schema 시점, 고아 attempt, 재시도 정책)을 잡았다. `[-]` 항목은 v
 - [-] dependency readiness — v1은 파생 없이 실패 중단 규칙만
   (ADR-0024 §3, ADR-0025 보류 등록). graph 도입은 이후 결정
 - [-] capability scope — envelope(workspace + 도구 목록)의 전달·기록까지
-  (ADR-0024 §6). 실제 차단은 Phase 5
+  (ADR-0024 §6). Phase 5의 실제 강제: 실행은 sandbox 수준
+  (`--sandbox workspace-write`), 텍스트 lane은 도구 카탈로그
+  (claude `--tools`, ADR-0036 §4). 실행측 도구 단위 allowlist 차단은
+  Codex에 표면이 없어 보류 (ADR-0033 §6 표)
 - [-] Runtime contract — `ExecutionRuntime` port(backend + execute)와 결정적
   fake. concrete adapter conformance는 Phase 5
 - [-] Telemetry — attempt 기록이 provenance 네 항목을 선언 필드로 강제
@@ -442,11 +446,18 @@ ADR-0035 효과 실측: 감사 wall-clock 1/2~1/3, 확정 사안 재차단 0건,
 잔여: 재시도 예산 소진·change_approach·동일 오류 해시 중단·BLOCKED/STALL
 분류 (교정 1회 성공).
 
-다음 검증 가능한 목표 한 개: **Phase 5 종료 검토.** 여섯 질문(구조 검사,
-부품/단계 구분, 미등록 이탈, 표시 없는 보류, 계약 문장 원문, 관측 대조)에
-증거로 답하고 progress record를 남긴다. 잔여 항목(OpenCode adapter,
-session/resume/cancel, capability mapping)의 처분 — Phase 5 범위 유지
-여부 — 은 검토에서 사용자 결정으로 올린다.
+Phase 5 종료 검토는 2026-08-08 수행되었다
+([progress 0005](./0005_RUNTIME_ADAPTERS.md)). 검토가 낡은 약속 1건(도구
+차단 시점), 근거 미인용 1건(무도구 max-turns의 upstream pairing), 미표시
+보류 1건(mechanical 명령의 workspace 밖 부작용)을 잡아 수정했다.
+
+다음 검증 가능한 목표 한 개: **Phase 5 잔여 3항목의 처분 확정 (사용자
+결정).** OpenCode adapter·session/resume/cancel·capability mapping을
+Phase 5에서 분리해 backlog로 이동할지(ADR-0003 범위 note 필요, Phase 5
+완료 선언), OpenCode까지 구현하고 선언할지 — record 0005 §3의 선택지.
+결정 즉시 Phase 5 상태를 갱신하고 다음 Phase(6 — `mcx` CLI, 착수 전
+선행 조사: upstream이 CLI를 얇게 둔 이유(OPEN_QUESTIONS §8), canonical
+Stage 저장 결정)로 넘어간다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -529,6 +540,7 @@ verdict(충족·score·불확신·게이밍)다. 나머지는 **계약 미달**�
 
 | 조건 | 상태 |
 |---|---|
+| mechanical 명령의 workspace 밖 부작용 | **차단하지 않는다** — 0002 도그푸딩에서 초안 verify 명령이 `/tmp` 고정 경로에 쓰는 것이 실물 관측됨 ([DOGFOODING_0002 §5](../research/DOGFOODING_0002.md)). repo 수준 검사 층(ADR-0028 §2 보류)과 같은 자리에서 다룬다 |
 | 적용 가능한 검사 생략의 정책 근거 | repo 수준 검사 층 자체가 보류 (ADR-0028 §2) — 그 도입과 함께 |
 | Exit Conditions 충족 | 필드 유예 재평가 완료 — 핵심은 AC 전수 요구가 덮고, 잔여는 도입 시점 이동 (ADR-0017 note, ADR-0029) |
 | Constraint 위반·Non-goal 구현 없음 | **결정적 검사 없음** — semantic 평가자의 입력에는 있으나 판정 필드가 없다. scope drift 탐지(Phase 5)와 함께 |
@@ -647,7 +659,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 2 — Blueprint | **충족 (2026-08-08)** — 완료 선언 전 절차로 첫 수행. 계약 미달 1건 발견·수정(중복 AC, b00e0c2), 표시 누락 1건 추가(크기 제한), 미확인 이탈 1건 등록(previous_findings → ADR-0022) | [progress 0002](./0002_BLUEPRINT_VERTICAL_SLICE.md) |
 | Phase 3 — Execute | **충족 (2026-08-08)** — Test Matrix 누락 2행 테스트 추가(2f951e2), ADR-0024 과장 정정, §10 미검사 조건 표 추가, telemetry schema 시점 정정(§9 → Phase 4 전), 재시도 정책 미확인 등록(ADR-0025) | [progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md) |
 | Phase 4 — Verify/Recover | **충족 (2026-08-08)** — 예산 리셋 테스트 추가(0186450), directive 저장 vs 파생 충돌 해소, exit_conditions 유예 재평가, canonical Stage 저장 부재 등록, Verify Gate 미검사 조건 표 신설. Gate·Matrix 전수 대조 포함 | [progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) |
-| Phase 5 — Runtime adapters | 대기 | — |
+| Phase 5 — Runtime adapters | **검토 수행 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). **완료 선언은 잔여 3항목 처분(사용자 결정) 대기** | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
 | Phase 6 — `mcx` CLI | 대기 | — |
 | Phase 7 — MCP control surface | 대기 | — |
 

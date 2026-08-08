@@ -61,7 +61,7 @@ codex의 sandbox 모드 대응물은 claude에서 도구 카탈로그다 (upstre
 
 | 모드 | 플래그 | 사용처 |
 |---|---|---|
-| 무도구 | `--tools "" --allowedTools "" --max-turns 1` | workspace 없는 role 전부 (질문·채점·감사·생성·QA) |
+| 무도구 | `--tools "" --allowedTools "" --max-turns 1` | workspace 없는 role 전부 (질문·채점·감사·생성·QA). turn 1도 upstream pairing이다 (`evaluation/verification_artifacts.py:109` — "``allowed_tools=[]`` paired with ``max_turns=1``") |
 | 관찰 | `--tools "Read Glob Grep" --allowedTools 동일 --max-turns 20` + cwd=workspace | semantic 평가자 (upstream "20-turn read-only envelope" 정렬) |
 
 `--tools ""`가 카탈로그를 비우고 `--allowedTools`는 프롬프트 억제일 뿐이라
