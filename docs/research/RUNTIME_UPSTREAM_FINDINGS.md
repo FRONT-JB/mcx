@@ -69,7 +69,31 @@ Codex CLI에 **도구 단위 allowlist 전달은 없다** — 경계는 sandbox 
   `STALL_TIMEOUT_SECONDS`, `evidence/runtime_metadata.py:76`) — 총 실행
   시간이 아니라 마지막 신호 이후 시간이다.
 
-## 6. 조사하지 않은 것
+## 6. MCP는 실행 통로가 아니라 제어 표면이다 — 방향 구분
+
+도그푸딩에서 관찰되는 "MCP로 codex와 통신"은 **반대 방향**이다 — worker
+실행이 아니라 제어다. 세 경로를 구분해야 한다.
+
+1. **코어 → worker (실행)**: Python 코어가 작업을 실행할 때는 MCP가 아니라
+   **subprocess**다 — `codex exec`를 직접 띄운다 (§3, §5.
+   `codex_cli_adapter.py:3` "shells out to `codex exec`",
+   `codex_cli_runtime.py`).
+2. **host → 코어 (제어)**: 도그푸딩에서 보이는 MCP 통신 — host CLI 세션
+   (Claude/Codex/OpenCode 안의 skill 계층)이 **ouroboros의 MCP 서버**
+   (`ouroboros_evaluate` 등)를 호출한다. worker와의 통신이 아니라
+   ouroboros를 조작하는 표면이다.
+3. **예외 — plugin 위임**: OpenCode bridge plugin이 호출 세션 안에 로드된
+   경우에만, MCP handler가 실행하지 않고 `_subagent` envelope을 돌려줘
+   **host가 자기 runtime으로 실행**하게 위임한다. 그 외 모든 runtime에서는
+   "실제 in-process 실행 경로를 돌려야 한다"고 명시되어 있다
+   (`mcp/tools/subagent.py:793-805`).
+
+Mission Control 대응: 1은 [ADR-0033](../adr/0033-first-runtime-adapter-contract.md)
+(우리 Codex adapter — 같은 subprocess 축), 2는 Phase 7 MCP control surface
+([ADR-0007](../adr/0007-mcp-is-control-surface.md) — 같은 배치), 3은
+[Open Questions §8](./OPEN_QUESTIONS.md)(host 직접 작업 경로)의 결정 재료다.
+
+## 7. 조사하지 않은 것
 
 - OpenCode runtime의 상세 계약 (`opencode_runtime.py`) — 두 번째 adapter
   도입 시 조사한다.
