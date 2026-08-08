@@ -116,6 +116,35 @@ class TestExecutionFailures:
         assert packets[0].budget_exhausted(POLICY) is True
         assert packets[0].retryable(POLICY) is False
 
+    def test_a_new_revision_resets_the_budget(self) -> None:
+        """이전 revision의 소진이 새 revision을 갉아먹지 않는다 (ADR-0031 §4)."""
+        exhausted = _failed_execution("a", "b", "c")  # revision 1에서 예산 소진
+        current = BLUEPRINT.model_copy(update={"revision": 2})
+
+        def derive_for(state: ExecuteState):
+            return derive_failure_packets(
+                blueprint=current,
+                execute_state=state,
+                verify_state=VerifyState.start(mission_id="m-1"),
+                semantic_policy=SEMANTIC,
+                policy=POLICY,
+            )
+
+        # 새 revision 기준으로는 실행 자체가 없다 — 실패가 아니라 Execute의 일이다.
+        assert derive_for(exhausted) == ()
+
+        # 새 revision의 첫 실패는 소진 0으로 시작한다.
+        fresh = exhausted.dispatch(
+            execution_id="exec-m-1-0004",
+            runtime_backend="fake",
+            blueprint_revision=2,
+            ac_key=COMMANDED.key,
+            envelope=ENVELOPE,
+        ).record_result(succeeded=False, error="fresh failure")
+        packets = derive_for(fresh)
+        assert packets[0].retries_used == 0
+        assert packets[0].retryable(POLICY) is True
+
 
 class TestVerifyFailures:
     def test_a_failed_mechanical_run_becomes_a_packet(self) -> None:
