@@ -7,8 +7,8 @@
 | Project phase | Phase 3 — Execute vertical slice COMPLETE; Phase 4 준비 |
 | Mission status | ACTIVE |
 | Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 COMPLETE (2026-08-08, [종료 검토](./0002_BLUEPRINT_VERTICAL_SLICE.md)); Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)) |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner) |
-| Automated tests | 440 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner) |
+| Automated tests | 458 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -184,12 +184,16 @@ schema 시점, 고아 attempt, 재시도 정책)을 잡았다. `[-]` 항목은 v
 - [x] mechanical verification — 승인된 `verify_command`의 직접 실행과 증거
   보존, 진입은 Execute Gate `CLEAR` 재확인 (ADR-0026·0028, commit d663c7b,
   `test_verify_flow.py` — 실제 subprocess)
-- [ ] semantic AC verdict
+- [x] semantic AC verdict — AC 단위 bool+score+uncertainty+risk, 같은
+  revision의 mechanical 증거 위에서만 기록, 재검증이 verdicts를 무효화
+  (ADR-0030, commit 153f8d7, `test_verdict.py`·`test_gate.py`). 실제
+  평가자는 Phase 5 — v1은 port + 결정적 fake
 - [ ] failure packet
 - [ ] Recover attempt history/budget
-- [-] MISSION COMPLETE Gate — HOLD 판정과 blocker(미검증·실패·판정 불가·
-  semantic 부재)는 구현. `CLEAR`는 semantic verdict가 생겨야 도달 가능
-  (`gate.py` docstring 명시)
+- [x] MISSION COMPLETE Gate — ADR-0030 §4 네 조건(두 층 통과·불확신 없음·
+  게이밍 의심 없음)으로 `CLEAR — MISSION COMPLETE` 도달 가능. 불확신은
+  실패가 아니라 escalation 대기 HOLD (commit 153f8d7,
+  `test_verify_flow.py::test_both_layers_reach_mission_complete`)
 
 ### Phase 5 — Concrete Runtime adapters
 
@@ -301,10 +305,17 @@ semantic 층 계약은 2026-08-08 고정되었다
 단위 `satisfied`(bool) + `score` + `uncertainty` + `reward_hacking_risk`,
 임계 셋(0.8/0.3/0.7)은 upstream 채택, consensus는 미도입(escalation은 HOLD).
 
-다음 검증 가능한 목표 한 개: **Verify semantic slice를 구현한다** — verdict
-도메인과 정책, semantic 평가자 port + 결정적 fake, Gate의
-`CLEAR — MISSION COMPLETE` 완성(ADR-0030 §4의 네 조건), VerifyService 통합.
-성공 시 v1에서 처음으로 MISSION COMPLETE가 도달 가능해진다.
+semantic slice는 2026-08-08 구현되었다 (commit 153f8d7, 458 tests) — verdict가
+같은 revision의 mechanical 증거 위에서만 기록되고, 재검증이 기존 verdicts를
+무효화하며, Gate가 ADR-0030 §4의 네 조건으로 `CLEAR — MISSION COMPLETE`에
+처음 도달했다 (결정적 fake 평가자 기준). Brief → Blueprint → Execute →
+Verify 네 Stage가 파일 저장소를 거쳐 end-to-end로 이어진다.
+
+다음 검증 가능한 목표 한 개: **Recover 첫 slice의 선행 조사와 계약을
+고정한다** — upstream bounce/repair의 실패 증거 전달 방식
+([ADR-0025](../adr/0025-execute-deliberate-divergences.md) 미확인)과 failure
+taxonomy·retry budget([Open Questions §6](../research/OPEN_QUESTIONS.md))을
+소스에서 확인하고, 실패 packet과 Recover 진입·예산의 계약을 ADR로 확정한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
