@@ -77,6 +77,15 @@ MCP host가 자기 도구로 작업하는 경로의 취급은 §8의 결정이�
 확정한다. 이 ADR이 고정하는 것은 **이 네 항목이 선언 필드로 반드시
 존재한다**는 계약이다.
 
+> **2026-08-08 시점 정정 (Phase 3 종료 검토)**: 네 항목의 필드 이름은 Phase 3
+> 구현이 확정했다 — `execution_id` / `runtime_backend`+`native_session_id` /
+> `blueprint_revision`+`ac_key` / `number` (`domain/execute/state.py`, 누락은
+> 생성 시점 거부). event/report/bundle 스키마는 Phase 3에서 결정하지 않았다 —
+> 그 스키마의 소비자는 Verify·Recover이고, evaluate가 실행 lineage를
+> 요구하는지가 미조사다(RUN_UPSTREAM_FINDINGS §10). 소비자 요구를 모른 채
+> 확정하면 upstream 근거 없는 발명이 되므로 **Phase 4 진입 전 §5와 함께**
+> 결정한다 ([progress 0003](../progress/0003_EXECUTE_VERTICAL_SLICE.md)).
+
 **upstream과 다른 점**: upstream은 이 정보를 이벤트 payload(JSON) 안에 emitter
 관례로 담고 스키마에는 actor 컬럼이 없다. 우리는 선언 필드로 강제한다 —
 관례는 emitter가 빠뜨려도 아무것도 잡지 못하고, "무엇이 승인/실행 대상인가를

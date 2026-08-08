@@ -131,8 +131,11 @@ idempotency **key schema**(exact key, namespace, 보존)는 여전히 TBD다
 ## Verification
 
 - 승인된 Blueprint 없이 attempt가 만들어지지 않는다 (ADR-0023 §1).
-- attempt가 AC key와 blueprint revision을 가리키고, 그 AC가 해당 revision에
-  존재하지 않으면 거부된다.
+- attempt가 AC key와 blueprint revision을 가리킨다. 대상 AC는 단일 생성
+  경로가 승인된 Blueprint에서 선택하므로 경로상 존재하지 않는 key는
+  만들어질 수 없고, 경로 밖 기록의 탐지는 약속하지 않는다 (ADR-0023 §2).
+  *(2026-08-08 Phase 3 종료 검토 정정 — 원문 "해당 revision에 존재하지
+  않으면 거부된다"는 어느 계층도 수행하지 않는 존재 검증을 과장했다.)*
 - dispatch 전에 attempt가 저장되고, 저장 실패 시 dispatch가 일어나지 않는다.
 - `DISPATCHED` attempt가 있으면 새 dispatch가 거부된다.
 - `EXECUTION_FAILED` 뒤에 후속 AC dispatch가 거부된다.

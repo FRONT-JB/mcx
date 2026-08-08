@@ -4,11 +4,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 2 — Blueprint vertical slice COMPLETE; Phase 3 준비 |
+| Project phase | Phase 3 — Execute vertical slice COMPLETE; Phase 4 준비 |
 | Mission status | ACTIVE |
-| Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 COMPLETE (2026-08-08, [종료 검토](./0002_BLUEPRINT_VERTICAL_SLICE.md)) |
+| Gate | Phase 0 COMPLETE; Phase 1 COMPLETE; Phase 2 COMPLETE (2026-08-08, [종료 검토](./0002_BLUEPRINT_VERTICAL_SLICE.md)); Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute service, ports), `adapters/persistence/` (brief·blueprint·execute) |
-| Automated tests | 386 passed (unit + integration) |
+| Automated tests | 388 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-08 |
 
@@ -44,7 +44,7 @@
 | `04_MCP.md` | Draft | tool schema와 transport 결정 전 Core boundary 유지 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
 | `06_BLUEPRINT.md` | Draft | schema·QA·revision policy는 ADR-0017~0019·0021로 확정, Phase 2 종료 검토에서 구현 evidence 대조 |
-| `07_EXECUTE.md` | Draft | 첫 slice 계약 확정 (ADR-0023~0025) — 구현으로 검증. runtime contract·timeout·병렬 Gate는 미정 |
+| `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | mechanical/semantic contract 결정 |
 | `09_RECOVER.md` | Draft | failure taxonomy/retry policy 결정 |
 | `adr/` | 25 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3 선행 결정) |
@@ -58,6 +58,7 @@
 - [0000 — Documentation Foundation](./0000_DOCUMENTATION_FOUNDATION.md)
 - [0001 — Brief Vertical Slice](./0001_BRIEF_VERTICAL_SLICE.md)
 - [0002 — Blueprint Vertical Slice](./0002_BLUEPRINT_VERTICAL_SLICE.md)
+- [0003 — Execute Vertical Slice](./0003_EXECUTE_VERTICAL_SLICE.md)
 
 ## Phase roadmap
 
@@ -154,9 +155,15 @@ CLEAR 경로 테스트 전부 감사 단계를 포함하도록 갱신했다.
 `generate_seed`가 저장된 session을 요구한다(ADR-0016 방향 일치), skill 계층 QA의
 개정본이 store로 돌아가지 않는다(ADR-0019 §1 근거 강화).
 
-### Phase 3 — Execute with deterministic Runtime
+### Phase 3 — Execute with deterministic Runtime — COMPLETE
 
 목표: AC 기반 bounded work와 executed-unverified 상태를 검증한다.
+
+2026-08-08 완료. Gate·evidence·종료 검토는
+[progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md)에 있다. 검토가 Test Matrix
+누락 2행(테스트 추가, 2f951e2), ADR 과장 1건, 표시 없는 보류 3건(telemetry
+schema 시점, 고아 attempt, 재시도 정책)을 잡았다. `[-]` 항목은 v1 범위와
+잔여의 구분이며, 잔여의 처분(Phase 4·5, §9 결정 대기)은 record에 있다.
 
 - [x] work derivation — AC key가 곧 실행 단위, 선언 순서 순차, 분해 미도입
   (ADR-0024 §1~§3, commit 016c1b8, `test_plan.py`)
@@ -250,15 +257,23 @@ Execute 시작 전 결정은 2026-08-08 닫혔다
 단일 use case 경로, provenance 네 항목은 선언 필드.
 
 Execute 첫 vertical slice는 2026-08-08 구현되었다 (ADR-0023~0025,
-commit 016c1b8, 386 tests). 승인된 Blueprint에서 순차 dispatch → 결과 기록 →
+commit 016c1b8). 승인된 Blueprint에서 순차 dispatch → 결과 기록 →
 `CLEAR — Clear for Verify`가 파일 저장소를 거쳐 이어지고, 지속이 dispatch보다
 먼저이며, provenance 없는 attempt는 만들어지지 않는다.
 
-다음 검증 가능한 목표 한 개: **Phase 3 종료 검토를 수행하고 progress record
-0003을 남긴다.** 특히 [Execute Guide](../07_EXECUTE.md) §9 Required
-Telemetry의 각 질문("어떤 명령·변경 artifact를 남겼는가" 포함)에 현재 attempt
-기록이 답할 수 있는지 대조하고, 답하지 못하는 항목의 처분(§9 telemetry
-schema 결정 대기인지, Phase 3 결격인지)을 확정한다.
+Phase 3은 2026-08-08 완료되었다
+([progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md) — 종료 검토 포함). 검토가
+Test Matrix 누락 2행(2f951e2로 테스트 추가), ADR-0024 Verification 과장 1건,
+표시 없는 보류 3건을 잡았다. §9 Required Telemetry 대조 결과 미답 항목(시각,
+변경 artifact, 명령 결과, 이벤트)의 처분은 **결격이 아니라 Open Questions §9
+결정 대기**이며, 시한은 Phase 4 진입 전으로 고정되었다.
+
+다음 검증 가능한 목표 한 개: **Verify 진입 전 결정 두 개를 닫는다 —
+[Open Questions §5](../research/OPEN_QUESTIONS.md)(Execute Telemetry 없는
+작업의 Verify `CLEAR` 여부)와 §9(telemetry event/report/bundle schema).**
+upstream evaluate가 채점 전에 실행 lineage를 요구하는지
+([RUN_UPSTREAM_FINDINGS §10](../research/RUN_UPSTREAM_FINDINGS.md) 미조사
+항목)를 소스에서 확인하고, 그 위에서 두 결정을 ADR로 확정한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -315,6 +330,42 @@ schema 결정 대기인지, Phase 3 결격인지)을 확정한다.
 - **FAIL 이후의 출구가 없다.** 채점·승인이 모두 거부되므로 에스컬레이션(Brief
   복귀)이 유일한 경로인데, 그 복귀 절차 자체는 미구현이다
   ([ADR-0021](../adr/0021-blueprint-state-and-revisions.md) Cost).
+
+### Execute Gate CLEAR 조건 중 강제되지 않는 것
+
+[Execute Guide](../07_EXECUTE.md) §10은 `CLEAR — Clear for Verify` 조건 6개를
+규정한다. `evaluate_execute_gate`가 실제로 검사하는 것은 3개다 — attempt
+종료(ATTEMPT_OPEN), 현재 revision의 전 AC 실행(CRITERION_UNEXECUTED), 실행
+실패 부재(CRITERION_FAILED). 승인 Seed revision 연결은 Gate 앞의 진입
+확인(`_cleared_blueprint`)과 revision 스코프 판정이 구조적으로 성립시킨다.
+나머지는 **계약 미달**이며 여기 명시한다 ([progress
+0003](./0003_EXECUTE_VERTICAL_SLICE.md) 종료 검토에서 추가).
+
+| 조건 | 상태 |
+|---|---|
+| 대상 AC와 **변경 artifact**를 추적할 수 있다 | AC는 `ac_key`로 추적된다. 변경 artifact는 **개념 자체가 없다** — §9 telemetry schema 결정 대기 |
+| 필수 Runtime events와 명령 결과가 보존되어 있다 | **검사하지 않는다.** event·command result 층이 없다 — §9 결정 대기. 지금의 `CLEAR`는 이 보존을 보장하지 않는다 |
+| Verify가 독립적으로 판정할 충분한 입력이 있다 | **검사하지 않는다.** "충분"의 정의가 Verify 계약(Phase 4) 소유다. 현재는 `EXECUTED_UNVERIFIED` 존재까지만 |
+
+### Execute의 알려진 한계
+
+- **같은 AC 재시도에 상한이 없고, 재시도가 동일 요청이다.** 실패 증거를 다음
+  시도에 전달하지 않는다(§7 초안의 `previous_failure_refs` 미구현). Guide
+  §11("같은 prompt를 반복하지 않는다")의 분석 주체는 Recover(Phase 4)이며,
+  upstream의 재시도 제한·증거 전달 방식은 미조사다
+  ([ADR-0025](../adr/0025-execute-deliberate-divergences.md) 미확인 표).
+  v1에서 반복의 주체는 호출자(사용자)라 자동 무한 루프는 없다.
+- **고아가 된 열린 attempt를 해소할 진입점이 없다.** 결과 저장 실패나 크래시
+  후 `DISPATCHED`로 남은 attempt는 Gate가 "결과 불명"으로 드러내지만, 늦은
+  결과 기록이나 실패 처리를 할 경로가 없어 mission이 멈춘다. resume(Phase 5)과
+  Recover(Phase 4)에서 다룬다.
+- **attempt에 시각이 없다.** §9의 "언제 시작하고 종료했는가"에 답하지 못한다.
+  Clock port 도입(Brief 한계와 같은 축) 및 §9 schema와 함께 다룬다.
+- **envelope가 인스턴스 구성으로 주입된다.** workspace 격리 방식이 미정이라
+  (Guide §17) mission별 envelope 파생이 없다 — 모든 mission이 같은 경계를
+  받는다.
+- **execution_id가 attempt 번호에서 파생된다** (`exec-<mission>-<n>`).
+  idempotency exact key schema(§17 미정)가 결정되면 재평가한다.
 
 ### 현재 구현의 알려진 한계
 
@@ -387,7 +438,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 |---|---|---|
 | Phase 1 — Brief | 소급 충족 — 완료 당일 감사(ADR-0015·0016), 관측 대조에 따른 closure 소급(ADR-0020), 등록된 이탈은 ADR-0011과 ADR-0020 §5 | [progress 0001](./0001_BRIEF_VERTICAL_SLICE.md) |
 | Phase 2 — Blueprint | **충족 (2026-08-08)** — 완료 선언 전 절차로 첫 수행. 계약 미달 1건 발견·수정(중복 AC, b00e0c2), 표시 누락 1건 추가(크기 제한), 미확인 이탈 1건 등록(previous_findings → ADR-0022) | [progress 0002](./0002_BLUEPRINT_VERTICAL_SLICE.md) |
-| Phase 3 — Execute | 대기 | — |
+| Phase 3 — Execute | **충족 (2026-08-08)** — Test Matrix 누락 2행 테스트 추가(2f951e2), ADR-0024 과장 정정, §10 미검사 조건 표 추가, telemetry schema 시점 정정(§9 → Phase 4 전), 재시도 정책 미확인 등록(ADR-0025) | [progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md) |
 | Phase 4 — Verify/Recover | 대기 | — |
 | Phase 5 — Runtime adapters | 대기 | — |
 | Phase 6 — `mcx` CLI | 대기 | — |

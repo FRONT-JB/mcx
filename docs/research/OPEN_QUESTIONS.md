@@ -185,12 +185,23 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 ## 9. Persistence and Telemetry decisions
 
 기초 조사는 [PERSISTENCE_UPSTREAM_FINDINGS.md](./PERSISTENCE_UPSTREAM_FINDINGS.md)에
-있다. Brief 범위의 baseline은 ADR-0013에서 결정했고, 나머지는 Phase 3(Execute)
-설계 직전에 확정한다.
+있다. Brief 범위의 baseline은 ADR-0013에서 결정했고, 실행 **상태**의 저장은
+Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch보다 먼저 —
+[ADR-0024](../adr/0024-execute-v1-execution-model.md) §4). 실행
+**이벤트**(event/report/bundle) 스키마와 나머지는 **Phase 4 진입 전에
+§5(evaluate lineage)와 함께** 확정한다 — 스키마의 소비자는 Verify·Recover이며,
+소비자 요구를 모른 채 확정하면 upstream 근거 없는 발명이 된다
+([progress 0003](../progress/0003_EXECUTE_VERTICAL_SLICE.md) 종료 검토에서
+시점 정정. 원래 문구는 "Phase 3 설계 직전"이었다).
 
-- [-] file store, SQLite, event sourcing 중 v1 baseline을 결정한다. (Brief 범위는 ADR-0013으로 결정, 실행 이벤트는 Phase 3)
-- [ ] atomic state transition과 crash recovery 요구를 정의한다.
-- [ ] Telemetry event/report/bundle schema를 결정한다.
+- [-] file store, SQLite, event sourcing 중 v1 baseline을 결정한다. (Brief
+      범위는 ADR-0013, 실행 상태는 같은 형태의 파일 문서로 구현 — 실행
+      이벤트의 저장은 event schema와 함께)
+- [-] atomic state transition과 crash recovery 요구를 정의한다. (Execute
+      범위는 ADR-0024 §4로 확정 — 지속이 dispatch보다 먼저, 크래시 후
+      `DISPATCHED`로 남음이 곧 "결과 불명". Mission 전체 수준은 미정)
+- [ ] Telemetry event/report/bundle schema를 결정한다. (**Phase 4 진입 전**,
+      §5와 함께)
 - [ ] retention, redaction, output-size 정책을 결정한다.
 - [ ] Mission replay와 resume의 최소 보장 수준을 결정한다.
 

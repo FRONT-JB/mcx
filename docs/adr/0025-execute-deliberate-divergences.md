@@ -40,7 +40,8 @@
 | evaluate가 실행 lineage를 요구하는지 | Verify(Phase 4) 전에 조사한다 — [Open Questions §5](../research/OPEN_QUESTIONS.md), [RUN_UPSTREAM_FINDINGS](../research/RUN_UPSTREAM_FINDINGS.md) §10 |
 | 분해 SPLIT 판정의 실제 주체와 preflight 기준 | 분해 도입 시 조사 (§10) |
 | resume/cancel 계약 | Phase 5에서 조사 (§10) |
-| runtime handle 직렬화의 정확한 필드 목록 | Telemetry 스키마 설계(Phase 3) 시 확인 (§10) |
+| runtime handle 직렬화의 정확한 필드 목록 | §9 telemetry schema 결정 시 확인 — 시점은 Phase 4 진입 전으로 정정 ([progress 0003](../progress/0003_EXECUTE_VERTICAL_SLICE.md) 종료 검토) (§10) |
+| 실행 실패 후 같은 AC 재시도의 정책 | 우리 v1은 상한 없이 동일 요청을 재시도한다 (실패 증거 전달 없음). upstream의 bounce/repair가 재시도 횟수를 어떻게 제한하고 실패 증거를 다음 시도에 어떻게 전달하는지 미조사 — Recover(Phase 4) 전에 조사한다 |
 
 ## Consequences
 
