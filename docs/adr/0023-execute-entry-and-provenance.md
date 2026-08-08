@@ -130,6 +130,10 @@ MCP host가 자기 도구로 작업하는 경로의 취급은 §8의 결정이�
 - **Stage→Runtime 바인딩 테이블 도입을 지금 결정**: 우리 Runtime adapter
   구조(ADR-0003)가 Phase 5에서 구체화되므로, 바인딩 표현은 그때 upstream의
   닫힌 enum + 3단 해석 규칙(RUN_UPSTREAM_FINDINGS §1)과 대조해 정한다.
+  → **이 약속은 Phase 5에서 이행되지 않았다** (2026-08-09 로드맵 대조에서
+  발견). 대조와 결정은 [ADR-0039](./0039-stage-runtime-routing-table.md)로
+  이행했다 — 라우팅 테이블 도입, 값은 lane별 backend 쌍(등록된 divergence),
+  설정 표면은 `config.toml`.
 
 ## Verification
 

@@ -68,12 +68,15 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
 - [x] Run이 AC를 atomic-first로 시도하고 분해하는 정확한 조건을 확인한다. →
       [RUN_UPSTREAM_FINDINGS §6](./RUN_UPSTREAM_FINDINGS.md) (분해는 예외
       경로, 자식 2~5·깊이 2·repair 1)
-- [ ] **executed-unverified에 대응하는 upstream state/event를 확인한다.** →
-      **미조사 (2026-08-09 확인).** `UPSTREAM_MAPPING §4`의 "executed-but-
-      unverified 상태"는 **우리가 채택할 것의 목록**이지 upstream 관측이
-      아니다. 이 개념은 프로젝트 슬로건("Executed is not verified")이자
-      Execute Gate의 축인데 upstream 대응물이 확인되지 않았다 — 대응물이
-      없다면 등록된 divergence여야 한다
+- [x] executed-unverified에 대응하는 upstream state/event를 확인한다. →
+      **2026-08-09 조사 완료 — 대응물이 실재한다.**
+      `mcp/job_manager.py:249-258`의 `_run_only_verification_meta`
+      (`verification_status: "executed_unverified"`, `evaluated: False`,
+      `next_step: "ooo evaluate <id>"`)와 `auto/pipeline.py:4650-4676`의
+      `complete_unverified`/`complete_verified` 분류
+      ([RUN findings §11.1](./RUN_UPSTREAM_FINDINGS.md)). 축은 정렬이고,
+      차이는 표현 지위(메타데이터 vs 1급 상태)와 미평가 작업 차단 여부
+      (upstream 없음 / 우리는 ADR-0026으로 등록된 divergence)다
 - [x] Evaluation pipeline의 short-circuit와 consensus trigger를 확인한다. →
       [VERIFY findings §6~§7](./VERIFY_UPSTREAM_FINDINGS.md) (trigger 6조건),
       [EVALUATE findings](./EVALUATE_UPSTREAM_FINDINGS.md) (3단 파이프라인)
@@ -151,6 +154,14 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       upstream도 CLI에 user identity 없음). MCP(Phase 7)의 host 대리 승인
       경로만 잔여.
 - [ ] user-edited YAML을 지원할지 결정한다.
+- [ ] **결정적 품질 gate(upstream `GradeGate`)의 대응물을 도입한다.** →
+      **시한 지정 (2026-08-09, 사용자 결정): Phase 8 합성 계층.**
+      upstream의 Seed 품질 방어는 두 층이다 — LLM 채점(우리 ADR-0019 QA)과
+      `auto/grading.py`의 **결정적** gate(`may_run = grade == A and not
+      blockers`, gap 개수·가정 개수로 coverage·risk를 계산). 우리에겐 구조
+      검사(`check_scope`)만 있고 점수화된 결정적 층이 없다. upstream 위치가
+      합성 계층(`auto/`)이므로 우리 대응 층도 Phase 8이다
+      ([SEED findings §11](./SEED_UPSTREAM_FINDINGS.md)).
 - [x] schema/ontology를 v1에 포함할지 결정한다. → 제외. upstream 필드 5개
       (ontology_schema 등)는 v1 미포함으로 기록
       ([ADR-0017](../adr/0017-blueprint-schema-baseline.md) Cost)
@@ -287,6 +298,13 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
 - [-] capability descriptor와 mismatch semantics를 정의한다. → upstream은
       선언적 3플래그(이름 검사보다 플래그 분기). 우리 도입은 둘째 adapter
       에서 차이가 실제로 생길 때 (ADR-0033 §6)
+- [x] Stage→Runtime 바인딩 표현을 결정한다. → **라우팅 테이블 도입
+      (2026-08-09, 사용자 결정 — [ADR-0039](../adr/0039-stage-runtime-routing-table.md)).**
+      키는 닫힌 Stage enum, 값은 lane별 backend 쌍(upstream은 stage당 하나 —
+      등록된 divergence), 해석 3단, fail-fast 검증, 설정 표면
+      `<state-dir>/config.toml`(ADR-0038 개정). ADR-0023이 Phase 5에 약속하고
+      이행하지 않은 대조를 이행했다
+      ([RUN findings §1·§11.2](./RUN_UPSTREAM_FINDINGS.md)).
 - [ ] native event 보존과 normalized Telemetry 연결 방식을 정의한다.
       (스트리밍·event 층과 함께 — ADR-0027 §3)
 - [-] timeout/cancel/resume contract를 정의한다. → timeout은 침묵 900초

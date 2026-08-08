@@ -161,6 +161,9 @@ mission. 원문이 근거로 든 upstream `ooo seed`의 명시 요구는 사실�
   `CodexExecutionRuntime` (ADR-0036). vendor 선택 플래그·설정 파일은
   도입하지 않는다 — 대체 조립(codex 텍스트 등)은 composition 함수 인자
   수준으로만 존재하고, 표면 노출은 실수요 시 재평가 (§7).
+  → **개정 (2026-08-09, 사용자 결정 — [ADR-0039](./0039-stage-runtime-routing-table.md)).**
+  Stage→Runtime 라우팅은 `<state-dir>/config.toml`로 들어온다. **CLI 플래그는
+  여전히 도입하지 않는다** — 개정된 것은 "설정 파일 미도입"뿐이다.
 - 상태 루트는 `--state-dir`(기본 `~/.mcx`) — upstream `--state-dir` +
   `~/.ouroboros/data` 정렬. 내부 배치는 `<state-dir>/state/*.json`(Stage·
   mission 문서), `<state-dir>/outputs/`(Verify 산출물)이다.

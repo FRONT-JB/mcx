@@ -340,9 +340,43 @@ goal/criteria가 참조하는 모든 엔티티를 덮는 ontology_schema, 필드
 추출 프롬프트(`agents/seed-architect.md`)는 2026-08-07에 전문을 읽었다(§3.2·§3.3·
 §3.4). 남은 항목은 다음과 같다.
 
-- Seed revision lineage와 `parent_seed`의 의미
-- `GradeGate`가 등급을 실제로 어떻게 소비하는지 (A만 통과인지, B도 조건부인지)
-- `SeedRepairer.converge`의 bounded stop 조건 (횟수인지 등급 정체인지)
+- ~~Seed revision lineage와 `parent_seed`의 의미~~ **2026-08-09 해소.**
+  `parent_seed_id`는 `SeedMetadata`의 선언 필드(`core/seed.py:411`)이고
+  소비자는 **진화 루프**다 (`evolution/loop.py:444·469·1036·1072`,
+  `evolution/projector.py:97`). 즉 **mission 간** lineage 축이며, 우리
+  Blueprint의 revision 정수 + `brief_revision` lineage(ADR-0021 §2)와 축이
+  다르다 — mission 간 축은 [Open Questions §10](./OPEN_QUESTIONS.md)
+  (Phase 10 Reflect/Evolve) 소관이다.
+- ~~`GradeGate`가 등급을 실제로 어떻게 소비하는지~~ **2026-08-09 해소 —
+  A만 통과다.** `auto/grading.py:488`: `may_run = grade == SeedGrade.A and
+  not blockers`. 등급은 결정적으로 매겨진다 — blocker가 있으면 C(`:470-472`),
+  repairable finding이 있으면 B(`:481`), 둘 다 없으면 A. 모듈 docstring도
+  *"Deterministic A-grade gate"*, 클래스 docstring도 *"prevents B/C Seeds
+  from running"*이다.
+
+  채점은 **LLM이 아니라 계산**이다 (`:127-157`): `GapDetector`가 찾은
+  gap을 repairable 여부로 finding/blocker에 나누고,
+  `coverage = 1 - (open_gaps / 10)`, `ambiguity = 1 - coverage`,
+  `risk = 0.05×가정수 + 0.15×blocker수`, `testability`는
+  `acceptance_criteria`가 open gap이면 0.85→0.4로 떨어진다.
+
+  **함의**: upstream의 Seed 품질 방어는 **두 층**이다 — LLM 채점(우리
+  ADR-0019 QA의 대응물)과 이 결정적 gate. 우리에겐 구조 검사(`check_scope`)만
+  있고 점수화된 결정적 층이 없다. 위치는 `auto/`, 즉 **합성 계층 소유**이며
+  (CLI findings §2) 우리 대응 층은 Phase 8이다 — 사용자 결정 2026-08-09로
+  Phase 8에 배치했다 ([Open Questions §3](./OPEN_QUESTIONS.md)).
+- ~~`SeedRepairer.converge`의 bounded stop 조건~~ **2026-08-09 해소 —
+  횟수다.** `auto/seed_repairer.py:229-262`: `len(history) >=
+  max_iterations`면 최근 리뷰본을 반환하며, docstring이 이유를 말한다 —
+  *"the upper bound the pipeline relies on to prevent unbounded LLM cost
+  when the reviewer keeps producing the same finding."* 우리 QA 상한 5회
+  (ADR-0019)와 같은 축이다.
+
+  부수 규칙 둘: ① 상한이 **repair 직후**에 걸리면 캐시된 review가 수리 전
+  seed를 설명하므로 최종 재검토를 정확히 1회 더 한다(stale review가 고쳐진
+  seed를 막지 않도록). 우리는 매 revision을 채점하므로 이 문제가 구조적으로
+  없다. ② `cancel_event`로 협조적 취소 — 다음 iteration 경계에서
+  `RepairCancelled`. 우리 취소 경로는 Phase 7이다.
 - ~~`SeedMetadata`가 보존하는 항목 전체~~ **2026-08-08 해소.** 선언 필드는
   `core/seed.py:367-416`의 11개(seed_id, version, created_at, ambiguity_score,
   interview_id, parent_seed_id, generation_mode, degraded, unresolved_slots,

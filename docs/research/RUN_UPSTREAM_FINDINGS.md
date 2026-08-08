@@ -178,6 +178,51 @@ fingerprint**다 — base_scope + dispatch_contract + execution_policy
   preflight 평가의 기준 — 분해를 도입할 때 조사한다.
 - `ooo run`의 재개(resume)·취소 계약 — Runtime adapter(Phase 5)에서 조사한다.
 
+## 11. 후속 조사 (2026-08-09) — `executed_unverified` 실물과 라우팅 대상
+
+[Open Questions §1](./OPEN_QUESTIONS.md)에 미조사로 남아 있던 두 항목을
+닫는다. Evidence level: **Verified** (소스 확인).
+
+### 11.1 `executed_unverified`는 upstream에 실재한다
+
+우리 슬로건("Executed is not verified")과 `EXECUTED_UNVERIFIED` 상태의
+upstream 대응물이 확인되지 않은 채 Phase 3을 지나갔었다. 실물은 두 곳이다.
+
+- `mcp/job_manager.py:249-258` `_run_only_verification_meta` — docstring이
+  목적을 그대로 말한다: *"Metadata that keeps execution completion separate
+  from formal evaluation."* 필드는 `evaluated: False`,
+  `verification_status: "executed_unverified"`,
+  `formal_evaluation_required: True`, `next_step: "ooo evaluate <session_id>"`.
+- `auto/pipeline.py:4650-4676` — 산출물 결과를 orchestration status와 **분리**
+  분류한다: `complete_unverified` / `complete_verified` /
+  `partial_artifact_generated`. docstring: *"This companion value prevents
+  final renderers from implying completion."*
+
+**함의**: 축은 정렬이다 — 실행 완료와 형식 평가의 분리, 그리고 "다음 단계는
+evaluate"라는 지시까지 같다. 차이는 두 가지이며 둘 다 우리 쪽이 더 강하다.
+
+| 축 | upstream | Mission Control |
+|---|---|---|
+| 표현 지위 | job 메타데이터·렌더링 힌트 (status는 별도로 authoritative) | Attempt의 1급 상태 (ADR-0023) |
+| 미평가 작업의 차단 | 없음 — evaluate는 lineage를 요구하지 않는다 (§5, EVALUATE findings §2) | Verify 진입이 Execute Gate `CLEAR`를 요구 (ADR-0026, 등록된 divergence) |
+
+### 11.2 §1 라우팅 테이블은 실행뿐 아니라 LLM 완성도 라우팅한다
+
+§1의 조회 지점 세 곳 중 `config/loader.py`의 성격을 확정했다
+(`:1685-1707`). 해석 순서는 `explicit_backend` → per-stage
+(`runtime_profile.stages`) → `runtime_profile.default` → legacy
+`llm.backend`/env override → orchestrator default agent runtime이며, 주석이
+*"Per-stage routing stays authoritative"*라고 못박는다.
+
+`auto/runtime_routing.py:40-43`은 반대편을 말한다 — `--runtime` override는
+*"one explicit runtime drives both **authoring and execution**"*.
+
+**함의**: upstream은 **stage 하나에 backend 하나**이고, 그 backend가 그
+stage의 텍스트 생성과 실행을 모두 맡는다. 우리처럼 한 Stage 안에서 텍스트
+lane(Claude)과 실행 lane(Codex)을 다른 vendor로 쪼개는 구조는 upstream에
+대응물이 없다 — [ADR-0039](../adr/0039-stage-runtime-routing-table.md)에
+divergence로 등록했다.
+
 ## Mission Control 함의
 
 결정은 [ADR-0023](../adr/0023-execute-entry-and-provenance.md)에 있다. 요약:

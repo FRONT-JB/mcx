@@ -47,7 +47,7 @@
 | `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
 | `08_VERIFY.md` | Draft | 진입(ADR-0026)·mechanical 계약(ADR-0028)·증거 필드(ADR-0027 §1) 확정 — 구현으로 검증. semantic verdict schema는 후속 slice |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도 예산·정체 중단 계약 확정 (ADR-0031·0032) — 구현으로 검증. rollback·oscillation 탐지는 보류 |
-| `adr/` | 38 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3, 0026~0032는 Phase 4, 0033~0036은 Phase 5, 0037~0038은 Phase 6) |
+| `adr/` | 39 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3, 0026~0032는 Phase 4, 0033~0036은 Phase 5, 0037~0038은 Phase 6) |
 | `research/` | Baseline created | Open Questions를 evidence로 해소 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
@@ -274,6 +274,9 @@ Verify Gate 미검사 조건)을 잡았다.
   2건(무도구 max-turns 계약, CLI 원인 사슬 삼킴) 수정 완료
 - [ ] status 박스 — 사용자 제안(2026-08-09), OPEN_QUESTIONS §8 등록,
   ADR-0038 개정으로 도입 예정
+- [ ] Stage→Runtime 라우팅 테이블 + `config.toml`
+  ([ADR-0039](../adr/0039-stage-runtime-routing-table.md), 사용자 결정
+  2026-08-09) — ADR-0023이 Phase 5에 약속하고 이행하지 않은 항목
 - [ ] Phase 6 종료 검토
 
 ### Phase 7 — MCP control surface
@@ -312,6 +315,10 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 
 - [ ] upstream skills 계층 조사 — 합성 규칙의 실제 내용과 CLI/MCP와의 경계
 - [ ] skill 계층 ADR — 무엇이 skill 소유이고 무엇이 Core 소유인가
+- [ ] 결정적 품질 gate (upstream `GradeGate` 대응물 — 사용자 결정
+  2026-08-09): LLM 채점과 별개로 계산만으로 등급을 매기고 미달 Blueprint의
+  실행을 막는 층. upstream 위치가 합성 계층(`auto/grading.py`)이라 이 Phase
+  소관이다 ([SEED findings §11](../research/SEED_UPSTREAM_FINDINGS.md))
 - [ ] skill 작성 + plugin manifest (Claude·Codex 양쪽 MCP 클라이언트)
 - [ ] 설치·발견·설정 UX ([Open Questions §8](../research/OPEN_QUESTIONS.md))
 
@@ -573,7 +580,8 @@ upstream 파리티 동작으로 확인).
 통과 여부를 사용자가 볼 수 있게 한다 (OPEN_QUESTIONS §8 등록 항목, upstream
 `ooo status auto` 블록 정렬). 같은 작업에서 **semantic verdict 일괄 저장의
 가시성**(OPEN_QUESTIONS §5 미결 — "status 박스와 함께 처분"으로 등록됨)도
-처분한다. 완료 후 Phase 6 종료 검토.
+처분한다. 그다음 Stage→Runtime 라우팅 테이블(ADR-0039) 구현, 마지막으로
+Phase 6 종료 검토.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -676,20 +684,21 @@ verdict(충족·score·불확신·게이밍)다. 나머지는 **계약 미달**�
 
 ### 전 Stage 공통의 알려진 한계
 
-- **`executed-unverified`의 upstream 대응물이 미조사다 (2026-08-09 발견).**
-  이 개념은 프로젝트 슬로건("Executed is not verified")이자 Execute Gate의
-  축인데, [Open Questions §1](../research/OPEN_QUESTIONS.md)의 해당 조사
-  항목이 Phase 3을 지나도록 `[ ]`로 남아 있었다.
-  `UPSTREAM_MAPPING §4`의 "executed-but-unverified 상태"는 우리가 채택할
-  것의 목록이지 upstream 관측이 아니다. 대응물이 없다면 등록된 divergence
-  여야 한다 — Phase 6 종료 검토(질문 3)에서 처분한다.
-- **Stage→Runtime 바인딩 표현이 upstream과 대조되지 않았다 (2026-08-09
-  발견).** [ADR-0023](../adr/0023-execute-entry-and-provenance.md) Rejected
-  alternatives가 "바인딩 표현은 Phase 5에서 upstream의 닫힌 enum + 3단 해석
-  규칙과 대조해 정한다"고 약속했으나 Phase 5는 대조 없이 지나갔다. 현재
-  구현은 `cli/composition.py`의 하드코딩 조립(텍스트 Claude·실행 Codex)이고
-  upstream에는 `runtime_profile.stages` 구성 축이 있다 — 같은 검토에서
-  처분한다.
+- ~~**`executed-unverified`의 upstream 대응물이 미조사다.**~~ **2026-08-09
+  같은 날 조사·해소.** 대응물이 실재한다 —
+  `mcp/job_manager.py:249-258`(`verification_status: "executed_unverified"`,
+  `next_step: "ooo evaluate"`)와 `auto/pipeline.py:4650-4676`
+  (`complete_unverified`/`complete_verified`),
+  [RUN findings §11.1](../research/RUN_UPSTREAM_FINDINGS.md). 슬로건과 Gate
+  축이 upstream 정렬임이 확인됐고, 두 차이(1급 상태 표현, 미평가 작업 차단)는
+  전자가 강화, 후자는 이미 ADR-0026에 등록된 divergence다.
+- ~~**Stage→Runtime 바인딩 표현이 upstream과 대조되지 않았다.**~~
+  **2026-08-09 같은 날 대조·결정.** ADR-0023이 Phase 5에 약속하고 이행하지
+  않은 대조를 수행해
+  [ADR-0039](../adr/0039-stage-runtime-routing-table.md)로 확정했다 —
+  라우팅 테이블 도입(닫힌 Stage enum 키, lane별 backend 쌍, 3단 해석,
+  fail-fast), 설정 표면은 `config.toml`(ADR-0038 개정). **구현은 Phase 6
+  잔여 작업이다.**
 
 - **canonical Stage 저장이 아직 없다 — 처분 완료, 도입은 Phase 6.** Entry
   Contract들의 "현재 Stage가 X다" 조건은 전 Stage에서 미강제이며, 실질
