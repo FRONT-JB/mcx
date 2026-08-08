@@ -4,13 +4,13 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 5 — Runtime adapters COMPLETE (2026-08-08); Phase 6 (`mcx` CLI) 선행 조사 준비 |
+| Project phase | Phase 6 (`mcx` CLI) — 선행 조사 완료 (2026-08-08, [CLI findings](../research/CLI_UPSTREAM_FINDINGS.md)·ADR-0037); CLI 표면 설계 ADR 대기 |
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종) |
 | Automated tests | 530 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
-| Updated | 2026-08-08 |
+| Updated | 2026-08-09 |
 
 ## Current facts
 
@@ -461,12 +461,22 @@ OpenCode 사용 시점 조사(RUNTIME findings §11 — upstream도 자동 편�
 사용자 구성 3진입로뿐) 후 사용자 결정으로 실수요 시점 이연이 확정되었다
 (ADR-0003 범위 note 2).
 
-다음 검증 가능한 목표 한 개: **Phase 6 선행 조사 — upstream이 CLI를 얇게
-둔 이유와 canonical Stage 저장 결정.** ① upstream CLI 경로의 실제 두께와
-책임 배치를 소스로 확인하고 (OPEN_QUESTIONS §8), ② 전 Stage 공통 한계로
-등록된 canonical Stage 저장 부재(record 0004 질문 4 처분 — Lifecycle 소유
-결정, Phase 6 전 시한)를 닫는다. 둘 다 `mcx` CLI의 첫 설계 결정에
-선행한다.
+Phase 6 선행 조사는 2026-08-08 완료되었다
+([CLI_UPSTREAM_FINDINGS](../research/CLI_UPSTREAM_FINDINGS.md)): ①
+upstream CLI가 얇은 것은 의도(공유 핸들러 위임으로 CLI/MCP 불일치 차단,
+품질 루프는 합성 계층 소유)이며 `ooo seed`는 전제 gate를 가진 재개용
+primitive였다 — `mcx blueprint`의 QA 상시 포함은 upstream use case를
+부수지 않는다. ② canonical Stage 저장은
+[ADR-0037](../adr/0037-mission-record-and-canonical-stage.md)로 처분 —
+합성 계층(Phase 6 CLI) 소유 mission 문서에 도입, enforcement는 Gate
+재계산 유지.
+
+다음 검증 가능한 목표 한 개: **Phase 6 첫 설계 — `mcx` CLI 표면 ADR.**
+명령 표면(다섯 Stage 명령의 입출력·exit code), 대화형 지점(OPEN_QUESTIONS
+§8 잔여 — QA EXHAUSTED 선택, HOLD exit code, 비대화형 모드), mission 상태
+문서와 composition root의 배치(ADR-0037 구현 형태)를
+[CLI_UPSTREAM_FINDINGS §5](../research/CLI_UPSTREAM_FINDINGS.md)의 전례와
+대조해 ADR로 확정한 뒤 구현에 들어간다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -569,11 +579,16 @@ verdict(충족·score·불확신·게이밍)다. 나머지는 **계약 미달**�
 
 ### 전 Stage 공통의 알려진 한계
 
-- **canonical Stage 저장이 없다.** Entry Contract들의 "현재 Stage가 X다"
-  조건이 전 Stage에서 미강제이며, 실질 보증은 각 진입의 Gate 재계산이다.
-  Phase 1이 "Phase 2에서 다룬다"고 미룬 뒤 재론되지 않았음을 Phase 4 종료
-  검토가 발견했다. 처분: Lifecycle 소유 결정으로 **Phase 6(CLI) 전**에
-  확정한다 ([progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) 질문 4).
+- **canonical Stage 저장이 아직 없다 — 처분 완료, 도입은 Phase 6.** Entry
+  Contract들의 "현재 Stage가 X다" 조건은 전 Stage에서 미강제이며, 실질
+  보증은 각 진입의 Gate 재계산이다. upstream 대조
+  ([CLI_UPSTREAM_FINDINGS §4](../research/CLI_UPSTREAM_FINDINGS.md)) 후
+  [ADR-0037](../adr/0037-mission-record-and-canonical-stage.md)로
+  결정했다(2026-08-08): mission record(current Stage 포함)는 합성
+  계층(Phase 6 CLI) 소유로 도입하고, 저장된 Stage에 enforcement 지위를 주지
+  않는다 — Gate 재계산이 계속 이긴다. Phase 6 구현 전까지 이 한계는 결함이
+  아니라 결정된 상태다
+  ([progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) 질문 4 처분).
 
 ### Execute의 알려진 한계
 
@@ -669,7 +684,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 3 — Execute | **충족 (2026-08-08)** — Test Matrix 누락 2행 테스트 추가(2f951e2), ADR-0024 과장 정정, §10 미검사 조건 표 추가, telemetry schema 시점 정정(§9 → Phase 4 전), 재시도 정책 미확인 등록(ADR-0025) | [progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md) |
 | Phase 4 — Verify/Recover | **충족 (2026-08-08)** — 예산 리셋 테스트 추가(0186450), directive 저장 vs 파생 충돌 해소, exit_conditions 유예 재평가, canonical Stage 저장 부재 등록, Verify Gate 미검사 조건 표 신설. Gate·Matrix 전수 대조 포함 | [progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) |
 | Phase 5 — Runtime adapters | **충족 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). 잔여 3항목은 OpenCode 사용 시점 조사 후 사용자 결정으로 실수요 이연 (ADR-0003 note 2) | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
-| Phase 6 — `mcx` CLI | 대기 | — |
+| Phase 6 — `mcx` CLI | 대기 (phase 진행 중 — 선행 조사 완료 2026-08-08, 표면 설계 ADR 대기) | [CLI findings](../research/CLI_UPSTREAM_FINDINGS.md), [ADR-0037](../adr/0037-mission-record-and-canonical-stage.md) |
 | Phase 7 — MCP control surface | 대기 | — |
 
 ## Update protocol

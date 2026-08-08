@@ -215,6 +215,11 @@ process group 정리는 코드 경로로만 확인된다(간접 증거: sleep 30
   처음 검증된다.
 - **workspace snapshot/revision 검증** — OPEN_QUESTIONS §5 미결정 유지.
 - **canonical Stage 저장** — Phase 6 전 Lifecycle 결정 (질문 4 처분).
+  → **처분 완료 (2026-08-08):** upstream 대조
+  ([CLI_UPSTREAM_FINDINGS §4](../research/CLI_UPSTREAM_FINDINGS.md)) 후
+  [ADR-0037](../adr/0037-mission-record-and-canonical-stage.md)로 결정 —
+  합성 계층(Phase 6 CLI) 소유 mission 문서에 도입, enforcement는 Gate
+  재계산 유지.
 
 ## 이번 검토가 잡은 것
 
