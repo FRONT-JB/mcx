@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import QaAssessment, QaFinding
@@ -30,6 +30,7 @@ from mission_control.domain.brief.requirement import (
     RequirementSection,
 )
 from mission_control.domain.brief.state import BriefState
+from mission_control.domain.execute.state import ExecuteState
 
 
 class BriefRepository(Protocol):
@@ -79,6 +80,87 @@ class BlueprintRepository(Protocol):
 
         저장이 성공적으로 끝나기 전에는 호출자가 전이 완료를 보고해서는 안 된다.
         """
+        ...
+
+
+class ExecuteRepository(Protocol):
+    """Execute 상태의 durable 저장소. :class:`BriefRepository`와 같은 보장이다.
+
+    attempt는 dispatch **전에** 저장되어야 한다 (ADR-0024 §4). 저장이
+    실패하면 dispatch는 일어나지 않은 것이다.
+    """
+
+    async def load(self, mission_id: str) -> ExecuteState | None:
+        """저장된 Execute 상태를 반환한다. 없으면 ``None``."""
+        ...
+
+    async def save(self, state: ExecuteState) -> None:
+        """Execute 상태를 durable하게 기록한다."""
+        ...
+
+
+class ExecutionRequest(BaseModel):
+    """AC 하나를 실행하기 위한 bounded 입력.
+
+    승인된 Blueprint의 칸들만 담는다 — 대화 원문도 Brief 상태도 넘기지
+    않는다. 제약과 Non-goal은 실행의 경계이고, criterion은 무엇을 만들었다고
+    인정할 것인가의 계약이다. ``workspace``와 ``allowed_tools``는 capability
+    envelope다 (ADR-0024 §6) — v1에서는 전달·기록까지가 강제 범위이고 실제
+    차단은 concrete adapter(Phase 5)가 한다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    goal: str
+    constraints: tuple[str, ...]
+    non_goals: tuple[str, ...]
+    criterion: AcceptanceCriterion
+    workspace: str
+    allowed_tools: tuple[str, ...]
+
+
+class ExecutionOutcome(BaseModel):
+    """한 번의 실행 결과.
+
+    성공은 "실행이 끝났다"이지 "AC가 충족됐다"가 아니다 — 충족 판정은
+    Verify의 것이다. 실패에는 이유가 필수다. 이유 없는 실패는 Verify와
+    Recover가 판정할 재료가 없다.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    succeeded: bool
+    native_session_id: str | None = None
+    result_summary: str | None = None
+    error: str | None = None
+
+    @model_validator(mode="after")
+    def _error_matches_the_outcome(self) -> ExecutionOutcome:
+        if self.succeeded and self.error is not None:
+            raise ValueError("a successful outcome cannot carry an error")
+        if not self.succeeded and not self.error:
+            raise ValueError("a failed outcome requires an error")
+        return self
+
+
+class ExecutionRuntime(Protocol):
+    """AC 하나를 실행하는 Runtime Adapter의 계약.
+
+    adapter는 use case가 구성한 요청만 실행하며 **스스로 작업을 만들지
+    않는다** (ADR-0023 §1). Mission Control 재귀 호출 수단이 없다
+    (ADR-0004). 실행 실패는 예외 또는 ``succeeded=False`` outcome으로
+    드러나며, 어느 쪽도 결과를 지어내지 않는다.
+
+    ``backend``는 provenance의 실행 주체 항목에 그대로 기록된다.
+    """
+
+    @property
+    def backend(self) -> str:
+        """이 adapter의 runtime backend 이름 (예: ``fake``, ``codex_cli``)."""
+        ...
+
+    async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:
+        """요청된 AC 하나를 실행하고 결과를 반환한다."""
         ...
 
 
