@@ -88,26 +88,42 @@ class CodexCompletion:
         self._silence_timeout_seconds = silence_timeout_seconds
         self._max_attempts = max_attempts
 
-    def build_command(self, *, last_message_path: str, schema_path: str) -> tuple[str, ...]:
-        """완성 명령을 구성한다 — 읽기 전용 sandbox, 쓰기 플래그 없음."""
-        return (
+    def build_command(
+        self, *, last_message_path: str, schema_path: str, workspace: str | None = None
+    ) -> tuple[str, ...]:
+        """완성 명령을 구성한다 — 읽기 전용 sandbox, 쓰기 플래그 없음.
+
+        ``workspace``가 있으면 ``-C``로 그 안에서 관찰한다 — 판정류 role이
+        실제 작업물을 검사해야 할 때 필수다 (실물 스모크에서 관측된 결함의
+        수정, ADR-0034 정정).
+        """
+        command = [
             self._cli_path,
             "exec",
             "--json",
             "--skip-git-repo-check",
-            "--output-last-message",
-            last_message_path,
-            "--output-schema",
-            schema_path,
-            "--sandbox",
-            "read-only",
+        ]
+        if workspace is not None:
+            command.extend(["-C", workspace])
+        command.extend(
+            [
+                "--output-last-message",
+                last_message_path,
+                "--output-schema",
+                schema_path,
+                "--sandbox",
+                "read-only",
+            ]
         )
+        return tuple(command)
 
-    async def complete_json(self, *, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+    async def complete_json(
+        self, *, prompt: str, schema: dict[str, Any], workspace: str | None = None
+    ) -> dict[str, Any]:
         """구조화 완성 한 번 — transient 실패만 재시도한다."""
         last_error = "no attempt was made"
         for attempt in range(self._max_attempts):
-            outcome = await self._attempt(prompt, schema)
+            outcome = await self._attempt(prompt, schema, workspace)
             if isinstance(outcome, dict):
                 return outcome
             last_error = outcome
@@ -117,7 +133,9 @@ class CodexCompletion:
             await asyncio.sleep(2**attempt)
         raise CodexCompletionError(reason=last_error)
 
-    async def _attempt(self, prompt: str, schema: dict[str, Any]) -> dict[str, Any] | str:
+    async def _attempt(
+        self, prompt: str, schema: dict[str, Any], workspace: str | None
+    ) -> dict[str, Any] | str:
         """한 번의 호출. 성공이면 dict, 실패면 오류 설명 문자열을 반환한다.
 
         timeout과 파싱 실패는 즉시 예외다 — transient가 아니므로 재시도
@@ -130,16 +148,18 @@ class CodexCompletion:
         message_path, schema_path = Path(message_name), Path(schema_name)
         try:
             schema_path.write_text(json.dumps(schema), encoding="utf-8")
-            return await self._invoke(prompt, message_path, schema_path)
+            return await self._invoke(prompt, message_path, schema_path, workspace)
         finally:
             message_path.unlink(missing_ok=True)
             schema_path.unlink(missing_ok=True)
 
     async def _invoke(
-        self, prompt: str, message_path: Path, schema_path: Path
+        self, prompt: str, message_path: Path, schema_path: Path, workspace: str | None
     ) -> dict[str, Any] | str:
         command = self.build_command(
-            last_message_path=str(message_path), schema_path=str(schema_path)
+            last_message_path=str(message_path),
+            schema_path=str(schema_path),
+            workspace=workspace,
         )
         process = await asyncio.create_subprocess_exec(
             *command,

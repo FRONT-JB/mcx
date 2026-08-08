@@ -58,6 +58,12 @@ transient 패턴(공용 코어의 부분집합)만, 최대 3회, `2**attempt` ba
   declared contract was met. Cite the evidence line."). 입력은
   `SemanticEvaluationRequest`의 구조화 필드(방향·AC 계약·mechanical 증거)
   뿐이다 — worker 주장은 입력에 없다 (ADR-0030 §3).
+
+  > **2026-08-08 스모크 정정**: 요청에 **`workspace`가 필수**로 추가되었고
+  > 완성 엔진이 `-C`로 전달한다 — 이것 없이 평가자가 엉뚱한 디렉토리를
+  > 검사함이 실물에서 관측되었다
+  > ([RUNTIME_UPSTREAM_FINDINGS §8](../research/RUNTIME_UPSTREAM_FINDINGS.md)).
+  > 읽기 전용 sandbox(§2)는 그대로다 — 평가자는 작업물을 관찰만 한다.
 - **출력 schema**: 우리 verdict 필드와 1:1 — `satisfied`(upstream
   `ac_compliance` 대응), `score`, `uncertainty`, `reward_hacking_risk`,
   `reasoning`, `evidence`, `questions_used`. `goal_alignment`·`drift_score`는

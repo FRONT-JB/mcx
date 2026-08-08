@@ -123,7 +123,11 @@ class CodexSemanticEvaluator:
 
     async def assess(self, request: SemanticEvaluationRequest) -> CriterionVerdict:
         data = await self._completion.complete_json(
-            prompt=render_prompt(request), schema=VERDICT_SCHEMA
+            prompt=render_prompt(request),
+            schema=VERDICT_SCHEMA,
+            # 판정은 실제 작업물 안에서 — 이것 없이 평가자가 엉뚱한 디렉토리를
+            # 검사함이 실물 스모크에서 관측되었다 (ADR-0034 정정).
+            workspace=request.workspace,
         )
         # 범위(0..1)·타입 위반은 CriterionVerdict 생성이 거부한다 — 손상
         # 출력이 satisfied verdict로 변환되는 경로가 없다 (ADR-0034 §4).

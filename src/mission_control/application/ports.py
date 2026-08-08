@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import QaAssessment, QaFinding
@@ -236,6 +236,10 @@ class SemanticEvaluationRequest(BaseModel):
     constraints: tuple[str, ...]
     non_goals: tuple[str, ...]
     criterion: AcceptanceCriterion
+    #: 판정 대상 작업물이 있는 곳. 평가자는 이 안에서 읽기 전용으로
+    #: 관찰한다 — 실물 스모크에서 이 필드 없이는 평가자가 엉뚱한 디렉토리를
+    #: 검사함이 관측되었다 (2026-08-08, ADR-0034 정정).
+    workspace: str = Field(min_length=1)
     #: 이 AC의 mechanical 검증 기록. 성공 계약이 없는 AC는 ``None``.
     mechanical_run: VerificationRun | None = None
 

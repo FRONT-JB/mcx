@@ -371,12 +371,20 @@ Codex text backend는 2026-08-08 시작되었다 (ADR-0034, commit 32a3f17) —
 공통 완성 엔진(`--output-schema` strict, 읽기 전용 sandbox, transient만
 재시도)과 첫 port(semantic 평가자)가 stub conformance 11건으로 고정되었다.
 
-다음 검증 가능한 목표 한 개: **실물 codex CLI 스모크를 수행한다 (사용자
-승인 필요 — 실제 AI 실행·비용 발생).** 지금까지의 플래그·이벤트 형태는
-upstream 소스에서 온 가정이다 — 실행 adapter 1회(작은 워크스페이스에서
-단순 AC)와 semantic 평가자 1회를 실제 codex로 돌려 가정을 사실로 바꾸고,
-불일치가 있으면 RUNTIME findings와 adapter를 정정한다. 스모크가 끝나야
-나머지 위임 port들을 같은 가정 위에 쌓을 수 있다.
+실물 codex 스모크는 2026-08-08 사용자 승인 하에 완료되었다
+([RUNTIME_UPSTREAM_FINDINGS §8](../research/RUNTIME_UPSTREAM_FINDINGS.md) —
+Verified by execution). 가정 대부분이 사실로 확인되었고(thread id, strict
+schema 왕복, `-C` 경계), 불일치 2건이 발견·정정되었다 — `--full-auto` 부재
+(→ `--sandbox workspace-write`), semantic 요청의 workspace 부재(평가자가
+엉뚱한 디렉토리를 검사 — 필수 필드로 추가). 정정 후 재실행에서 평가자가
+workspace 안에서 검증 명령을 직접 재현하고 확신 있는 판정을 반환했다 —
+**semantic 판정 품질의 첫 실물 관측이다.**
+
+다음 검증 가능한 목표 한 개: **나머지 위임 port들의 Codex adapter를
+구현한다** — 질문 생성기·clarity 평가자(Brief), Blueprint 생성기·QA
+채점자(Blueprint), closure 3-lane. 전부 공통 완성 엔진 위의 프롬프트+변환
+이며, 프롬프트가 곧 계약인 지점은 각 구현에서 upstream 원문과 대조한다
+(ADR-0034 §5 잔여). 완료 시 다섯 Stage 전부가 실제 AI로 구동 가능해진다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

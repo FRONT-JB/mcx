@@ -123,7 +123,11 @@ class CodexExecutionRuntime:
             workspace,
             "--output-last-message",
             last_message_path,
-            "--full-auto",
+            # upstream은 `--full-auto`를 쓰지만 실물 codex 0.146.1 exec에는
+            # 그 플래그가 없다 — 같은 의미의 sandbox 모드를 직접 지정한다
+            # (2026-08-08 스모크에서 확인, ADR-0033 정정 노트).
+            "--sandbox",
+            "workspace-write",
         )
 
     async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:

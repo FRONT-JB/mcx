@@ -66,7 +66,8 @@ class TestCommand:
             "/w",
             "--output-last-message",
             "/tmp/last.txt",
-            "--full-auto",
+            "--sandbox",
+            "workspace-write",
         )
 
     def test_no_bypass_path_exists(self) -> None:

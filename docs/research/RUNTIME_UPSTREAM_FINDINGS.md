@@ -111,7 +111,30 @@ Mission Control 대응: 1은 [ADR-0033](../adr/0033-first-runtime-adapter-contra
   uncertainty <= 0.3”) — VERIFY findings §6의 스키마·임계와 일치한다.
 - 완성 명령에는 `--ephemeral`(세션 미보존) 옵션이 있다 (`:437-438`).
 
-## 8. 조사하지 않은 것
+## 8. 실물 스모크 결과 (2026-08-08, codex-cli 0.146.1)
+
+> Evidence level: **Verified by execution** — 사용자 승인 하에 실제 codex를
+> 실행했다 (완성 1회, 실행 2회, semantic 판정 2회).
+
+확인된 가정: stdin 프롬프트, `--json` JSONL, `thread.started`/`thread_id`
+이벤트(실물 thread id가 `native_session_id`로 기록됨), `--output-last-message`,
+`--output-schema` strict 왕복(스키마 그대로의 JSON 반환), `-C` workspace 경계
+(파일이 지정 위치에만 생성됨), `--sandbox read-only|workspace-write`.
+
+불일치 2건 — 발견 즉시 정정:
+
+1. **`--full-auto`가 exec에 없다** (0.146.1). upstream의 권한 매핑은 이
+   플래그를 쓰지만 실물 exec의 어휘는 `--sandbox read-only |
+   workspace-write | danger-full-access`다 → adapter를
+   `--sandbox workspace-write`로 정정 (ADR-0033 정정 노트).
+2. **semantic 평가 요청에 workspace가 없었다** — 평가자가 엉뚱한 디렉토리를
+   검사하고 정직하게 `satisfied: false`("검증 명령을 재현할 수 없다")를
+   반환했다. `SemanticEvaluationRequest.workspace` 필수 필드 추가 + 완성
+   엔진에 `-C` 전달로 정정 (ADR-0034 정정 노트). 정정 후 재실행에서
+   평가자가 workspace 안에서 명령을 직접 재현하고 파일 크기까지 검사해
+   확신 있는 판정을 반환했다.
+
+## 9. 조사하지 않은 것
 
 - OpenCode runtime의 상세 계약 (`opencode_runtime.py`) — 두 번째 adapter
   도입 시 조사한다.

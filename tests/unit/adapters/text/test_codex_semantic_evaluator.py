@@ -34,6 +34,7 @@ def _request(mechanical_run: VerificationRun | None = None) -> SemanticEvaluatio
         constraints=("로그인 사용자만",),
         non_goals=("수정·삭제 제외",),
         criterion=CONTRACTED,
+        workspace="/tmp/mission",
         mechanical_run=mechanical_run,
     )
 

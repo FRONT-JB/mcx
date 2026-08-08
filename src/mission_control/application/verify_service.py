@@ -152,8 +152,9 @@ class VerifyService:
         없으면 도메인이 기록을 거부한다 (``VerdictWithoutEvidenceError``).
         평가자의 verdict는 요청한 AC에 귀속되어야 하며 불일치는 거부한다.
         """
-        blueprint, _ = await self._cleared_pipeline(mission_id)
+        blueprint, execute_state = await self._cleared_pipeline(mission_id)
         state = await self._state(mission_id)
+        workspace = execute_state.attempts[-1].envelope.workspace
 
         verdicts: list[CriterionVerdict] = []
         for criterion in blueprint.acceptance_criteria:
@@ -163,6 +164,7 @@ class VerifyService:
                     constraints=blueprint.constraints,
                     non_goals=blueprint.non_goals,
                     criterion=criterion,
+                    workspace=workspace,
                     mechanical_run=(
                         state.evidence.run_for(criterion.key)
                         if state.evidence is not None

@@ -58,6 +58,11 @@ v1은 그 축에서 시작한다. 스트리밍(`AgentMessage` 스트림)은 even
   (`--full-auto`) 하나다 — Execute 기본 권한 정책(Guide §5: 쓰기는 workspace
   안, commit/push 금지)과 대응한다. `UNRESTRICTED`(bypass)로 가는 경로는
   만들지 않는다 — 사용자 승인 없는 권한 상향 금지 (ADR-0004).
+
+  > **2026-08-08 스모크 정정**: 실물 codex-cli 0.146.1의 `exec`에는
+  > `--full-auto`가 없다 — 같은 의미의 `--sandbox workspace-write`를 직접
+  > 지정한다 ([RUNTIME_UPSTREAM_FINDINGS §8](../research/RUNTIME_UPSTREAM_FINDINGS.md)).
+  > 의미(WORKSPACE_WRITE 고정, bypass 없음)는 그대로다.
 - **envelope.allowed_tools의 강제 수준**: Codex CLI에는 도구 단위 allowlist
   전달이 없다 — v1 강제는 sandbox 클래스까지이고, 도구 목록은 기록·전달용으로
   남는다. ADR-0024 §6의 "전달·기록까지"에서 "sandbox 경계까지"로 한 단계
