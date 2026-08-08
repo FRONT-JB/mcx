@@ -59,6 +59,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0035](./0035-dogfooding-cost-parity-dispositions.md) | 비용·속도는 upstream 동등 이상 — 감사 lane 병렬화, 위임 입력에 후보 전체 전달, QA에 threshold·궤적 전달(ADR-0019 §3 개정). | Accepted |
 | [0036](./0036-claude-text-lane-contract.md) | 텍스트 lane vendor는 Claude(ADR-0003 범위 변경) — `--json-schema`+`structured_output` 소비, 도구 카탈로그 봉투, 총시간 600s, 프롬프트 클래스는 vendor 중립. | Accepted |
 | [0037](./0037-mission-record-and-canonical-stage.md) | Mission record(current Stage)는 합성 계층 소유로 Phase 6 도입 — enforcement는 Gate 재계산 유지, 닫힌 enum·합법 전이 그래프·전이 시각 (record 0004 질문 4 처분). | Accepted |
+| [0038](./0038-mcx-cli-surface-contract.md) | `mcx` CLI 표면 — 비대화형 단발 명령(service 메서드 1:1), exit code 0/1/2(upstream 정렬), mission record는 CLI만 기록, 기본 조립 Claude 텍스트+Codex 실행. | Accepted |
 
 ## Template
 
