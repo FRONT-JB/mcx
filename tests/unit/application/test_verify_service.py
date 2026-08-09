@@ -31,6 +31,7 @@ from mission_control.domain.brief.closure import (
     ClosureSeverity,
 )
 from mission_control.domain.brief.state import BriefState
+from mission_control.domain.checkpoint import Checkpoint
 from mission_control.domain.execute.state import CapabilityEnvelope, ExecuteState
 from mission_control.domain.verify.evidence import (
     CommandExecution,
@@ -212,12 +213,32 @@ class ScriptedEvaluator:
         )
 
 
+class RecordingCheckpoints:
+    """checkpoint 요청을 기록만 하는 recorder — git을 요구하지 않는다."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, tuple[str, ...]]] = []
+
+    def record(
+        self,
+        workspace: str,
+        *,
+        mission_id: str,
+        blueprint_revision: int,
+        ac_keys: tuple[str, ...],
+        summary: str,
+    ) -> Checkpoint:
+        self.calls.append((workspace, ac_keys))
+        return Checkpoint(committed=bool(ac_keys), commit="abc1234", ac_keys=ac_keys)
+
+
 def _service(
     *,
     runner: ScriptedRunner | None = None,
     evaluator: ScriptedEvaluator | None = None,
     executed: ExecuteState | None = None,
     with_blueprint: bool = True,
+    checkpoints: RecordingCheckpoints | None = None,
 ) -> tuple[
     VerifyService,
     InMemoryBriefRepository,
@@ -248,6 +269,7 @@ def _service(
         outputs=RecordingOutputStore(),
         evaluator=the_evaluator,
         policy=SemanticPolicy.verify_v1(),
+        checkpoints=checkpoints,
     )
     return service, briefs, verifies, the_runner, the_evaluator
 
@@ -425,3 +447,65 @@ class TestNoSelfApproval:
         assert VerifyGateBlockingCondition.VERIFICATION_FAILED in tuple(
             blocker.condition for blocker in decision.gate_blockers
         )
+
+
+class TestCheckpoint:
+    """입증된 것만 고정한다 (ADR-0046)."""
+
+    async def test_nothing_is_recorded_without_a_recorder(self) -> None:
+        service, _, _, _, _ = _service()
+        await service.run_mechanical(mission_id="m-1")
+        await service.assess_semantics(mission_id="m-1")
+
+        assert await service.checkpoint(mission_id="m-1") is None
+
+    async def test_it_fixes_the_criteria_the_gate_would_accept(self) -> None:
+        checkpoints = RecordingCheckpoints()
+        service, _, _, _, _ = _service(checkpoints=checkpoints)
+        await service.run_mechanical(mission_id="m-1")
+        await service.assess_semantics(mission_id="m-1")
+
+        result = await service.checkpoint(mission_id="m-1")
+
+        assert result is not None and result.committed
+        decision = await service.decide_gate(mission_id="m-1")
+        assert decision.outcome == "CLEAR"
+        assert set(result.ac_keys) == {COMMANDED.key, ARTIFACTS_ONLY.key, PROSE.key}
+
+    async def test_a_failed_criterion_is_left_out_but_its_peers_are_fixed(self) -> None:
+        checkpoints = RecordingCheckpoints()
+        service, _, _, _, _ = _service(
+            runner=ScriptedRunner(
+                executions={"pytest -k list": CommandExecution(exit_code=1, output="실패")}
+            ),
+            checkpoints=checkpoints,
+        )
+        await service.run_mechanical(mission_id="m-1")
+        await service.assess_semantics(mission_id="m-1")
+
+        result = await service.checkpoint(mission_id="m-1")
+
+        assert result is not None
+        assert COMMANDED.key not in result.ac_keys
+        assert ARTIFACTS_ONLY.key in result.ac_keys
+
+    async def test_it_commits_where_the_execution_ran(self) -> None:
+        """격리가 걸리면 커밋도 그 worktree에서 일어난다 (ADR-0045와 같은 자리)."""
+        checkpoints = RecordingCheckpoints()
+        service, _, _, _, _ = _service(checkpoints=checkpoints)
+        await service.run_mechanical(mission_id="m-1")
+        await service.assess_semantics(mission_id="m-1")
+
+        await service.checkpoint(mission_id="m-1")
+
+        assert checkpoints.calls[0][0] == ENVELOPE.workspace
+
+    async def test_it_does_not_fix_anything_before_the_verdicts(self) -> None:
+        checkpoints = RecordingCheckpoints()
+        service, _, _, _, _ = _service(checkpoints=checkpoints)
+        await service.run_mechanical(mission_id="m-1")
+
+        result = await service.checkpoint(mission_id="m-1")
+
+        assert result is not None and not result.committed
+        assert result.ac_keys == ()

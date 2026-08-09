@@ -635,6 +635,17 @@ async def _dispatch_verify(
         state = await service.assess_semantics(mission_id=mission)
         assert state.verdicts is not None
         show(state.verdicts.verdicts)
+        # 판정이 끝난 뒤에만 고정한다 — 검증되지 않은 변경은 되돌릴 지점이
+        # 될 수 없다 (ADR-0046 §1).
+        checkpoint = await service.checkpoint(mission_id=mission)
+        if checkpoint is not None:
+            _note(
+                f"checkpoint: {checkpoint.commit} ({', '.join(checkpoint.ac_keys)})"
+                if checkpoint.committed
+                else f"checkpoint 없음: {checkpoint.skipped}"
+            )
+            if checkpoint.excluded:
+                _note(f"  비밀 경로로 제외: {', '.join(checkpoint.excluded)}")
     elif args.verb == "gate":
         decision = await service.decide_gate(mission_id=mission)
         show(decision)

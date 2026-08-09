@@ -455,8 +455,21 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   기각됐다** — 검증 통과와 사용자 수용은 다른 판단이다 (ADR-0042 §5).
   `cleanup`은 mission에 속하지 않는 유일한 명령이라 MCP 표면에 올리지 않으며,
   이것이 ADR-0041 §1 1:1 규칙의 **유일한 예외**임을 테스트가 고정한다
-- [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조) — **선행이 풀렸다**:
-  커밋할 브랜치가 생겼다
+- [-] AC별 checkpoint 커밋 — **2026-08-09 조사·구현 완료, ADR 승인 대기**
+  ([CHECKPOINT findings](../research/CHECKPOINT_UPSTREAM_FINDINGS.md),
+  [ADR-0046](../adr/0046-verified-checkpoint-commits.md) Proposed, 867 tests).
+  **조사가 항목 이름을 정정했다**: upstream의 호출 지점은 실행 뒤가 아니라
+  **평가 이후 하나뿐**이고 조건은 `authoritative_pass`(통과 + 권위 있는 판정)다.
+  그리고 *"AC별"* 은 분할이 아니라 **라벨**이다 — upstream도 AC의 파일 목록을
+  계산하지 않고 그 시점의 작업 트리 전체를 스테이징한다. 우리도 같게 하되,
+  무엇이 입증인가는 **Verify Gate와 같은 함수**가 정한다
+  (`_criterion_blockers`를 분리해 Gate와 `proven_criteria`가 공유 — 두 벌로
+  쓰면 커밋된 것과 Gate가 인정한 것이 갈린다. `CLEAR ⟺ 전부 입증`을 테스트가
+  고정한다). 비밀 경로(`.env`·`*secret*`·`*credential*`)는 스테이징에서 빼고
+  `git commit -- <safe>`로 경로를 명시한다. **멱등성은 git에서 나온다** —
+  커밋 후 트리가 깨끗하므로 상태를 만들지 않는다(ADR-0045 §2와 같은 판단).
+  정책 스위치는 만들지 않았다: upstream이 `none` 기본값으로 막는 위험(사용자
+  checkout 오염)을 ADR-0045가 **구조로** 막았다
 - [ ] rollback 범위 (ADR-0032 보류 해제)
 - [ ] `changed_files` 수집 (ADR-0029 보류 — git 기반이라 이 자리)
 - [ ] **canonical event 층 + 스트리밍 생산자** — Phase 5 시한을 무처분 도과한

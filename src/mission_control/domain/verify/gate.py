@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from mission_control.domain.blueprint.spec import Blueprint
+from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
 from mission_control.domain.brief.gate import GateOutcome
 from mission_control.domain.verify.evidence import VerificationEvidence, VerificationRun
 from mission_control.domain.verify.verdict import SemanticAssessment, SemanticPolicy
@@ -78,6 +78,116 @@ def _mechanical_failure_reason(ac_key: str, run: VerificationRun) -> str:
     return f"{ac_key}: 확인 명령 출력에서 기대한 문구를 찾지 못했다"
 
 
+def _criterion_blockers(
+    criterion: AcceptanceCriterion,
+    evidence: VerificationEvidence | None,
+    verdicts: SemanticAssessment | None,
+    policy: SemanticPolicy,
+) -> list[VerifyGateBlocker]:
+    """AC 하나가 MISSION COMPLETE를 막는 이유들. 비어 있으면 그 AC는 입증됐다.
+
+    Gate와 checkpoint가 **같은 판정**을 쓰기 위해 분리했다 (ADR-0046 §2) —
+    "무엇이 통과인가"를 두 벌로 쓰면 커밋된 것과 Gate가 인정한 것이 갈린다.
+    """
+    gate_blockers: list[VerifyGateBlocker] = []
+    if criterion.is_mechanically_verifiable:
+        run = evidence.run_for(criterion.key) if evidence else None
+        if run is None:
+            gate_blockers.append(
+                VerifyGateBlocker(
+                    condition=VerifyGateBlockingCondition.CRITERION_UNVERIFIED,
+                    detail=(f"{criterion.key}가 기계적으로 확인되지 않았다"),
+                )
+            )
+        elif not run.passed:
+            gate_blockers.append(
+                VerifyGateBlocker(
+                    condition=VerifyGateBlockingCondition.VERIFICATION_FAILED,
+                    detail=_mechanical_failure_reason(criterion.key, run),
+                )
+            )
+
+    verdict = verdicts.verdict_for(criterion.key) if verdicts else None
+    if verdict is None:
+        gate_blockers.append(
+            VerifyGateBlocker(
+                condition=VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING,
+                detail=f"{criterion.key}에 semantic 판정이 없다",
+            )
+        )
+        return gate_blockers
+    if verdict.reward_hacking_risk >= policy.reward_hacking_veto:
+        gate_blockers.append(
+            VerifyGateBlocker(
+                condition=VerifyGateBlockingCondition.REWARD_HACKING_SUSPECTED,
+                detail=(
+                    f"{criterion.key}: reward hacking 위험도 "
+                    f"{verdict.reward_hacking_risk:.2f}가 거부 임계값 "
+                    f"{policy.reward_hacking_veto:.2f} 이상이다"
+                ),
+            )
+        )
+    if verdict.uncertainty > policy.uncertainty_threshold:
+        gate_blockers.append(
+            VerifyGateBlocker(
+                condition=VerifyGateBlockingCondition.ESCALATION_REQUIRED,
+                detail=(
+                    f"{criterion.key}: 판정 불확실성 "
+                    f"{verdict.uncertainty:.2f}가 {policy.uncertainty_threshold:.2f}를 넘는다; "
+                    "v1에는 escalation 경로가 없다"
+                ),
+            )
+        )
+    elif not verdict.passes(policy):
+        gate_blockers.append(
+            VerifyGateBlocker(
+                condition=VerifyGateBlockingCondition.CRITERION_NOT_SATISFIED,
+                detail=(
+                    f"{criterion.key}: "
+                    + (
+                        f"점수 {verdict.score:.2f}가 {policy.pass_score:.2f} 미만이다"
+                        if verdict.satisfied
+                        else f"충족되지 않았다 — {verdict.reasoning}"
+                    )
+                ),
+            )
+        )
+    return gate_blockers
+
+
+def proven_criteria(
+    *,
+    evidence: VerificationEvidence | None,
+    verdicts: SemanticAssessment | None,
+    blueprint: Blueprint,
+    policy: SemanticPolicy,
+) -> tuple[str, ...]:
+    """증거로 통과가 입증된 AC의 key들 (ADR-0046 §2).
+
+    upstream ``authoritative_pass``의 대응물이다 — *"실행됐다"* 가 아니라
+    *"증거가 통과를 지지한다"* 이며, 판정 기준은 Gate와 한 글자도 다르지 않다.
+    """
+    current_evidence, current_verdicts = _current(evidence, verdicts, blueprint)
+    return tuple(
+        criterion.key
+        for criterion in blueprint.acceptance_criteria
+        if not _criterion_blockers(criterion, current_evidence, current_verdicts, policy)
+    )
+
+
+def _current(
+    evidence: VerificationEvidence | None,
+    verdicts: SemanticAssessment | None,
+    blueprint: Blueprint,
+) -> tuple[VerificationEvidence | None, SemanticAssessment | None]:
+    """다른 revision의 결과는 없는 것과 같다."""
+    revision = blueprint.revision
+    return (
+        evidence if evidence is not None and evidence.blueprint_revision == revision else None,
+        verdicts if verdicts is not None and verdicts.blueprint_revision == revision else None,
+    )
+
+
 def evaluate_verify_gate(
     *,
     evidence: VerificationEvidence | None,
@@ -93,81 +203,13 @@ def evaluate_verify_gate(
     다른 revision의 evidence·verdicts는 없는 것과 같다 — 새 revision이
     승인되면 이전 결과를 자동 재사용하지 않는다 (``docs/06_BLUEPRINT.md`` §9).
     """
-    current_evidence = (
-        evidence
-        if evidence is not None and evidence.blueprint_revision == blueprint.revision
-        else None
-    )
-    current_verdicts = (
-        verdicts
-        if verdicts is not None and verdicts.blueprint_revision == blueprint.revision
-        else None
-    )
+    current_evidence, current_verdicts = _current(evidence, verdicts, blueprint)
 
     gate_blockers: list[VerifyGateBlocker] = []
     for criterion in blueprint.acceptance_criteria:
-        if criterion.is_mechanically_verifiable:
-            run = current_evidence.run_for(criterion.key) if current_evidence else None
-            if run is None:
-                gate_blockers.append(
-                    VerifyGateBlocker(
-                        condition=VerifyGateBlockingCondition.CRITERION_UNVERIFIED,
-                        detail=(f"{criterion.key}가 기계적으로 확인되지 않았다"),
-                    )
-                )
-            elif not run.passed:
-                gate_blockers.append(
-                    VerifyGateBlocker(
-                        condition=VerifyGateBlockingCondition.VERIFICATION_FAILED,
-                        detail=_mechanical_failure_reason(criterion.key, run),
-                    )
-                )
-
-        verdict = current_verdicts.verdict_for(criterion.key) if current_verdicts else None
-        if verdict is None:
-            gate_blockers.append(
-                VerifyGateBlocker(
-                    condition=VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING,
-                    detail=f"{criterion.key}에 semantic 판정이 없다",
-                )
-            )
-            continue
-        if verdict.reward_hacking_risk >= policy.reward_hacking_veto:
-            gate_blockers.append(
-                VerifyGateBlocker(
-                    condition=VerifyGateBlockingCondition.REWARD_HACKING_SUSPECTED,
-                    detail=(
-                        f"{criterion.key}: reward hacking 위험도 "
-                        f"{verdict.reward_hacking_risk:.2f}가 거부 임계값 "
-                        f"{policy.reward_hacking_veto:.2f} 이상이다"
-                    ),
-                )
-            )
-        if verdict.uncertainty > policy.uncertainty_threshold:
-            gate_blockers.append(
-                VerifyGateBlocker(
-                    condition=VerifyGateBlockingCondition.ESCALATION_REQUIRED,
-                    detail=(
-                        f"{criterion.key}: 판정 불확실성 "
-                        f"{verdict.uncertainty:.2f}가 {policy.uncertainty_threshold:.2f}를 넘는다; "
-                        "v1에는 escalation 경로가 없다"
-                    ),
-                )
-            )
-        elif not verdict.passes(policy):
-            gate_blockers.append(
-                VerifyGateBlocker(
-                    condition=VerifyGateBlockingCondition.CRITERION_NOT_SATISFIED,
-                    detail=(
-                        f"{criterion.key}: "
-                        + (
-                            f"점수 {verdict.score:.2f}가 {policy.pass_score:.2f} 미만이다"
-                            if verdict.satisfied
-                            else f"충족되지 않았다 — {verdict.reasoning}"
-                        )
-                    ),
-                )
-            )
+        gate_blockers.extend(
+            _criterion_blockers(criterion, current_evidence, current_verdicts, policy)
+        )
 
     cleared = not gate_blockers
     return VerifyGateDecision(

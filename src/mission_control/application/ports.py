@@ -30,6 +30,7 @@ from mission_control.domain.brief.requirement import (
     RequirementSection,
 )
 from mission_control.domain.brief.state import BriefState
+from mission_control.domain.checkpoint import Checkpoint
 from mission_control.domain.execute.state import ExecuteState
 from mission_control.domain.mechanical import MechanicalCommands
 from mission_control.domain.recover.packet import PreviousFailure
@@ -552,6 +553,25 @@ class MechanicalDetectionRequest(BaseModel):
     workspace: str
     #: (파일 이름, 발췌) 쌍. 비어 있으면 호출 자체를 하지 않는다.
     manifests: tuple[tuple[str, str], ...]
+
+
+class CheckpointRecorder(Protocol):
+    """입증된 변경을 미션 브랜치에 커밋하는 제한된 역할 (ADR-0046).
+
+    **실패가 예외로 올라오지 않는다** — 커밋을 남기지 못한 것이 검증 결과를
+    무효로 만들지 않는다. 대신 이유가 결과에 실려 사용자에게 보인다. 조용히
+    아무 일도 없었던 것처럼 지나가지 않는다는 뜻이다.
+    """
+
+    def record(
+        self,
+        workspace: str,
+        *,
+        mission_id: str,
+        blueprint_revision: int,
+        ac_keys: tuple[str, ...],
+        summary: str,
+    ) -> Checkpoint: ...
 
 
 class MechanicalCommandDetector(Protocol):

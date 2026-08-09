@@ -11,6 +11,7 @@ from mission_control.domain.verify.evidence import (
 from mission_control.domain.verify.gate import (
     VerifyGateBlockingCondition,
     evaluate_verify_gate,
+    proven_criteria,
 )
 from mission_control.domain.verify.verdict import (
     CriterionVerdict,
@@ -155,3 +156,66 @@ class TestHold:
         )
         decision, _ = _conditions(_evidence(missed), None)
         assert any("기대한 문구를 찾지 못했다" in reason for reason in decision.blocking_reasons)
+
+
+class TestProvenCriteria:
+    """checkpoint가 커밋하는 것과 Gate가 인정하는 것은 같아야 한다 (ADR-0046 §2)."""
+
+    def _proven(self, evidence, verdicts, blueprint: Blueprint = BLUEPRINT):
+        return proven_criteria(
+            evidence=evidence, verdicts=verdicts, blueprint=blueprint, policy=POLICY
+        )
+
+    def test_clear_means_every_criterion_is_proven(self) -> None:
+        evidence = _evidence()
+        verdicts = _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key))
+        decision, _ = _conditions(evidence, verdicts)
+
+        assert decision.outcome == "CLEAR"
+        assert self._proven(evidence, verdicts) == (COMMANDED.key, PROSE.key)
+
+    def test_nothing_recorded_proves_nothing(self) -> None:
+        assert self._proven(None, None) == ()
+
+    def test_a_failed_mechanical_run_is_not_proven_but_its_peer_is(self) -> None:
+        """한 AC의 실패가 다른 AC의 입증을 지우지 않는다 — 그래서 부분 고정이 된다."""
+        failed = VerificationRun(
+            ac_key=COMMANDED.key, command="pytest -k list", exit_code=1, passed=False
+        )
+        verdicts = _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key))
+
+        assert self._proven(_evidence(failed), verdicts) == (PROSE.key,)
+
+    def test_a_missing_verdict_is_not_proven(self) -> None:
+        assert self._proven(_evidence(), _verdicts(_verdict(COMMANDED.key))) == (COMMANDED.key,)
+
+    def test_an_escalating_verdict_is_not_proven(self) -> None:
+        """불확실성이 임계를 넘으면 Gate가 막는다 — 커밋도 하지 않는다."""
+        verdicts = _verdicts(
+            _verdict(COMMANDED.key), _verdict(PROSE.key, uncertainty=0.99)
+        )
+
+        assert self._proven(_evidence(), verdicts) == (COMMANDED.key,)
+
+    def test_another_revisions_results_prove_nothing(self) -> None:
+        stale = _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key), revision=9)
+
+        assert self._proven(_evidence(revision=9), stale) == ()
+
+    def test_it_agrees_with_the_gate_on_every_shape(self) -> None:
+        """두 판정이 갈리면 커밋된 것과 Gate가 인정한 것이 어긋난다."""
+        shapes = [
+            (None, None),
+            (_evidence(), None),
+            (None, _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key))),
+            (_evidence(), _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key))),
+            (
+                _evidence(),
+                _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key, satisfied=False)),
+            ),
+        ]
+        for evidence, verdicts in shapes:
+            decision, _ = _conditions(evidence, verdicts)
+            proven = self._proven(evidence, verdicts)
+            everything = tuple(item.key for item in BLUEPRINT.acceptance_criteria)
+            assert (decision.outcome == "CLEAR") == (proven == everything)

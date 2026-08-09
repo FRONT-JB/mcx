@@ -25,6 +25,7 @@ from mission_control.application.execute_service import BlueprintNotClearedError
 from mission_control.application.ports import (
     BlueprintRepository,
     BriefRepository,
+    CheckpointRecorder,
     ExecuteRepository,
     MechanicalRunner,
     SemanticEvaluationRequest,
@@ -34,6 +35,7 @@ from mission_control.application.ports import (
 )
 from mission_control.domain.blueprint.gate import evaluate_blueprint_gate
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
+from mission_control.domain.checkpoint import Checkpoint
 from mission_control.domain.errors import MissionControlError
 from mission_control.domain.execute.gate import evaluate_execute_gate
 from mission_control.domain.execute.state import AttemptStatus, ExecuteState
@@ -45,7 +47,11 @@ from mission_control.domain.verify.evidence import (
     VerifyState,
     judge_run,
 )
-from mission_control.domain.verify.gate import VerifyGateDecision, evaluate_verify_gate
+from mission_control.domain.verify.gate import (
+    VerifyGateDecision,
+    evaluate_verify_gate,
+    proven_criteria,
+)
 from mission_control.domain.verify.verdict import (
     CriterionVerdict,
     SemanticAssessment,
@@ -91,6 +97,9 @@ class VerifyService:
     outputs: VerificationOutputStore
     evaluator: SemanticEvaluator
     policy: SemanticPolicy
+    #: 입증된 변경을 미션 브랜치에 고정한다 (ADR-0046). 주입되지 않으면
+    #: checkpoint를 남기지 않는다 — 테스트와 대체 조립이 git을 요구받지 않는다.
+    checkpoints: CheckpointRecorder | None = None
 
     async def run_mechanical(self, *, mission_id: str) -> VerifyState:
         """성공 계약이 있는 모든 AC를 검증하고 기록된 상태를 반환한다.
@@ -197,6 +206,33 @@ class VerifyService:
         recorded = state.record_verdicts(assessment)
         await self.repository.save(recorded)
         return recorded
+
+    async def checkpoint(self, *, mission_id: str) -> Checkpoint | None:
+        """이번 라운드에서 증거로 입증된 것을 되돌릴 수 있는 지점으로 고정한다.
+
+        **검증 기록을 바꾸지 않는다** — 커밋이 실패해도 판정은 그대로 남아야
+        하므로 저장 경로와 분리했다. 무엇이 통과인가의 판정은 Gate와 **같은
+        함수**를 쓴다 (ADR-0046 §2).
+
+        upstream도 checkpoint를 평가자 안이 아니라 평가 **이후**의 별도 단계로
+        둔다 (findings §1).
+        """
+        if self.checkpoints is None:
+            return None
+        blueprint, execute_state = await self._cleared_pipeline(mission_id)
+        state = await self._state(mission_id)
+        return self.checkpoints.record(
+            execute_state.attempts[-1].envelope.workspace,
+            mission_id=mission_id,
+            blueprint_revision=blueprint.revision,
+            ac_keys=proven_criteria(
+                evidence=state.evidence,
+                verdicts=state.verdicts,
+                blueprint=blueprint,
+                policy=self.policy,
+            ),
+            summary=blueprint.goal,
+        )
 
     async def decide_gate(self, *, mission_id: str) -> VerifyGateDecision:
         """저장된 두 층의 증거로 MISSION COMPLETE 여부를 판정한다.

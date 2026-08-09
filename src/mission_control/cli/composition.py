@@ -52,6 +52,7 @@ from mission_control.adapters.verification.local_mechanical_runner import (
 from mission_control.adapters.verification.mechanical_detection import (
     VerifiedMechanicalDetector,
 )
+from mission_control.adapters.workspace.checkpoint import GitCheckpointRecorder
 from mission_control.application.blueprint_service import BlueprintService
 from mission_control.application.brief_service import BriefService
 from mission_control.application.execute_service import ExecuteService
@@ -272,6 +273,8 @@ def verify_service(layout: StateLayout, adapters: Adapters) -> VerifyService:
         outputs=FileVerificationOutputStore(root=layout.outputs),
         evaluator=PromptedSemanticEvaluator(completion=adapters.completion_for(Stage.VERIFY)),
         policy=SEMANTIC_POLICY,
+        # 입증된 변경을 미션 브랜치에 고정한다 (ADR-0046).
+        checkpoints=GitCheckpointRecorder(),
     )
 
 
