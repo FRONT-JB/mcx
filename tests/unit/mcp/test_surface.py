@@ -13,6 +13,7 @@ from mission_control.cli.composition import default_adapters
 from mission_control.cli.main import build_parser
 from mission_control.mcp.protocol import ResultType
 from mission_control.mcp.surface import (
+    _CLI_ONLY,
     PREFIX,
     UnknownToolError,
     call_tool,
@@ -50,7 +51,17 @@ def _cli_commands() -> set[str]:
 class TestToolSurfaceIsDerived:
     def test_every_cli_command_has_exactly_one_tool(self) -> None:
         """목록을 손으로 적지 않으므로 어긋날 자리가 없다."""
-        assert _names() == _cli_commands()
+        assert _names() == _cli_commands() - {f"{PREFIX}{stage}" for stage in _CLI_ONLY}
+
+    def test_the_only_command_kept_off_the_surface_is_cleanup(self) -> None:
+        """1:1의 예외는 하나이며 근거가 있다 (ADR-0045 §7).
+
+        이 표면의 모든 tool은 ``mission``을 필수로 받는데 ``cleanup``에는 mission이
+        없다. upstream도 ``ouroboros cleanup``을 tool로 내보내지 않는다. 예외가
+        늘어나면 여기서 먼저 걸린다 — 조용히 하나 더 빠지지 않는다.
+        """
+        assert _CLI_ONLY == {"cleanup"}
+        assert build_parser().parse_args(["cleanup"]).mission is None
 
     def test_the_prefix_is_global(self) -> None:
         assert all(name.startswith(PREFIX) for name in _names())

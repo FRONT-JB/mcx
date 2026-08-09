@@ -249,3 +249,147 @@ def _release(path: Path) -> None:
         return
     if owner.get("pid") == os.getpid() and owner.get("host") == socket.gethostname():
         path.unlink(missing_ok=True)
+
+
+# --- 정리 (ADR-0045 §7, 사용자 결정 2026-08-09) -------------------------------
+#
+# 실행 경로와 분리된 별도 명령이다. upstream ``ouroboros cleanup``과 같은 형태이며,
+# 자동 병합이 없으므로 **사용자가 병합한 뒤** 부르는 GC다.
+
+
+@dataclass(frozen=True)
+class Removed:
+    worktree_path: str
+    branch: str
+    branch_deleted: bool
+
+
+@dataclass(frozen=True)
+class Kept:
+    worktree_path: str
+    branch: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class Sweep:
+    """정리 한 번의 결과. ``dry_run``이면 아무것도 바뀌지 않았다."""
+
+    dry_run: bool
+    removed: tuple[Removed, ...]
+    kept: tuple[Kept, ...]
+    locks_removed: tuple[str, ...]
+
+
+def _common_repo_root(worktree_path: Path) -> Path | None:
+    """linked worktree가 가리키는 원본 저장소."""
+    result = _git(["rev-parse", "--path-format=absolute", "--git-common-dir"], worktree_path)
+    if result.returncode != 0:
+        return None
+    return Path(result.stdout.strip()).resolve().parent
+
+
+def _is_merged(repository: Path, branch: str) -> bool:
+    """브랜치가 저장소의 HEAD에 이미 들어가 있는가."""
+    exists = _git(["show-ref", "--verify", "--quiet", f"refs/heads/{branch}"], repository)
+    if exists.returncode != 0:
+        return True  # 브랜치가 없으면 남길 것도 없다
+    result = _git(["merge-base", "--is-ancestor", branch, "HEAD"], repository)
+    if result.returncode in (0, 1):
+        return result.returncode == 0
+    raise WorktreeError(f"cannot tell whether {branch} is merged: {result.stderr.strip()}")
+
+
+def sweep(root: Path, *, force: bool = False, dry_run: bool = False) -> Sweep:
+    """정리 가능한 worktree를 훑어 제거한다.
+
+    **살아 있는 미션, 커밋되지 않은 변경, 병합되지 않은 브랜치는 건드리지
+    않는다.** ``force``는 셋 중 마지막 하나만 푼다 — 깨끗하지만 병합되지 않은
+    worktree를 치우되 **브랜치는 남긴다**. 작업이 사라지지 않는다는 뜻이며,
+    upstream ``--force``와 같은 의미다.
+    """
+    removed: list[Removed] = []
+    kept: list[Kept] = []
+    for worktree_path, mission_id, repository in _managed(root):
+        branch = f"{BRANCH_PREFIX}/{mission_id}"
+        reason = _keep_reason(root, worktree_path, repository, branch, mission_id, force=force)
+        if reason is not None:
+            kept.append(Kept(str(worktree_path), branch, reason))
+            continue
+        merged = _is_merged(repository, branch)
+        if not dry_run:
+            _git_output(["worktree", "remove", str(worktree_path)], repository)
+            if merged:
+                _git_output(["branch", "-d", branch], repository)
+            _lock_for(root, repository.name, mission_id).unlink(missing_ok=True)
+        removed.append(Removed(str(worktree_path), branch, branch_deleted=merged))
+    return Sweep(
+        dry_run=dry_run,
+        removed=tuple(removed),
+        kept=tuple(kept),
+        locks_removed=tuple(_prune_locks(root, dry_run=dry_run)),
+    )
+
+
+def _keep_reason(
+    root: Path,
+    worktree_path: Path,
+    repository: Path,
+    branch: str,
+    mission_id: str,
+    *,
+    force: bool,
+) -> str | None:
+    """지우지 **않는** 이유. ``None``이면 지워도 된다."""
+    lock = _lock_for(root, repository.name, mission_id)
+    owner = _read_owner(lock) if lock.exists() else None
+    if owner is not None and _owner_is_live(owner):
+        return "running"
+    if _git_output(["status", "--porcelain"], worktree_path):
+        return "dirty"
+    if not force and not _is_merged(repository, branch):
+        return "unmerged"
+    return None
+
+
+def _lock_for(root: Path, repo_name: str, mission_id: str) -> Path:
+    return root / ".locks" / repo_name / f"{mission_id}.json"
+
+
+def _managed(root: Path) -> Iterator[tuple[Path, str, Path]]:
+    """``<root>/<repo>/<mission>`` 중 실제 linked worktree인 것만 내놓는다."""
+    if not root.is_dir():
+        return
+    for repo_dir in sorted(root.iterdir()):
+        if not repo_dir.is_dir() or repo_dir.name == ".locks":
+            continue
+        for worktree_path in sorted(repo_dir.iterdir()):
+            if not worktree_path.is_dir():
+                continue
+            repository = _common_repo_root(worktree_path)
+            if repository is None or repository == worktree_path.resolve():
+                # 원본 저장소가 사라졌거나 linked worktree가 아니다 — 우리 것이
+                # 맞는지 알 수 없으므로 지우지 않는다.
+                continue
+            yield worktree_path, worktree_path.name, repository
+
+
+def _prune_locks(root: Path, *, dry_run: bool) -> list[str]:
+    """worktree가 사라졌는데 남은 lock 파일. 살아 있는 것은 건드리지 않는다."""
+    pruned: list[str] = []
+    locks = root / ".locks"
+    if not locks.is_dir():
+        return pruned
+    for repo_dir in sorted(locks.iterdir()):
+        if not repo_dir.is_dir():
+            continue
+        for lock in sorted(repo_dir.glob("*.json")):
+            if (root / repo_dir.name / lock.stem).exists():
+                continue
+            owner = _read_owner(lock)
+            if owner is not None and _owner_is_live(owner):
+                continue
+            if not dry_run:
+                lock.unlink(missing_ok=True)
+            pruned.append(str(lock))
+    return pruned

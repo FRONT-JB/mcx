@@ -30,6 +30,15 @@ PREFIX = "mcx_"
 #: 없는 것이다.
 _SERVER_OWNED = frozenset({"--state-dir"})
 
+#: tool로 내보내지 않는 CLI 명령. **1:1 규칙의 예외이므로 근거가 필요하다.**
+#:
+#: ``cleanup``은 mission 하나가 아니라 남은 것 전부를 훑는 운용 명령이다. 이
+#: 표면의 모든 tool은 ``mission``을 필수로 요구하는데(서버가 현재 mission을
+#: 기억하지 않으므로 — ADR-0041 §3), mission이 없는 명령은 그 계약에 자리가
+#: 없다. upstream도 같다: ``ouroboros cleanup``은 CLI에만 있고 ``ouroboros_*``
+#: tool 목록에 없다 (WORKTREE findings §5).
+_CLI_ONLY = frozenset({"cleanup"})
+
 
 def _stage_verb(tool_name: str) -> tuple[str, str] | None:
     if not tool_name.startswith(PREFIX):
@@ -111,6 +120,8 @@ def tool_definitions() -> tuple[ToolDefinition, ...]:
     stage_helps = _helps(parser)
     tools: list[ToolDefinition] = []
     for stage, stage_parser in _subparsers(parser).items():
+        if stage in _CLI_ONLY:
+            continue
         verbs = _subparsers(stage_parser)
         if not verbs:
             tools.append(

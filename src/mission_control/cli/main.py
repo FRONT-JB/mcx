@@ -280,6 +280,25 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--json", action="store_true", help="구조화 출력 (개정 2 이전과 동일)")
     status.add_argument("--plain", action="store_true", help="테두리·상태를 ASCII로 그린다")
 
+    # 정리는 mission 하나가 아니라 남은 것 전부를 훑는다 — ``--mission``이 없는
+    # 유일한 명령이다 (ADR-0045 §7).
+    cleanup = stage_sub.add_parser(
+        "cleanup", help="끝난 mission의 worktree와 브랜치를 치운다 (병합된 것만)"
+    )
+    cleanup.set_defaults(verb="sweep", mission=None)
+    cleanup.add_argument(
+        "--state-dir",
+        type=Path,
+        default=DEFAULT_STATE_DIR,
+        help=f"상태 루트 (기본 {DEFAULT_STATE_DIR})",
+    )
+    cleanup.add_argument("--dry-run", action="store_true", help="무엇이 지워질지만 보인다")
+    cleanup.add_argument(
+        "--force",
+        action="store_true",
+        help="병합되지 않은 worktree도 치운다 (브랜치는 남는다)",
+    )
+
     return parser
 
 
@@ -665,6 +684,14 @@ async def dispatch(
     adapters = composition.routed_adapters(
         layout.root, adapters, codex_config=backend_profile.CODEX_CONFIG
     )
+    if args.stage == "cleanup":
+        # mission에 속하지 않는 운용 명령이다 — mission을 해석하지도, 원장을
+        # 늘리지도 않는다 (ADR-0045 §7).
+        show(
+            worktree.sweep(layout.worktrees, force=args.force, dry_run=args.dry_run)
+        )
+        return 0
+
     args.mission = _resolve_mission(args, layout)
 
     if args.stage == "status":

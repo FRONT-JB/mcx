@@ -200,3 +200,128 @@ class TestLock:
                 pass
 
         assert lock.read_text() == "{ truncated"
+
+
+def commit_in(worktree_path: Path, name: str) -> None:
+    (worktree_path / name).write_text("done\n")
+    git("add", ".", cwd=worktree_path)
+    git("commit", "-m", f"add {name}", cwd=worktree_path)
+
+
+class TestSweep:
+    """정리는 사용자가 병합한 뒤 부르는 GC다 (ADR-0045 §7)."""
+
+    def test_nothing_to_sweep_is_not_an_error(self, root: Path) -> None:
+        result = worktree.sweep(root)
+
+        assert result.removed == ()
+        assert result.kept == ()
+
+    def test_a_merged_mission_is_removed_with_its_branch(self, repo: Path, root: Path) -> None:
+        isolation = worktree.prepare(str(repo), mission_id="m1", root=root)
+        assert isolation is not None
+        commit_in(Path(isolation.worktree_path), "feature.py")
+        git("merge", "--no-edit", isolation.branch, cwd=repo)
+
+        result = worktree.sweep(root)
+
+        assert [item.branch for item in result.removed] == ["mcx/m1"]
+        assert result.removed[0].branch_deleted is True
+        assert not Path(isolation.worktree_path).exists()
+        assert (repo / "feature.py").exists()
+
+    def test_an_unmerged_mission_is_kept(self, repo: Path, root: Path) -> None:
+        isolation = worktree.prepare(str(repo), mission_id="m1", root=root)
+        assert isolation is not None
+        commit_in(Path(isolation.worktree_path), "feature.py")
+
+        result = worktree.sweep(root)
+
+        assert result.removed == ()
+        assert [item.reason for item in result.kept] == ["unmerged"]
+        assert Path(isolation.worktree_path).exists()
+
+    def test_force_removes_the_unmerged_worktree_but_keeps_the_branch(
+        self, repo: Path, root: Path
+    ) -> None:
+        """작업이 사라지지 않는다 — 브랜치가 남으므로 나중에 꺼낼 수 있다."""
+        isolation = worktree.prepare(str(repo), mission_id="m1", root=root)
+        assert isolation is not None
+        commit_in(Path(isolation.worktree_path), "feature.py")
+
+        result = worktree.sweep(root, force=True)
+
+        assert result.removed[0].branch_deleted is False
+        assert not Path(isolation.worktree_path).exists()
+        assert "mcx/m1" in subprocess.run(
+            ["git", "branch", "--list", "mcx/m1"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+
+    def test_uncommitted_work_is_never_swept_even_with_force(
+        self, repo: Path, root: Path
+    ) -> None:
+        isolation = worktree.prepare(str(repo), mission_id="m1", root=root)
+        assert isolation is not None
+        (Path(isolation.worktree_path) / "wip.py").write_text("half done\n")
+
+        result = worktree.sweep(root, force=True)
+
+        assert [item.reason for item in result.kept] == ["dirty"]
+        assert (Path(isolation.worktree_path) / "wip.py").exists()
+
+    def test_a_running_mission_is_never_swept(self, repo: Path, root: Path) -> None:
+        isolation = worktree.prepare(str(repo), mission_id="m1", root=root)
+        assert isolation is not None
+        commit_in(Path(isolation.worktree_path), "feature.py")
+        git("merge", "--no-edit", isolation.branch, cwd=repo)
+
+        with worktree.hold(isolation):
+            result = worktree.sweep(root, force=True)
+
+        assert [item.reason for item in result.kept] == ["running"]
+        assert Path(isolation.worktree_path).exists()
+
+    def test_dry_run_reports_the_same_decision_without_touching_anything(
+        self, repo: Path, root: Path
+    ) -> None:
+        isolation = worktree.prepare(str(repo), mission_id="m1", root=root)
+        assert isolation is not None
+        commit_in(Path(isolation.worktree_path), "feature.py")
+        git("merge", "--no-edit", isolation.branch, cwd=repo)
+
+        planned = worktree.sweep(root, dry_run=True)
+        assert Path(isolation.worktree_path).exists()
+
+        actual = worktree.sweep(root)
+        assert [item.worktree_path for item in planned.removed] == [
+            item.worktree_path for item in actual.removed
+        ]
+
+    def test_a_dead_missions_leftover_lock_is_pruned(self, repo: Path, root: Path) -> None:
+        isolation = worktree.prepare(str(repo), mission_id="m1", root=root)
+        assert isolation is not None
+        commit_in(Path(isolation.worktree_path), "feature.py")
+        git("merge", "--no-edit", isolation.branch, cwd=repo)
+        lock = Path(isolation.lock_path)
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        lock.write_text(json.dumps({"pid": 2**31 - 1, "host": os.uname().nodename}))
+
+        worktree.sweep(root)
+
+        assert not lock.exists()
+
+    def test_a_directory_that_is_not_our_worktree_is_left_alone(
+        self, repo: Path, root: Path
+    ) -> None:
+        stray = root / "somewhere" / "not-a-worktree"
+        stray.mkdir(parents=True)
+        (stray / "file.txt").write_text("mine\n")
+
+        result = worktree.sweep(root, force=True)
+
+        assert result.removed == ()
+        assert (stray / "file.txt").exists()

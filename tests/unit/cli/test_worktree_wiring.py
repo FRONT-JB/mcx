@@ -129,6 +129,30 @@ async def test_a_dirty_checkout_fails_the_command_rather_than_running_elsewhere(
     assert seen == []
 
 
+class TestCleanupCommand:
+    """정리는 mission에 속하지 않는 운용 명령이다 (ADR-0045 §7)."""
+
+    async def test_it_runs_without_a_mission_and_without_any_state(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """mission을 한 번도 시작하지 않은 상태에서도 오류가 아니다."""
+        code = await amain(["cleanup", "--state-dir", str(tmp_path)], default_adapters())
+
+        assert code == 0
+        assert '"removed": []' in capsys.readouterr().out
+
+    async def test_it_does_not_open_a_ledger_entry(self, tmp_path: Path, repo: Path) -> None:
+        """관측·운용 명령이 원장을 늘리면 원장이 작업을 잘못 보고한다."""
+        argv = ["--mission", "m", "--state-dir", str(tmp_path / "state")]
+        adapters = default_adapters()
+        assert await amain(["brief", "start", "g", "--workspace", str(repo), *argv], adapters) == 0
+        before = (tmp_path / "state" / "state" / "journal_m.jsonl").read_text()
+
+        assert await amain(["cleanup", "--state-dir", str(tmp_path / "state")], adapters) == 0
+
+        assert (tmp_path / "state" / "state" / "journal_m.jsonl").read_text() == before
+
+
 def _attempt(workspace: str) -> ExecutionAttempt:
     return ExecutionAttempt(
         number=1,
