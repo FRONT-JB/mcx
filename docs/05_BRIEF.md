@@ -178,10 +178,24 @@ Mission Control은 질문을 직접 답하거나, 사용자 결정을 추측하�
 read-only fact resolution 결과로 제공한다. 질문 생성기는 자신의 질문이 충분한지,
 Brief가 완료되었는지, 다음 Stage로 갈지를 결정할 수 없다.
 
-### 4.4 Read-only Fact Resolver
+### 4.4 Read-only Fact Resolver — **폐기 (2026-08-09 사용자 결정)**
 
-코드베이스나 승인된 문서에서 확인 가능한 사실은 별도의 제한된 책임으로
-해결한다.
+> **별도 역할로 두지 않는다.** [ADR-0011](./adr/0011-brief-deliberate-divergences.md)
+> §3이 이 역할을 둔 근거는 *"v1 첫 구현은 CLI를 대상으로 하므로 코드 사실을
+> 가져오는 host 세션이 존재하지 않는다"* 였다. **Phase 8이 그 host를 만들면서
+> 근거가 만료됐다** ([ADR-0042](./adr/0042-skill-and-core-ownership-boundary.md)
+> §7). 미구현 상태에서 폐기하므로 매몰 비용이 없다.
+>
+> **대신 upstream 방식으로 돌아간다** — skill이 `inspect_code`로 사실을 조사해
+> `authority=observation` 답변으로 제출한다. 충실해야 할 대상은 *"누가
+> 읽었는가"* 가 아니라 provenance 의미론이며, 그것은
+> [ADR-0010](./adr/0010-answer-provenance-and-requirement-authority.md)에서
+> 그대로 유지된다.
+>
+> 아래 경계 목록은 **그 조사를 수행하는 주체가 지켜야 할 계약**으로 남는다 —
+> 역할이 사라져도 "무엇을 해도 되는가"는 사라지지 않는다.
+
+코드베이스나 승인된 문서에서 확인 가능한 사실은 다음 경계 안에서 해결한다.
 
 - 사용자가 명시적으로 허용한 경로와 자료만 읽는다.
 - 읽기 전용 repository/document interface만 사용한다.

@@ -119,17 +119,38 @@ Codex를 host로 두고 등록한다(`.codex-plugin/plugin.json` + `.mcp.codex.j
 격리는 `--profile` 하나이며, 그것이 MCP 서버 목록까지 갈아끼우는지는 미확인이다.
 따라서 *"upstream을 따라하면 된다"* 는 출구가 없다.
 
-선택지 둘 — **사용자 결정이 필요하다**:
+**2026-08-09 실측 (codex 0.147.0, `codex mcp list`로 AI 호출 없이 판정).**
+Evidence: Verified by execution.
 
-| | 방법 | 대가 |
-|---|---|---|
-| A | `codex exec --ignore-user-config` | worker가 사용자 모델·프로필 설정을 잃는다. 도그푸딩 구성이 바뀐다 |
-| B | codex profile 축 도입 (upstream 정렬) | 설정 표면이 하나 늘고, profile이 MCP 목록을 갈아끼우는지 먼저 확인해야 한다 |
+| 레버 | 결과 |
+|---|---|
+| `-c mcp_servers={}` | **효과 없음.** 파싱은 통과하지만 서버 목록이 그대로다(`computer-use`·`node_repl`·`context7` 전부 잔존). `-c`는 병합이지 치환이 아니다 |
+| `-c mcp_servers.<name>.enabled=false` | **효과 없음.** 목록 불변 |
+| legacy `profile=` 설정 | **제거됨.** *"legacy `profile` config is no longer supported; use `--profile w` with `w.config.toml` instead"* |
+| `--profile <name>` | `codex mcp list`가 이 플래그를 받지 않아 **측정 불가.** 도움말상 의미는 base config 위에 **layer**이며, `-c`가 병합이었던 것과 같은 의미라면 제거는 불가능하다 |
+| 빈 `CODEX_HOME` (= `--ignore-user-config`가 만드는 상태) | **서버 0.** *"No MCP servers configured yet"* — config.toml 유래 서버는 확실히 제거된다 |
 
-어느 쪽이든 [ADR-0033](./0033-first-runtime-adapter-contract.md) adapter 계약
-변경이다. 결정 전까지 Phase 8의 **Codex host 등록은 보류**한다 — Claude Code
-host 등록만으로 시작하면 노출이 열리지 않는다(우리 텍스트 lane은 이미 격리되어
-있고, 실행 lane의 codex는 등록 대상이 아니다).
+즉 **원래 추천했던 per-call override는 실패했고, 확실히 동작하는 레버는
+`--ignore-user-config` 하나다.**
+
+그 대가로 잃는 것(모델·reasoning effort)은 **명시 인자로 되돌릴 수 있다** —
+`codex exec`는 `--model`과 `-c model_reasoning_effort=<level>`을 받고,
+upstream도 그 둘을 명시적으로 넘긴다(`_build_command`).
+
+**되돌려 주는 편이 오히려 우리 계약에 맞다.** 지금 worker의 모델은 사용자의
+주변 codex 설정이 정하고, `ExecutionAttempt`는 `runtime_backend`(=`codex_cli`)만
+기록하며 **모델은 기록하지 않는다**(`domain/execute/state.py`). 같은 미션의 두
+실행이 다른 모델로 돌아도 기록으로 구분할 수 없다 —
+[ADR-0023](./0023-execute-entry-and-provenance.md) provenance의 공백이다.
+설정을 우리 `config.toml`로 올리면 재귀 차단과 이 공백이 같이 닫힌다.
+
+**남은 결정**: 어느 모델을 명시할 것인가(비용·품질 축이므로 사용자 결정).
+[ADR-0033](./0033-first-runtime-adapter-contract.md) adapter 계약과
+[ADR-0039](./0039-stage-runtime-routing-table.md) 설정 표면의 동시 변경이다.
+
+결정 전까지 Phase 8의 **Codex host 등록은 보류**한다 — Claude Code host 등록만
+으로 시작하면 노출이 열리지 않는다(우리 텍스트 lane은 이미 격리되어 있고, 실행
+lane의 codex는 등록 대상이 아니다).
 
 ### 7. Fact Resolver — **정당화가 만료됐다. 폐기를 제안한다**
 
@@ -141,10 +162,13 @@ Resolver 역할을 두면서 근거를 이렇게 적었다: *"v1 첫 구현은 C
 표기로 답변 제출)이 그때부터 사용 가능해지고, 별도 역할은 upstream에 없는
 구조의 잔존이 된다. 아직 **미구현**이므로(B-004) 매몰 비용이 없다.
 
-**제안: Fact Resolver 역할을 폐기하고 upstream 방식으로 돌린다** — skill이
-`inspect_code`로 사실을 조사해 `authority=observation` 답변으로 제출한다.
+**결정 (2026-08-09 사용자): 폐기한다.** skill이 `inspect_code`로 사실을 조사해
+`authority=observation` 답변으로 제출한다.
 provenance 의미론([ADR-0010](./0010-answer-provenance-and-requirement-authority.md))은
-그대로 유지되므로 충실해야 할 대상은 보존된다. **사용자 결정 대기.**
+그대로 유지되므로 충실해야 할 대상은 보존된다. 반영:
+[ADR-0011](./0011-brief-deliberate-divergences.md) §3 폐기 표시,
+[Brief Guide](../05_BRIEF.md) §4.4 — **역할은 사라지지만 읽기 경계 계약은
+남는다**(조사 주체가 무엇을 해도 되는가는 여전히 필요하다).
 
 ## 8. "우리가 더 강하다"의 재검토
 
@@ -206,8 +230,10 @@ provenance 의미론([ADR-0010](./0010-answer-provenance-and-requirement-authori
 
 ## 미결로 남기는 것
 
-- **§6 재귀 차단의 레버 선택** — 사용자 결정.
-- **§7 Fact Resolver 폐기** — 사용자 결정.
+- **§6 재귀 차단** — 레버는 실측으로 좁혀졌다(`--ignore-user-config` 하나).
+  남은 것은 **명시할 모델·reasoning effort 값**이며 비용·품질 축이라 사용자
+  결정이다.
+- ~~**§7 Fact Resolver 폐기**~~ → **결정됨 (2026-08-09): 폐기.**
 - **Verify lineage 요구와 brownfield의 충돌** (§8) — ADR-0026이 건
   *"기록 요구를 유지한 채"* 제약과 Phase 9 brownfield가 양립하는지. 시한
   **Phase 9 진입 전**, [Open Questions §8](../research/OPEN_QUESTIONS.md)에 등록.

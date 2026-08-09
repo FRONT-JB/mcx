@@ -42,7 +42,16 @@ HITL 이벤트가 근거다.
 **근거**: Appendix A 7·8번(“사용자 승인 없이 Blueprint로 진행하지 않는다”,
 “승인은 정확한 Brief revision을 참조한다”)과 Principle 5.
 
-### 3. Adaptation — Read-only Fact Resolver
+### 3. Adaptation — Read-only Fact Resolver — **폐기 (2026-08-09 사용자 결정)**
+
+> 이 항목의 근거는 아래에 그대로 적혀 있듯 *"v1 첫 구현은 CLI를 대상으로 하므로
+> 코드 사실을 가져오는 host 세션이 존재하지 않는다"* 였다. **Phase 8이 그 host를
+> 만들면서 근거가 만료됐다.** 미구현(B-004) 상태에서 폐기하므로 매몰 비용이
+> 없고, 유지하면 같은 일을 하는 경로가 둘이 되어 코드 사실에 두 답이 생긴다.
+> 처분은 [ADR-0042](./0042-skill-and-core-ownership-boundary.md) §7,
+> 계약 잔존분은 [Brief Guide](../05_BRIEF.md) §4.4.
+>
+> 아래는 폐기 전 원문이며 기록으로 남긴다.
 
 **upstream**: interview 중 코드 사실은 host 세션이 코드를 읽어
 `[from-code]` 표기를 붙여 답변으로 제출한다. 별도 fact resolution 역할이 없다.
