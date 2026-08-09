@@ -31,6 +31,7 @@ from mission_control.domain.brief.requirement import (
 )
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.execute.state import ExecuteState
+from mission_control.domain.mechanical import ProposedCommands
 from mission_control.domain.recover.packet import PreviousFailure
 from mission_control.domain.verify.evidence import (
     CommandExecution,
@@ -534,4 +535,37 @@ class BlueprintQaJudge(Protocol):
 
     async def assess(self, request: QaRequest) -> QaAssessment:
         """점수와 지적 사항을 반환한다. 통과 여부는 판정하지 않는다."""
+        ...
+
+
+class MechanicalDetectionRequest(BaseModel):
+    """확인 명령을 제안받기 위한 최소 context (ADR-0044 §3).
+
+    manifest 발췌만 준다. workspace 전체를 읽히지 않는 이유는 이 역할이
+    "이 프로젝트를 어떻게 확인하는가"만 답하면 되기 때문이며, 넓은 읽기 권한은
+    Stage별 최소 capability에 어긋난다
+    (``docs/adr/0004-stage-scoped-minimum-capability.md``).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    workspace: str
+    #: (파일 이름, 발췌) 쌍. 비어 있으면 호출 자체를 하지 않는다.
+    manifests: tuple[tuple[str, str], ...]
+
+
+class MechanicalCommandDetector(Protocol):
+    """기존 저장소의 확인 명령을 제안하는 제한된 역할.
+
+    **제안일 뿐이다.** 반환 타입이 :class:`ProposedCommands`인 것이 그 사실을
+    드러낸다 — 디스크 대조를 지나야 쓸 수 있는 명령이 되며, 그 대조는 모델이
+    아니라 계산이 한다 (``adapters/verification/entry_points.py``).
+
+    검출 실패는 예외가 아니라 **빈 제안**이다. 확인 명령을 못 찾은 것이 미션을
+    죽여서는 안 된다 — upstream도 같다(`ensure_mechanical_toml`은 실패 시
+    ``False``를 돌려주고 끝난다).
+    """
+
+    async def propose(self, request: MechanicalDetectionRequest) -> ProposedCommands:
+        """manifest에서 확인 명령 후보를 제안한다. 검증하지 않는다."""
         ...

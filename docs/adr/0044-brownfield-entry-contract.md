@@ -1,6 +1,6 @@
 # ADR 0044 — Brownfield 진입 계약: 세 역할의 분리 도입
 
-- Status: **Proposed** (§2·§3·§4의 도입 여부는 사용자 결정)
+- Status: **Accepted** (사용자 승인 2026-08-09 — ② 미도입 · ③ 도입 · ① 보류)
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0011](./0011-brief-deliberate-divergences.md) §6
   (brownfield 유예), [ADR-0042](./0042-skill-and-core-ownership-boundary.md) §1

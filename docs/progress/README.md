@@ -419,7 +419,14 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   명령 자동 검출(`.ouroboros/mechanical.toml`). 제안: ②는 **미도입**(우리 CLI는
   mission당 workspace 하나), ③은 **도입**하되 축을 AC 수준으로 바꾼다,
   ①은 **순서 제약** 때문에 ③ 뒤 관측 후 결정. **①을 혼자 켜면 brownfield
-  미션이 Gate에서 영원히 막힌다** — 자리가 예약돼 있어 값싸 보이는 것이 함정이다
+  미션이 Gate에서 영원히 막힌다** — 자리가 예약돼 있어 값싸 보이는 것이 함정이다.
+  **2026-08-09 사용자 승인 → ADR-0044 Accepted, ③ 구현 완료** (800 tests):
+  `domain/mechanical.py`(순수 판정 — 이 명령이 성립하려면 무엇이 있어야 하는가),
+  `adapters/verification/entry_points.py`(디스크 대조 — package.json scripts·
+  Makefile target·PATH), `adapters/text/mechanical_detector.py`(여덟 번째 위임
+  port). **제안 타입과 검증된 타입을 나눠 검증을 건너뛸 수 없게 했다** —
+  `ProposedCommands`를 그대로 쓰면 이름이 그 사실을 드러낸다. 버린 제안은
+  이유와 함께 남는다(조용한 누락 금지)
 - [ ] worktree 격리 (upstream `core/worktree.py` 대조)
 - [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조)
 - [ ] rollback 범위 (ADR-0032 보류 해제)
