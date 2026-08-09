@@ -519,8 +519,18 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   `HOLD`로 세우고 사용자에게 넘긴다. 없는 것은 자동 route뿐이고 그것은 Stage를
   자동으로 되돌리는 동작이라 더 위험하다. **Phase 10에서 Evolve가 HOLD를 어떻게
   소비하는지 정해질 때 필요 여부가 함께 정해진다**
-- [ ] secret redaction 정책의 실물 재대조 (Phase 7 진입 조건으로 쓴 ADR을
-  실 레포 사례로 검증 — 조사 기반 정책의 첫 실물 대조)
+- [x] **secret redaction 정책의 실물 재대조** (2026-08-10 완료,
+  [REDACTION_FIELD_TRIAL](../research/REDACTION_FIELD_TRIAL.md), 907 tests).
+  **정책은 옳았고 구현이 정책에 못 미쳤다** — 발견된 4종은 ADR-0040이
+  감수하기로 한 "라벨 없는 미등록 형태"가 아니라 **라벨이 가장 분명한**
+  형태였다: `\b`가 언더스코어에서 성립하지 않아 `DB_PASSWORD=`·
+  `SUPABASE_API_KEY=`가 통과했고, 이름과 `:` 사이 따옴표 때문에
+  **JSON이 통째로** 샜다(`{"api_key": "…"}` — MCP payload의 기본 형태).
+  upstream에는 이 문제가 없다: 필드명을 경계 없이 **부분 문자열 포함**으로
+  본다(`core/security.py:463`). **과잉 마스킹은 실제 명령 출력 5종에서
+  관측 0건.** 맨몸 64자 16진·40자 base64는 의도적으로 남긴다 — sha256·git
+  SHA의 형태이며 지우면 정상 출력이 망가진다. ADR-0040 Verification을
+  형태 목록으로 교체했다
 
 ### Phase 10 — Reflect/Evolve: 자가개선 루프 (사용자 결정 2026-08-09)
 

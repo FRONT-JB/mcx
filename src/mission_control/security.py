@@ -80,7 +80,8 @@ _SECRET_FIELD_TAILS: frozenset[str] = frozenset(
 )
 
 _SECRET_WORD = (
-    r"api[-_]?key"
+    # 공백 형태(``API key``)는 vendor 오류 문구의 실제 표기다.
+    r"api[-_ ]?key"
     r"|(?:access|auth|bearer|github|gh|refresh)[-_]?token"
     r"|token"
     r"|password"
@@ -89,13 +90,32 @@ _SECRET_WORD = (
     r"|private[-_]?key"
     r"|(?:aws[-_])?secret[-_]access[-_]key"
     r"|authorization"
+    r"|auth"
+    # ``SERVICE_KEY``·``ANON_KEY`` — ``key`` 단독은 받지 않는다. 산문의
+    # "the key = ..."까지 지우면 증거가 사라진다.
+    r"|[A-Za-z0-9]{2,}[-_]key"
 )
+
+#: 어휘의 경계. ``\b``를 쓰지 않는다 — 언더스코어가 ``\w``라
+#: ``SUPABASE_API_KEY``·``DB_PASSWORD``에서 경계가 성립하지 않고, 그것이
+#: 실물 대조에서 **라벨이 붙었는데도 새던** 원인이었다
+#: (``docs/research/REDACTION_FIELD_TRIAL.md`` §2). upstream은 필드명을
+#: 부분 문자열 포함으로 보므로 같은 문제가 없다 (`core/security.py:463`).
+_EDGE_L = r"(?<![A-Za-z0-9])"
+_EDGE_R = r"(?![A-Za-z0-9])"
+
+#: 이름과 구분자 사이에 낄 수 있는 것 — JSON의 닫는 따옴표가 대표적이다.
+#: ``{"api_key": "X"}``가 통째로 새던 자리다 (§2).
+_SEPARATOR = r"[\"']?\s*[:=]\s*"
 
 #: ``--api-key=X`` / ``--token X`` — 명령줄에 실린 값.
 _FLAG = re.compile(rf"(?i)(--(?:{_SECRET_WORD})(?:=|\s+))(\"[^\"]*\"|'[^']*'|[^\s,;]+)")
 
-#: ``api_key: X`` / ``SECRET=X`` — 라벨이 붙은 값.
-_LABEL = re.compile(rf"(?i)(\b(?:{_SECRET_WORD})\b\s*[:=]\s*)(\"[^\"]*\"|'[^']*'|[^,;\n]+)")
+#: ``api_key: X`` / ``SECRET=X`` / ``{"token": "X"}`` — 라벨이 붙은 값.
+_LABEL = re.compile(
+    rf"(?i)({_EDGE_L}(?:{_SECRET_WORD}){_EDGE_R}{_SEPARATOR})"
+    r"(\"[^\"]*\"|'[^']*'|[^,;\n]+)"
+)
 
 _BEARER = re.compile(r"(?i)\bBearer\s+[^\s,;]+")
 

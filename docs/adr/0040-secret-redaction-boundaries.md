@@ -5,6 +5,8 @@
 - Constitutional basis: [ADR-0007](./0007-mcp-is-control-surface.md) (MCP는 제어 표면),
   [ADR-0027](./0027-telemetry-layers-and-v1-schema.md) (Telemetry 층 분리)
 - Upstream evidence: [SECURITY_UPSTREAM_FINDINGS](../research/SECURITY_UPSTREAM_FINDINGS.md)
+- 실물 대조: [REDACTION_FIELD_TRIAL](../research/REDACTION_FIELD_TRIAL.md)
+  (2026-08-10 — 정책 유지, **구현 결함 4종 수정**, 과잉 마스킹 관측 0건)
 - 진입 조건 해소: Phase 7 (MCP control surface) — [Open Questions §9](../research/OPEN_QUESTIONS.md)
 
 ## Context
@@ -121,8 +123,21 @@ upstream이 raw `BaseEvent` append를 `PersistenceError`로 막은 것과 같은
 
 ## Verification
 
+> **2026-08-10 실물 대조로 이 목록을 넓혔다.** 원래 목록은 `SECRET=` 같은
+> **가장 단순한 라벨 하나**만 적었고, 그 형태는 통과하는데 실제 세계의
+> 형태(`SCREAMING_SNAKE=`, JSON, `.npmrc`)는 전부 새고 있었다 — 테스트가
+> 초록인 채 정책이 지켜지지 않았다. 기록:
+> [REDACTION_FIELD_TRIAL](../research/REDACTION_FIELD_TRIAL.md).
+
 - 고신뢰 형태(`ghp_`, `sk-`, `AIza`, `AKIA`, `xox`, JWT), 플래그(`--api-key=`),
-  라벨(`SECRET=`), `Bearer`가 저장 프로필에서 지워진다.
+  `Bearer`가 저장 프로필에서 지워진다.
+- **라벨이 붙은 값은 표기를 가리지 않고 지워진다** — 소문자(`api_key=`),
+  대문자 스네이크(`DB_PASSWORD=`, `SUPABASE_API_KEY=`, `SERVICE_KEY=`),
+  JSON(`{"token": "…"}`), `.npmrc`(`:_authToken=`), 공백 표기(`API key = `).
+  **경계를 `\b`로 두지 않는다** — 언더스코어가 `\w`라 스네이크 이름에서
+  경계가 성립하지 않는다.
+- 유사어는 건드리지 않는다 — `monkey`, `author`, `oauth`, `keyboard`, 그리고
+  산문의 `the key = …`. `key` 단독은 어휘에 넣지 않는다.
 - 평범한 오류 텍스트와 상대 경로는 저장 프로필이 건드리지 않는다.
 - **저장 프로필은 절대 경로를 남기고 host 프로필은 지운다.**
 - host 프로필에서 URL은 살아남고, 민감한 이름의 필드는 값 전체가 지워진다.

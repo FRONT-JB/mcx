@@ -59,6 +59,55 @@ class TestCredentialProfile:
         assert redact_credentials(text) == text
 
 
+class TestLabelledFormsFromTheFieldTrial:
+    """실물 대조가 잡은 누락 (``docs/research/REDACTION_FIELD_TRIAL.md``).
+
+    전부 **라벨이 붙은** 형태다 — ADR-0040 §1이 가리기로 한 것이며 ADR이
+    감수하기로 한 "라벨 없는 미등록 형태"가 아니다. 원인은 둘이었다:
+    ``\\b``가 언더스코어에서 성립하지 않는 것과, 이름과 구분자 사이의 따옴표.
+    """
+
+    SECRET = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+
+    @pytest.mark.parametrize(
+        ("label", "template"),
+        [
+            # 언더스코어가 앞에 붙으면 `\b`가 성립하지 않던 자리
+            ("환경변수 password", "DB_PASSWORD={secret}"),
+            ("환경변수 api_key", "SUPABASE_API_KEY={secret}"),
+            ("환경변수 token", "GITHUB_TOKEN={secret}"),
+            ("npm 원문", "//registry.npmjs.org/:_authToken={secret}"),
+            # `key` 단독은 어휘에 없어 합성 이름이 통과하던 자리
+            ("SERVICE_KEY", "SUPABASE_SERVICE_KEY={secret}"),
+            ("SECRET_KEY", "DJANGO_SECRET_KEY={secret}"),
+            # 이름과 구분자 사이의 닫는 따옴표
+            ("JSON api_key", '{{"api_key": "{secret}"}}'),
+            ("JSON token", '{{"token": "{secret}"}}'),
+            ("docker auth", '{{"auth": "{secret}"}}'),
+            # vendor 오류 문구의 공백 표기
+            ("공백 API key", "Invalid API key = {secret}"),
+        ],
+    )
+    def test_a_labelled_credential_is_removed(self, label: str, template: str) -> None:
+        text = template.format(secret=self.SECRET)
+
+        assert self.SECRET not in redact_credentials(text), label
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "the key = value here",
+            "author = Jane Doe",
+            "oauth flow = pkce",
+            "monkey = banana",
+            "keyboard = qwerty",
+        ],
+    )
+    def test_lookalike_words_do_not_trigger(self, text: str) -> None:
+        """경계를 넓힌 대가로 산문이 지워지면 안 된다."""
+        assert redact_credentials(text) == text
+
+
 class TestPathProfile:
     def test_absolute_and_home_paths_are_removed(self) -> None:
         masked = redact_paths("no such file: /Users/jb/secret/app.py and ~/notes.md")
