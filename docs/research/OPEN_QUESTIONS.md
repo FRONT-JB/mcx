@@ -339,12 +339,29 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
 
 ## 8. MCP and CLI decisions
 
-- [ ] MCP tool 하나가 한 Stage command와 1:1인지 command/query를 분리할지 결정한다.
-- [ ] request/response schema와 error envelope를 정의한다.
-- [ ] host session, Mission ID, Runtime handle 전달 규칙을 정의한다.
-- [ ] async job/polling/notification 방식을 결정한다.
-- [ ] disconnect, cancel, timeout의 의미를 분리한다.
-- [ ] CLI와 MCP parity test 전략을 정의한다.
+- [x] MCP tool 하나가 한 Stage command와 1:1인지 command/query를 분리할지 결정한다.
+      → **1:1이며 `build_parser()`에서 파생한다** ([ADR-0041](../adr/0041-mcp-control-surface-contract.md) §1).
+      손으로 적는 목록이 없어 CLI와 어긋날 자리가 구조적으로 없다. upstream은
+      1:1이 아니고 공유 지점도 반대 방향이다 — 등록된 divergence.
+- [x] request/response schema와 error envelope를 정의한다. → §2.
+      exit 0/1/2가 `(is_error, result_type)` 둘로 나뉘고 **HOLD는 오류가
+      아니다**(`is_error=false`). `structured_content`는 CLI `--json`과 같은
+      payload, `content`는 사람용 렌더.
+- [x] host session, Mission ID, Runtime handle 전달 규칙을 정의한다. → §3.
+      `mission`은 모든 tool의 필수 인자이며 서버는 "현재 mission"을 기억하지
+      않는다 (04_MCP §1-4).
+- [x] async job/polling/notification 방식을 결정한다. → §4·§5.
+      장기 명령 둘에만 `mcx_start_*` 짝을 두고, **job은 원장에서 유도한다**
+      (새 저장소 없음). 접수증은 `dispatch`의 `on_sequence` 훅으로 실제
+      sequence를 받는다. notification은 도입하지 않고 host가 폴링한다.
+- [-] disconnect, cancel, timeout의 의미를 분리한다. → cancel은 §5로 닫혔다
+      (디스크 마커 + runtime 관측, 실물 종료 테스트). **disconnect와
+      `job_wait` 대기 상한은 열려 있다** — upstream도 미조사다
+      ([MCP findings §9](./MCP_UPSTREAM_FINDINGS.md)).
+- [x] CLI와 MCP parity test 전략을 정의한다. → §8.
+      **parity를 테스트로 쫓지 않는다** — 같은 `dispatch`를 지나므로 구조가
+      보장한다. 검사는 방향 셋이다: MCP가 application을 직접 부르지 않을 것,
+      CLI가 MCP를 import하지 않을 것, tool 목록이 CLI 명령 집합과 같을 것.
 - [x] **status 박스를 도입한다 (사용자 제안 2026-08-09, 도그푸딩 0003).**
       → **구현 완료 (2026-08-09)** — [ADR-0038](../adr/0038-mcx-cli-surface-contract.md)
       §6.1 개정 2. append-only JSONL 원장(`start`/`end` 두 줄, 짝 없는

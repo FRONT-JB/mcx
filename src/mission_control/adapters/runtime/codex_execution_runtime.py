@@ -30,9 +30,14 @@ import signal
 import tempfile
 
 from mission_control.application.ports import ExecutionOutcome, ExecutionRequest
+from mission_control.cancellation import is_cancelled, observed
 
 #: upstream `STALL_TIMEOUT_SECONDS` 채택 — 침묵 기준이지 총 시간이 아니다.
 SILENCE_TIMEOUT_SECONDS = 900.0
+
+#: 취소 관측 주기. 침묵 기준(900초)과 별개다 — 취소는 사용자가 기다리는
+#: 신호이므로 초 단위로 본다.
+CANCEL_POLL_SECONDS = 2.0
 
 #: 실패 보고에 싣는 합류 출력 발췌 한도 (Verify 증거 발췌와 같은 값).
 _OUTPUT_TAIL_CHARS = 2_000
@@ -104,9 +109,11 @@ class CodexExecutionRuntime:
         *,
         cli_path: str = "codex",
         silence_timeout_seconds: float = SILENCE_TIMEOUT_SECONDS,
+        cancel_poll_seconds: float = CANCEL_POLL_SECONDS,
     ) -> None:
         self._cli_path = cli_path
         self._silence_timeout_seconds = silence_timeout_seconds
+        self._cancel_poll_seconds = cancel_poll_seconds
 
     def build_command(self, *, workspace: str, last_message_path: str) -> tuple[str, ...]:
         """`codex exec` 명령을 구성한다. 프롬프트는 여기 없다 — stdin이다.
@@ -158,12 +165,24 @@ class CodexExecutionRuntime:
 
         native_session_id: str | None = None
         output_tail = ""
+        # 취소 관측이 설치되어 있을 때만 짧게 깨어난다 — 없으면 침묵 기준
+        # 그대로라 기존 동작이 한 글자도 바뀌지 않는다 (ADR-0041 §5).
+        poll = self._cancel_poll_seconds if observed() else self._silence_timeout_seconds
+        silent = 0.0
         while True:
             try:
-                line = await asyncio.wait_for(
-                    process.stdout.readline(), timeout=self._silence_timeout_seconds
-                )
+                line = await asyncio.wait_for(process.stdout.readline(), timeout=poll)
             except TimeoutError:
+                if is_cancelled():
+                    await self._terminate(process)
+                    return ExecutionOutcome(
+                        succeeded=False,
+                        native_session_id=native_session_id,
+                        error="cancelled by request; the process group was terminated",
+                    )
+                silent += poll
+                if silent < self._silence_timeout_seconds:
+                    continue
                 await self._terminate(process)
                 return ExecutionOutcome(
                     succeeded=False,
@@ -173,6 +192,7 @@ class CodexExecutionRuntime:
                         "the process group was terminated"
                     ),
                 )
+            silent = 0.0
             if not line:
                 break
             text = line.decode("utf-8", errors="replace")

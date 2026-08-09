@@ -16,6 +16,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 import dataclasses
 from datetime import UTC, datetime
 from enum import Enum
@@ -28,6 +31,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from mission_control.cancellation import cancel_when
 from mission_control.cli import composition, status_render, status_view
 from mission_control.cli.calls import CallCounter
 from mission_control.cli.composition import Adapters, StateLayout
@@ -95,8 +99,42 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+#: 출력 수집기. ``None``이면 터미널로 나간다. MCP가 같은 dispatch를 부르면서
+#: 결과를 가로채는 유일한 지점이다 (ADR-0041 §1) — 두 벌의 핸들러를 만들지
+#: 않기 위해서다. ContextVar라 동시 호출이 서로의 출력을 섞지 않는다.
+_COLLECTED: ContextVar[list[tuple[str, object]] | None] = ContextVar("mcx_output", default=None)
+
+
+@contextmanager
+def collecting() -> Iterator[list[tuple[str, object]]]:
+    """이 블록 안의 출력을 터미널 대신 목록으로 모은다.
+
+    항목은 ``("data", payload)``(구조화 출력), ``("text", str)``(사람용 렌더),
+    ``("note", str)``(stderr 안내)다.
+    """
+    sink: list[tuple[str, object]] = []
+    token = _COLLECTED.set(sink)
+    try:
+        yield sink
+    finally:
+        _COLLECTED.reset(token)
+
+
 def _note(message: str) -> None:
-    print(message, file=sys.stderr)
+    sink = _COLLECTED.get()
+    if sink is None:
+        print(message, file=sys.stderr)
+    else:
+        sink.append(("note", message))
+
+
+def _write(message: str) -> None:
+    """사람이 읽는 렌더 한 덩어리."""
+    sink = _COLLECTED.get()
+    if sink is None:
+        print(message)
+    else:
+        sink.append(("text", message))
 
 
 def jsonable(value: object) -> Any:
@@ -120,7 +158,13 @@ def jsonable(value: object) -> Any:
 
 
 def show(value: object) -> None:
-    print(json.dumps(jsonable(value), indent=2, ensure_ascii=False))
+    """구조화 출력 한 덩어리. MCP는 이것을 ``structured_content``로 받는다."""
+    payload = jsonable(value)
+    sink = _COLLECTED.get()
+    if sink is None:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    else:
+        sink.append(("data", payload))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -328,7 +372,7 @@ async def _status(
     snapshot = await status_view.build_snapshot(
         layout=layout, adapters=adapters, record=record, now=_now()
     )
-    print(status_render.render(snapshot, full=args.full, plain=args.plain))
+    _write(status_render.render(snapshot, full=args.full, plain=args.plain))
     return 0
 
 
@@ -559,7 +603,12 @@ async def _dispatch_recover(
     return 0
 
 
-async def dispatch(args: argparse.Namespace, adapters: Adapters) -> int:
+async def dispatch(
+    args: argparse.Namespace,
+    adapters: Adapters,
+    *,
+    on_sequence: Callable[[int], None] | None = None,
+) -> int:
     """파싱된 명령을 service 호출로 위임하고 exit code를 돌려준다.
 
     명령마다 원장 구간을 열고 닫는다 (ADR-0038 §6.1 a) — 예외로 끝나도
@@ -585,10 +634,19 @@ async def dispatch(args: argparse.Namespace, adapters: Adapters) -> int:
     journal = MissionJournal(root=layout.state, mission_id=args.mission)
     started = time.monotonic()
     sequence = journal.open(command=f"{args.stage} {args.verb}", at=_now())
+    if on_sequence is not None:
+        # 원장 구간이 열린 직후다 — 비동기 접수증이 job id를 추측하지 않고
+        # 실제 sequence를 받는다 (ADR-0041 §4).
+        on_sequence(sequence)
     exit_code = 1
+    marker = layout.state / f"cancel_{args.mission}_{sequence}"
     try:
-        exit_code = await handlers[args.stage](args, layout, counter.wrap(adapters))
+        # 이 명령의 취소 마커를 실행 adapter가 관측하게 한다 (ADR-0041 §5).
+        # 마커를 놓는 것만으로는 아무것도 멈추지 않는다 — 관측이 있어야 한다.
+        with cancel_when(marker.exists):
+            exit_code = await handlers[args.stage](args, layout, counter.wrap(adapters))
     finally:
+        marker.unlink(missing_ok=True)
         journal.close(
             sequence=sequence,
             at=_now(),

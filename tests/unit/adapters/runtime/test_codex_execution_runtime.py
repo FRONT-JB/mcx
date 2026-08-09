@@ -19,6 +19,7 @@ from mission_control.adapters.runtime.codex_execution_runtime import (
     render_prompt,
 )
 from mission_control.application.ports import ExecutionRequest
+from mission_control.cancellation import cancel_when
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
 from mission_control.domain.recover.packet import (
     FailureClassification,
@@ -217,6 +218,47 @@ class TestExecute:
         assert outcome.error is not None
         assert "silent" in outcome.error
         assert outcome.native_session_id == "th-slow"  # 침묵 전에 받은 신호는 남는다
+
+    async def test_a_cancel_request_terminates_the_running_process(self, tmp_path: Path) -> None:
+        """마커를 놓는 것만으로는 안 멈춘다 — runtime이 관측해야 한다 (ADR-0041 §5).
+
+        upstream이 정확히 이 지점에서 계약을 조용히 깼다: 마커는 디스크에
+        쓰였는데 실행 프로세스가 볼 수 없었다 (``tools/background.py:16-26``).
+        """
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        marker = tmp_path / "cancel_m_1"
+        runtime = CodexExecutionRuntime(
+            cli_path=_write_stub(tmp_path, "codex-slow", SILENT_STUB),
+            # 침묵 기준은 멀리 둔다 — 취소가 끝냈다는 것이 분명해야 한다.
+            silence_timeout_seconds=600.0,
+            cancel_poll_seconds=0.2,
+        )
+        marker.write_text("cancel\n", encoding="utf-8")
+
+        with cancel_when(marker.exists):
+            outcome = await runtime.execute(_request(workspace=str(workspace)))
+
+        assert outcome.succeeded is False
+        assert outcome.error is not None
+        assert "cancelled" in outcome.error
+        assert "silent" not in outcome.error
+
+    async def test_without_an_observer_the_silence_behaviour_is_unchanged(
+        self, tmp_path: Path
+    ) -> None:
+        """취소 관측이 없으면 폴링도 없다 — 기존 동작이 한 글자도 바뀌지 않는다."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        runtime = CodexExecutionRuntime(
+            cli_path=_write_stub(tmp_path, "codex-slow2", SILENT_STUB),
+            silence_timeout_seconds=2.0,
+        )
+
+        outcome = await runtime.execute(_request(workspace=str(workspace)))
+
+        assert outcome.error is not None
+        assert "silent" in outcome.error
 
     async def test_an_unstartable_cli_raises_for_the_caller_to_normalize(
         self, tmp_path: Path

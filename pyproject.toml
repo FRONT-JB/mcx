@@ -8,8 +8,13 @@ dependencies = [
     "pydantic>=2.0.0,<3.0.0",
 ]
 
+[project.optional-dependencies]
+# MCP 표면만 SDK를 쓴다 — core는 pydantic 하나다 (ADR-0012, ADR-0041 §1).
+mcp = ["mcp>=1.2.0"]
+
 [project.scripts]
 mcx = "mission_control.cli.main:run"
+mcx-mcp = "mission_control.mcp.server:main"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
@@ -52,6 +57,12 @@ python_functions = ["test_*"]
 python_version = "3.12"
 strict = true
 exclude = ["src/mission_control/_version.py"]
+
+# MCP SDK는 optional extra다 — 설치되지 않은 환경에서도 검사가 서야 한다
+# (ADR-0041 §1: SDK 의존은 server.py 하나).
+[[tool.mypy.overrides]]
+module = ["mcp.*", "anyio"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100
