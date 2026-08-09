@@ -389,13 +389,31 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       잔여.** 발견은 양쪽 host 매니페스트(`.claude-plugin/`·`.codex-plugin/`)가
       같은 `./skills/`와 같은 `./.mcp.json`을 가리키는 형태로 확정했고, 설정은
       `<state-dir>/config.toml` 하나다(라우팅 + backend 모델, CLI 플래그 없음).
-      설치는 경로 셋을 문서화했다([README](../../README.md)) — **로컬
-      체크아웃만 동작하며 실물로 확인했다**: `uvx --from '<repo>[mcp]' mcx-mcp`가
-      wheel을 빌드해 진입점을 띄우고, `claude mcp add`로 등록하면
-      **`✔ Connected`** 다 (2026-08-09, Verified by execution). git 경로는 push,
-      배포판 경로는 PyPI 배포가 선행이며 **둘 다 사용자 승인 사항**이라 여기서
-      닫지 않는다. 즉 `.mcp.json`에 적힌 배포판 명령은 **현재 동작하지 않는
-      목표 형태**다.
+      설치는 **PyPI 배포 없이 닫혔다** — `.mcp.json`이
+      `${CLAUDE_PLUGIN_ROOT}`를 가리켜 플러그인이 자기 소스로 자기 MCP 서버를
+      띄운다. **실물 확인 (2026-08-09, Verified by execution)**: marketplace
+      등록 → `claude plugin install mcx@mcx` → skill 6종 인식, MCP 서버
+      `✔ Connected`, always-on ~189 tok. 변수는 실제로 치환된다(인자가
+      `uvx --from /Users/.../mcx/[mcp] mcx-mcp`로 확장됐다).
+
+      **upstream과 다른 선택이다 — 등록된 divergence.** upstream은 소스를
+      플러그인에 전부 넣고도 MCP 서버는 **PyPI**에서 가져오고
+      (`uvx --from ouroboros-ai[mcp]` + `env: {"UV_PYTHON": "3.13"}`),
+      `${CLAUDE_PLUGIN_ROOT}`는 **hooks에만** 쓴다. 즉 빌드가 필요 없는 것은
+      플러그인 루트, 빌드·의존성 해석이 필요한 것은 PyPI로 갈랐다. 우리가
+      자기참조를 고른 이유는 배포 승인 없이 완결되기 때문이며, 대가는 첫 기동에
+      wheel 빌드가 필요하고 사용자 환경의 파이썬 해석에 맡긴다는 것이다
+      (upstream이 `UV_PYTHON`으로 고정한 축 — **왜 고정했는지는 미확인**이라
+      따라 하지 않았다).
+
+      같은 관측에서 부수 사실 하나: 이 기계에서 **upstream 자신의 PyPI 경로가
+      연결에 실패하고 있다**(`plugin:ouroboros:ouroboros ... ✘ Failed to
+      connect`). 원인은 조사하지 않았으므로 PyPI 경로의 일반적 결함으로
+      일반화하지 않는다 — 다만 그 경로에 우리에게 없는 실패 지점이 있다는
+      관측이다.
+
+      배포판 이름(`mission-control`)과 git 경로는 여전히 열려 있으나 **이제
+      선택 사항**이다.
       원래 시한 지정 (2026-08-09, 사용자 결정): Phase 8 — MCP(Phase 7) 직후,
       실사용 진입(Phase 9) 앞.
       upstream의 배포 실물은 **plugin = skills + MCP server + CLI 3층**이며

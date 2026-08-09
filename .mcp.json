@@ -2,7 +2,7 @@
   "mcpServers": {
     "mcx": {
       "command": "uvx",
-      "args": ["--from", "mission-control[mcp]", "mcx-mcp"]
+      "args": ["--from", "${CLAUDE_PLUGIN_ROOT}[mcp]", "mcx-mcp"]
     }
   }
 }

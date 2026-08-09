@@ -1,6 +1,7 @@
 {
   "name": "mcx",
   "description": "Mission Control — coordinates AI coding missions. Executed is not verified.",
+  "version": "0.1.0",
   "author": {
     "name": "FRONT-JB"
   },
@@ -20,7 +21,10 @@
     "longDescription": "Remove ambiguity from an intent, freeze it as an approved specification, execute it under that specification, and let evidence decide whether it is done.",
     "developerName": "FRONT-JB",
     "category": "Development",
-    "capabilities": ["Interactive", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
     "defaultPrompt": [
       "Start a mission for this idea.",
       "Show me where my mission is stuck.",

@@ -22,17 +22,24 @@ Phase 7 (MCP control surface)까지 완료했고 Phase 8 (plugin = 합성 계층
 
 ## 설치
 
-**아직 배포하지 않았다.** 아래 세 경로 중 지금 동작하는 것은 로컬 체크아웃
-하나이며, 나머지 둘은 각각 PyPI 배포와 원격 push가 선행 조건이다.
+**PyPI 배포가 필요 없다.** 플러그인이 자기 소스로 자기 MCP 서버를 띄운다 —
+`.mcp.json`이 `${CLAUDE_PLUGIN_ROOT}`를 가리키므로 설치된 플러그인 디렉토리에서
+`uvx`가 직접 빌드한다.
 
-| 경로 | 명령 | 상태 |
-|---|---|---|
-| 로컬 체크아웃 | `uvx --from '<repo>[mcp]' mcx-mcp` | **동작 확인됨** (2026-08-09) |
-| git | `uvx --from 'git+https://github.com/FRONT-JB/mcx.git' mcx-mcp` | push 전까지 불가 |
-| 배포판 | `uvx --from 'mission-control[mcp]' mcx-mcp` | 배포 전까지 불가 |
+```bash
+claude plugin marketplace add https://github.com/FRONT-JB/mcx   # 또는 로컬 경로
+claude plugin install mcx@mcx
+```
 
-`.mcp.json`에 적힌 것은 **배포판 경로**다 — 그것이 최종 형태이고, 그때까지는
-아래 개발 설치를 쓴다.
+**실물 확인 (2026-08-09)**: 로컬 경로로 등록·설치해 skill 6종 인식,
+`plugin:mcx:mcx ... ✔ Connected`, always-on 비용 ~189 tok. git 경로는 저장소를
+push하면 같은 방식으로 동작한다.
+
+개발 중에는 MCP 서버만 따로 붙일 수도 있다.
+
+```bash
+claude mcp add mcx -- uvx --from "$PWD[mcp]" mcx-mcp
+```
 
 ```bash
 uv sync                      # 개발 환경

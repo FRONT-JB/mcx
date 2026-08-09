@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "mcx",
+  "description": "Mission Control — coordinates AI coding missions. Executed is not verified.",
+  "owner": {
+    "name": "FRONT-JB"
+  },
+  "plugins": [
+    {
+      "name": "mcx",
+      "description": "Remove ambiguity from an intent, freeze it as an approved specification, execute under it, and let evidence decide whether it is done",
+      "version": "0.1.0",
+      "author": {
+        "name": "FRONT-JB"
+      },
+      "source": "./",
+      "category": "development",
+      "homepage": "https://github.com/FRONT-JB/mcx",
+      "license": "MIT"
+    }
+  ]
+}

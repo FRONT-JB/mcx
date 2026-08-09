@@ -151,8 +151,39 @@ class TestManifests:
         entry = mcp["mcpServers"]["mcx"]
 
         assert entry["command"] == "uvx"
-        assert "mission-control[mcp]" in entry["args"]
         assert entry["args"][-1] == "mcx-mcp"
+
+    def test_the_server_is_built_from_the_plugin_itself(self) -> None:
+        """PyPI 배포 없이 완결된다 — 자기참조다.
+
+        upstream은 소스를 플러그인에 다 넣고도 서버는 PyPI에서 가져오고
+        (``uvx --from ouroboros-ai[mcp]``), ``${CLAUDE_PLUGIN_ROOT}``는 hooks
+        에만 쓴다. 우리 선택은 등록된 divergence이며, 실물로 확인했다
+        (2026-08-09: 설치 후 ``plugin:mcx:mcx ... ✔ Connected``).
+
+        이 검사가 지키는 것: 배포판 이름으로 되돌리면 배포 전까지 플러그인이
+        조용히 죽는다.
+        """
+        mcp = json.loads((REPO / ".mcp.json").read_text(encoding="utf-8"))
+        source = mcp["mcpServers"]["mcx"]["args"][1]
+
+        assert source == "${CLAUDE_PLUGIN_ROOT}[mcp]"
+
+    def test_the_marketplace_makes_the_repo_installable(self) -> None:
+        """저장소가 곧 marketplace다 (upstream 정렬, `source: "./"`)."""
+        market = json.loads(
+            (REPO / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8")
+        )
+        (entry,) = market["plugins"]
+
+        assert entry["name"] == "mcx"
+        assert entry["source"] == "./"
+
+    def test_the_plugin_declares_a_version(self) -> None:
+        """`claude plugin validate`가 없으면 경고한다."""
+        for directory in (".claude-plugin", ".codex-plugin"):
+            manifest = json.loads((REPO / directory / "plugin.json").read_text(encoding="utf-8"))
+            assert manifest["version"] == "0.1.0", directory
 
     def test_the_registered_entry_point_is_the_one_we_ship(self) -> None:
         """``mcx-mcp``는 별도 실행 파일이다 — CLI에 붙이면 순환이다 (ADR-0041 §1)."""
