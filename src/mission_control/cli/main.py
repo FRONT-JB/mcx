@@ -563,6 +563,7 @@ async def dispatch(args: argparse.Namespace, adapters: Adapters) -> int:
     원장이 관측 행위를 작업으로 보고한다.
     """
     layout = StateLayout.under(args.state_dir)
+    adapters = composition.routed_adapters(layout.root, adapters)
     args.mission = _resolve_mission(args, layout)
 
     if args.stage == "status":

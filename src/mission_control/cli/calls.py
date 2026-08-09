@@ -32,11 +32,23 @@ class CallCounter:
         return dict(self._counts)
 
     def wrap(self, adapters: Adapters) -> Adapters:
-        """AI를 부르는 두 port만 감싼다 — mechanical runner는 로컬 실행이다."""
+        """AI를 부르는 두 port만 감싼다 — mechanical runner는 로컬 실행이다.
+
+        Stage별로 라우팅된 실물도 함께 감싼다 (ADR-0039). 하나라도 빠지면 그
+        Stage의 호출만 원장에서 사라져 사용량이 조용히 작아 보인다.
+        """
         return dataclasses.replace(
             adapters,
             completion=_CountedCompletion(adapters.completion, self),
             runtime=_CountedRuntime(adapters.runtime, self),
+            routed_completion={
+                stage: _CountedCompletion(engine, self)
+                for stage, engine in adapters.routed_completion.items()
+            },
+            routed_runtime={
+                stage: _CountedRuntime(runtime, self)
+                for stage, runtime in adapters.routed_runtime.items()
+            },
         )
 
 

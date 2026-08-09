@@ -247,8 +247,11 @@ upstream 대응물은 있다 (`ACTokenAttribution`, `run_total_tokens`,
 - **합성 대화형 흐름** (brief→blueprint→execute를 한 명령으로) — upstream
   대응물 `ooo init`/`ooo auto` (findings §3). 대화형 프롬프트·Confirm
   전환은 그 흐름과 함께 온다.
-- **vendor 선택 표면** (플래그/설정 파일) — upstream 대응물
+- ~~**vendor 선택 표면** (플래그/설정 파일)~~ — upstream 대응물
   `--llm-backend`·`runtime_profile.stages` (findings §11).
+  → **부분 개정 (2026-08-09, [ADR-0039](./0039-stage-runtime-routing-table.md) §5).**
+  설정 파일 `<state-dir>/config.toml`은 도입했고 **CLI 플래그는 여전히 없다** —
+  라우팅은 설정 파일로만 들어온다.
 - **approve actor 식별자** — v1 승인 주체는 명령을 실행한 로컬 사용자이고
   evidence는 `--statement`다 (upstream도 CLI에 user identity 없음). MCP
   (Phase 7)에서 host가 대리 승인하는 경로가 생길 때 재평가

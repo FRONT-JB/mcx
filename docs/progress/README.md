@@ -4,11 +4,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | Phase 6 (`mcx` CLI) — 표면 + status 박스 구현 완료 (2026-08-09); 라우팅 테이블·종료 검토 대기 |
+| Project phase | Phase 6 (`mcx` CLI) — 표면 + status 박스 + 라우팅 테이블 구현 완료 (2026-08-09); 종료 검토 대기 |
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연) |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`, 명령 원장·status 렌더) |
-| Automated tests | 604 passed (unit + integration) |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅) |
+| Automated tests | 618 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-09 |
 
@@ -284,12 +284,14 @@ Verify Gate 미검사 조건)을 잡았다.
   작업에서 semantic verdict 일괄 저장을 **유지**로 처분했다
   (OPEN_QUESTIONS §5 — 가시성은 원장이 덮고, 증분 저장은 부분
   `SemanticAssessment`를 만든다)
-- [ ] Stage→Runtime 라우팅 테이블 + `config.toml`
+- [x] Stage→Runtime 라우팅 테이블 + `config.toml`
   ([ADR-0039](../adr/0039-stage-runtime-routing-table.md), 사용자 결정
   2026-08-09) — ADR-0023이 Phase 5에 약속하고 이행하지 않은 항목.
-  **Execute의 backend 교체가 구조적으로 가능해야 한다** (codex ↔ opencode,
-  upstream 방향) — backend 레지스트리는 등록된 adapter에 열려 있고, 실물
-  OpenCode adapter는 이연이다
+  `cli/routing.py`(닫힌 Stage 키·lane 쌍·3단 해석·fail-fast) +
+  `cli/composition.py`(backend 레지스트리, 조회 지점 하나), 14 tests.
+  **Execute의 backend 교체가 구조적으로 가능하다** — `EXECUTION_BACKENDS`에
+  한 줄 추가가 교체 지점이고, 실물 OpenCode adapter는 이연이라 지금은 그
+  이름이 로드에서 거부된다(등록된 이름만 통과)
 - [ ] Phase 6 종료 검토
 
 ### Phase 7 — MCP control surface
@@ -631,12 +633,16 @@ status 박스는 2026-08-09 구현되었다 (ADR-0038 §6.1 개정 2) — 명령
 세 화면 렌더, 604 tests. OPEN_QUESTIONS §5(verdict 일괄 저장)는 같은
 작업에서 **유지**로 처분했다.
 
-다음 검증 가능한 목표 한 개: **Stage→Runtime 라우팅 테이블 +
-`config.toml` 구현 ([ADR-0039](../adr/0039-stage-runtime-routing-table.md)).**
-닫힌 Stage enum 키 · lane별 backend 쌍 · 해석 3단 · fail-fast 검증 · 조회
-지점 하나. **Execute의 backend 교체(codex ↔ opencode)가 구조적으로
-가능해야 한다** — 레지스트리는 등록된 adapter에 열려 있고 실물 OpenCode
-adapter는 이연이다. 그다음 Phase 6 종료 검토(일곱 질문).
+라우팅 테이블은 2026-08-09 구현되었다 (ADR-0039) — `cli/routing.py`와
+`cli/composition.py`의 backend 레지스트리, 618 tests. Recover의 재투입은
+Execute 행이 아니라 **Recover 행**을 쓰며(실행 lane 라우팅 키가 다르다),
+호출 계수는 라우팅된 실물까지 감싼다. 실물 확인: 알 수 없는 Stage 키와
+미등록 backend 이름이 로드에서 exit 1로 거부되고, 파일 부재만 기본 조립으로
+간다.
+
+다음 검증 가능한 목표 한 개: **Phase 6 종료 검토(일곱 질문).** 질문 7의
+대상은 Phase 6을 시한으로 쓴 [ADR-0029](../adr/0029-verify-gate-and-evidence.md)
+`exit_conditions` 잔여다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -876,7 +882,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 3 — Execute | **충족 (2026-08-08)** — Test Matrix 누락 2행 테스트 추가(2f951e2), ADR-0024 과장 정정, §10 미검사 조건 표 추가, telemetry schema 시점 정정(§9 → Phase 4 전), 재시도 정책 미확인 등록(ADR-0025) | [progress 0003](./0003_EXECUTE_VERTICAL_SLICE.md) |
 | Phase 4 — Verify/Recover | **충족 (2026-08-08)** — 예산 리셋 테스트 추가(0186450), directive 저장 vs 파생 충돌 해소, exit_conditions 유예 재평가, canonical Stage 저장 부재 등록, Verify Gate 미검사 조건 표 신설. Gate·Matrix 전수 대조 포함 | [progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) |
 | Phase 5 — Runtime adapters | **충족 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). 잔여 3항목은 실수요 이연 후 2026-08-09 Phase 배치(7·11)로 재지정. **질문 7 미수행 — Phase 5를 시한으로 쓴 보류 7건이 무처분 통과** (2026-08-09 소급 처분) | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
-| Phase 6 — `mcx` CLI | 대기 (phase 진행 중 — 선행 조사·표면 설계·구현·도그푸딩·status 박스 완료, 라우팅 테이블만 남음. 질문 7의 대상: Phase 6을 시한으로 쓴 ADR-0029 `exit_conditions` 잔여) | [CLI findings](../research/CLI_UPSTREAM_FINDINGS.md), [ADR-0038](../adr/0038-mcx-cli-surface-contract.md) |
+| Phase 6 — `mcx` CLI | 대기 (phase 진행 중 — 선행 조사·표면 설계·구현·도그푸딩·status 박스·라우팅 테이블 완료, 종료 검토만 남음. 질문 7의 대상: Phase 6을 시한으로 쓴 ADR-0029 `exit_conditions` 잔여) | [CLI findings](../research/CLI_UPSTREAM_FINDINGS.md), [ADR-0038](../adr/0038-mcx-cli-surface-contract.md) |
 | Phase 7 — MCP control surface | 대기 (진입 조건: redaction Security ADR) | — |
 | Phase 8 — plugin 패키징 (합성 계층) | 대기 | — |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | 대기 | — |
