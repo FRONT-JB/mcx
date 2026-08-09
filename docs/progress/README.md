@@ -548,8 +548,21 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
 - [ ] **자가개선 결과가 다음 작업에 연결되는 경로** 조사 —
   `evolution/loop.py`, `projector.py`, `parent_seed_id` lineage,
   `evolve_step` MCP tool. "무엇이 다음 세대의 입력이 되는가"의 전체 경로
-- [ ] Wonder/Reflect 출력의 mcx 대응물 설계 ADR — 우리 Brief/Blueprint의
-  어디로 들어오는가 (Gen 2+에서 Brief를 대체하는가, 입력으로 들어가는가)
+- [x] **Reflect가 무엇을 대체하는지 조사 — 2026-08-10 완료**
+  ([EVOLVE findings](../research/EVOLVE_UPSTREAM_FINDINGS.md)). 답: **Brief를
+  대체한다** (Blueprint가 아니다). Seed는 양쪽 세대에 다 있고 바뀌는 것은
+  **입력을 만드는 단계**다. Gen 2+에는 **모호함 채점이 돌지 않고**
+  (`ambiguity_score`·`interview_id`가 부모 것 그대로), goal·constraints·AC만
+  진화하며 판정 원칙과 종료 조건은 상속된다. AC는 **설명 문장만** 바뀌고
+  기계적 확인 계약은 **위치로** 이어지며, 설명이 바뀌면 semantic key를 새로
+  발급한다. 모호한 삭제·재정렬은 거부하고 `ACPatch`에 `delete`가 없다.
+  **핵심 결론: `BlueprintService.generate`가 승인된 Brief handoff를 요구하므로
+  Gen 2+에는 생성 경로가 없다 — 계층 경계 문제이며 Phase 10 설계 ADR의 1번
+  항목이다**
+- [ ] Wonder/Reflect 출력의 mcx 대응물 설계 ADR — 위 조사를 근거로. 결정할 것
+  넷: (1) Brief 없는 Blueprint 생성 경로, (2) `revise`의 두 번째(자동) 생산자,
+  (3) Gen 2+의 승인 주체(upstream은 자율, 우리는 사람+QA 근거 필수 — ADR-0021),
+  (4) AC 식별 모델 차이(우리는 내용 식별 ADR-0017, upstream은 위치로 권위 이관)
 - [ ] 구현 + Hermes adapter (필요 시 — 텍스트 lane 축이므로 `CompletionEngine`
   추가로 끝날 수 있다)
 - [ ] **spec-gap 분류 필요 여부 재평가** (Phase 9에서 이관, 2026-08-10). 두
