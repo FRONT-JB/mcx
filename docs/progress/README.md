@@ -501,10 +501,24 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   항목이다 (2026-08-09 확인, [ADR-0027](../adr/0027-telemetry-layers-and-v1-schema.md)
   §3 주석). 여기로 오는 이유: 실사용에서야 긴 실행의 진행 표시가 실수요가 되고,
   바로 위 `changed_files`가 같은 생산자를 요구한다
-- [ ] **spec-gap 분류와 `RecoveryDirective`** — [Recover Guide](../09_RECOVER.md)
-  §4.1의 계약이 코드 없이 있었고 **시한도 없었다** (2026-08-09 확인). 실패가
-  코드가 아니라 명세의 문제일 때 Brief/Blueprint로 route한다. upstream 대응물이
-  없으므로 발명 위험은 우리 몫이다
+- [x] ~~**spec-gap 분류와 `RecoveryDirective`**~~ — **항목 자체가 오류였다.
+  Phase 9에서 제거하고 Phase 10 진입 시 재평가로 옮긴다 (2026-08-10 사용자
+  질문이 잡았다).** 두 가지가 틀렸다:
+  **(1) `RecoveryDirective`는 이미 v1 미채택 확정이다** —
+  [Recover Guide](../09_RECOVER.md) §3이 2026-08-08에 확정했고(파생본을 저장하면
+  두 진실이 생긴다, [ADR-0031](../adr/0031-recover-v1-failure-and-retry-contract.md) §1)
+  2026-08-09 재평가에서도 결론 무변경이었다. **이미 내려진 결정을 할 일로 다시
+  적은 것**이며, Phase 8 종료 검토가 등록할 때 그 확정을 확인하지 않았다.
+  **(2) spec-gap 분류는 upstream이 다른 층에서 이미 푼다** — upstream에 분류
+  축이 없는 것은 맞지만(전수 확인), 그 자리를 **세대 루프**가 채운다. 실패하면
+  rollback하고 다음 세대가 seed를 다시 쓴다
+  (`evolution/reflect.py`: *"Interview is Gen 1 only; Reflect handles all
+  subsequent generations autonomously"*). 우리에겐 그 루프가 없으므로(Phase 10)
+  **지금 만들면 아직 오지 않은 층의 일을 다른 방식으로 발명**하게 된다.
+  막아야 할 것은 이미 막고 있다 — 재시도가 답이 아닌 실패는 Recover Gate가
+  `HOLD`로 세우고 사용자에게 넘긴다. 없는 것은 자동 route뿐이고 그것은 Stage를
+  자동으로 되돌리는 동작이라 더 위험하다. **Phase 10에서 Evolve가 HOLD를 어떻게
+  소비하는지 정해질 때 필요 여부가 함께 정해진다**
 - [ ] secret redaction 정책의 실물 재대조 (Phase 7 진입 조건으로 쓴 ADR을
   실 레포 사례로 검증 — 조사 기반 정책의 첫 실물 대조)
 
@@ -538,6 +552,10 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
   어디로 들어오는가 (Gen 2+에서 Brief를 대체하는가, 입력으로 들어가는가)
 - [ ] 구현 + Hermes adapter (필요 시 — 텍스트 lane 축이므로 `CompletionEngine`
   추가로 끝날 수 있다)
+- [ ] **spec-gap 분류 필요 여부 재평가** (Phase 9에서 이관, 2026-08-10). 두
+  갈래다: upstream처럼 루프가 매 세대 스펙을 다시 만들면 분류는 **불필요**하고,
+  루프가 `HOLD`를 읽어 스펙 문제일 때만 Brief로 가면 **필요**하다. 어느 쪽인지는
+  Evolve 설계가 정한다 — 지금 만들면 두 번째를 근거 없이 확정하는 것이다
 
 ### Phase 11 — 병렬 실행
 
