@@ -48,6 +48,23 @@ def _subparsers(parser: argparse.ArgumentParser) -> dict[str, argparse.ArgumentP
     return {}
 
 
+def _helps(parser: argparse.ArgumentParser) -> dict[str, str]:
+    """하위 명령의 ``help`` 문구. tool description의 원천이다.
+
+    argparse는 ``add_parser(help=...)``를 부모의 pseudo-action에 담고 자식
+    parser에는 남기지 않는다. 원천을 하나로 두려고(CLI ``--help``와 tool
+    description이 같은 문장) 그 자리에서 읽는다.
+    """
+    for action in parser._actions:  # noqa: SLF001
+        if isinstance(action, argparse._SubParsersAction):  # noqa: SLF001
+            return {
+                choice.dest: choice.help
+                for choice in action._choices_actions  # noqa: SLF001
+                if choice.help
+            }
+    return {}
+
+
 def _schema(parser: argparse.ArgumentParser) -> dict[str, Any]:
     """하나의 명령 파서를 JSON Schema로 옮긴다."""
     properties: dict[str, Any] = {}
@@ -91,6 +108,7 @@ def _schema(parser: argparse.ArgumentParser) -> dict[str, Any]:
 def tool_definitions() -> tuple[ToolDefinition, ...]:
     """CLI 명령 하나당 tool 하나. 순서는 파서 순서다."""
     parser = build_parser()
+    stage_helps = _helps(parser)
     tools: list[ToolDefinition] = []
     for stage, stage_parser in _subparsers(parser).items():
         verbs = _subparsers(stage_parser)
@@ -98,16 +116,22 @@ def tool_definitions() -> tuple[ToolDefinition, ...]:
             tools.append(
                 ToolDefinition(
                     name=f"{PREFIX}{stage}",
-                    description=(stage_parser.description or stage_parser.prog or stage).strip(),
+                    description=(
+                        stage_helps.get(stage) or stage_parser.description or stage
+                    ).strip(),
                     input_schema=_schema(stage_parser),
                 )
             )
             continue
+        helps = _helps(stage_parser)
         for verb, verb_parser in verbs.items():
+            # 이름의 반복은 description이 아니다 — host는 29개 중 무엇을 부를지
+            # 이것만 보고 고른다. 원천은 CLI의 `help=`이며, 없으면 그 사실이
+            # 드러나도록 이름으로 떨어진다(테스트가 그 상태를 거부한다).
             tools.append(
                 ToolDefinition(
                     name=f"{PREFIX}{stage}_{verb}",
-                    description=f"mcx {stage} {verb}",
+                    description=helps.get(verb, f"mcx {stage} {verb}"),
                     input_schema=_schema(verb_parser),
                 )
             )

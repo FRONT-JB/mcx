@@ -191,17 +191,19 @@ def build_parser() -> argparse.ArgumentParser:
     brief = stage_sub.add_parser("brief", help="Brief — 모호함 제거").add_subparsers(
         dest="verb", required=True
     )
-    p = brief.add_parser("start", parents=[common])
+    p = brief.add_parser("start", parents=[common], help="새 mission을 열고 초기 의도를 기록한다")
     p.add_argument("intent", help="mission의 초기 의도")
     p.add_argument("--workspace", default=None, help="실행 workspace (기본: 현재 디렉터리)")
-    brief.add_parser("ask", parents=[common])
-    p = brief.add_parser("answer", parents=[common])
+    brief.add_parser("ask", parents=[common], help="사용자에게 물을 질문 하나를 생성한다")
+    p = brief.add_parser("answer", parents=[common], help="열린 질문에 대한 답을 기록한다")
     p.add_argument("answer", help="질문에 대한 답변")
     p.add_argument("--authority", default="decision", choices=["decision", "observation"])
     p.add_argument(
         "--question", default=None, help="닫힌 질문 밖에서 온 질문(예: closure 차단 질문)"
     )
-    p = brief.add_parser("candidate", parents=[common])
+    p = brief.add_parser(
+        "candidate", parents=[common], help="질문 답변 밖에서 온 요구사항 후보를 기록한다"
+    )
     p.add_argument("--section", required=True, choices=[s.value for s in RequirementSection])
     p.add_argument("--text", required=True)
     p.add_argument(
@@ -214,48 +216,62 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--authority", default="none", choices=[a.value for a in ConfirmationAuthority])
     p.add_argument("--required", action="store_true")
-    p = brief.add_parser("resolve", parents=[common])
+    p = brief.add_parser("resolve", parents=[common], help="미해결 후보의 처리를 확정한다")
     p.add_argument("--number", type=int, required=True)
     p.add_argument("--resolution", required=True, choices=[r.value for r in CandidateResolution])
     p.add_argument("--authority", default="none", choices=[a.value for a in ConfirmationAuthority])
-    brief.add_parser("assess", parents=[common])
-    brief.add_parser("audit", parents=[common])
-    p = brief.add_parser("approve", parents=[common])
+    brief.add_parser("assess", parents=[common], help="명확도를 채점하고 종료 조건 충족을 본다")
+    brief.add_parser("audit", parents=[common], help="종료 감사 3-lane을 돌려 차단 질문을 받는다")
+    p = brief.add_parser("approve", parents=[common], help="사용자 승인을 현재 revision에 기록한다")
     p.add_argument("statement", help="승인 문장")
-    brief.add_parser("gate", parents=[common])
-    brief.add_parser("handoff", parents=[common])
+    brief.add_parser("gate", parents=[common], help="Blueprint 진입 가능 여부를 판정한다")
+    brief.add_parser("handoff", parents=[common], help="승인된 Brief를 Blueprint 입력으로 투영한다")
 
     blueprint = stage_sub.add_parser(
         "blueprint", help="Blueprint — 승인 가능한 불변 명세"
     ).add_subparsers(dest="verb", required=True)
-    blueprint.add_parser("generate", parents=[common])
-    blueprint.add_parser("qa", parents=[common])
-    p = blueprint.add_parser("revise", parents=[common])
+    blueprint.add_parser(
+        "generate", parents=[common], help="Brief handoff에서 명세 초안을 만든다 (revision 1)"
+    )
+    blueprint.add_parser("qa", parents=[common], help="명세를 채점하고 루프의 다음 동작을 반환한다")
+    p = blueprint.add_parser(
+        "revise", parents=[common], help="사용자가 채택한 수정을 새 revision으로 적용한다"
+    )
     p.add_argument("--draft-file", required=True, type=Path)
-    p = blueprint.add_parser("approve", parents=[common])
+    p = blueprint.add_parser(
+        "approve", parents=[common], help="사용자 승인을 채점된 현재 revision에 기록한다"
+    )
     p.add_argument("statement", help="승인 문장")
     p.add_argument("--accept-below-threshold", action="store_true")
-    blueprint.add_parser("gate", parents=[common])
+    blueprint.add_parser("gate", parents=[common], help="Execute 진입 가능 여부를 판정한다")
 
     execute = stage_sub.add_parser("execute", help="Execute — bounded work").add_subparsers(
         dest="verb", required=True
     )
-    execute.add_parser("next", parents=[common])
-    execute.add_parser("gate", parents=[common])
+    execute.add_parser(
+        "next", parents=[common], help="다음 미실행 수용 기준 하나를 실행한다 (장기 — 침묵 900초)"
+    )
+    execute.add_parser("gate", parents=[common], help="Verify 진입 가능 여부를 판정한다")
 
     verify = stage_sub.add_parser("verify", help="Verify — evidence로 판정").add_subparsers(
         dest="verb", required=True
     )
-    verify.add_parser("mechanical", parents=[common])
-    verify.add_parser("semantic", parents=[common])
-    verify.add_parser("gate", parents=[common])
+    verify.add_parser(
+        "mechanical", parents=[common], help="승인된 확인 명령을 실제로 실행하고 증거를 보존한다"
+    )
+    verify.add_parser(
+        "semantic", parents=[common], help="증거 위에서 수용 기준별 판정을 기록한다 (장기)"
+    )
+    verify.add_parser("gate", parents=[common], help="MISSION COMPLETE 선언 가능 여부를 판정한다")
 
     recover = stage_sub.add_parser("recover", help="Recover — 제한적 교정").add_subparsers(
         dest="verb", required=True
     )
-    recover.add_parser("plan", parents=[common])
-    recover.add_parser("dispatch", parents=[common])
-    recover.add_parser("gate", parents=[common])
+    recover.add_parser("plan", parents=[common], help="저장된 기록에서 실패 packet을 파생한다")
+    recover.add_parser(
+        "dispatch", parents=[common], help="실패 증거를 실어 교정을 재실행한다 (장기)"
+    )
+    recover.add_parser("gate", parents=[common], help="교정을 계속할 수 있는지 판정한다")
 
     status = stage_sub.add_parser("status", parents=[common], help="mission record와 Stage 요약")
     status.set_defaults(verb="show")

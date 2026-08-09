@@ -76,6 +76,36 @@ class TestToolSurfaceIsDerived:
 
         assert schema["properties"]["authority"]["enum"] == ["decision", "observation"]
 
+    def test_no_description_is_just_the_name_repeated(self) -> None:
+        """host는 29개 중 무엇을 부를지 description만 보고 고른다.
+
+        ``mcx brief ask``처럼 이름을 되풀이하면 정보가 0이다. Phase 8 종료
+        검토가 잡아 CLI ``help=``를 원천으로 바꿨다.
+        """
+        bare = [
+            tool.name
+            for tool in tool_definitions()
+            if tool.description.replace("_", " ") == tool.name.replace("mcx_", "mcx ").replace(
+                "_", " "
+            )
+        ]
+
+        assert bare == []
+
+    def test_the_description_comes_from_the_cli_help(self) -> None:
+        """원천이 하나다 — CLI ``--help``와 tool description이 같은 문장이다."""
+        ask = next(t for t in tool_definitions() if t.name == "mcx_brief_ask")
+
+        assert ask.description == "사용자에게 물을 질문 하나를 생성한다"
+
+    def test_long_commands_say_so(self) -> None:
+        """host가 `mcx_start_*` 짝을 언제 쓸지 판단할 근거."""
+        long_running = {"mcx_execute_next", "mcx_verify_semantic", "mcx_recover_dispatch"}
+        described = {t.name: t.description for t in tool_definitions()}
+
+        for name in long_running:
+            assert "장기" in described[name], name
+
     def test_store_true_flags_become_booleans(self) -> None:
         schema = next(t for t in tool_definitions() if t.name == "mcx_status").input_schema
 

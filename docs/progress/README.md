@@ -63,6 +63,7 @@
 - [0005 — Runtime Adapters 종료 검토](./0005_RUNTIME_ADAPTERS.md)
 - [0006 — `mcx` CLI 종료 검토](./0006_MCX_CLI.md)
 - [0007 — MCP control surface 종료 검토](./0007_MCP_CONTROL_SURFACE.md)
+- [0008 — plugin 합성 계층 종료 검토](./0008_PLUGIN_COMPOSITION_LAYER.md)
 
 ## Phase roadmap
 
@@ -401,6 +402,13 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 
 목표: 기존 코드베이스에 안전하게 적용한다. Evolve보다 먼저 — 실사용
 데이터가 쌓여야 진화 루프가 의미를 갖는다.
+
+> **이 Phase는 구현 Phase가 아니라 관측 Phase에 가깝다** (2026-08-09, Phase 8
+> 종료 검토). 아래 목록 외에 **관측이 있어야 결정되는 항목 8개**가 이 Phase로
+> 모였다 — stale write 재확인(발동 조건부), host 자기 도구 경로, telemetry
+> event 층, spec-gap 분류, `cancelled` attempt 상태, runtime resume, 부분
+> 커버리지 처분, setup/config skill 필요 여부. **한 묶음으로 다루지 않으면
+> 관측 없이 하나씩 발명하게 된다** ([progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) §3).
 
 - [ ] brownfield 탐색·기존 제약 등록 (ADR-0011 유예 해제, upstream
   `ooo brownfield` 대조)
@@ -762,10 +770,20 @@ Phase 8은 2026-08-09 구현했다 — skill 6종 + 양쪽 host 매니페스트(
 **검토 셋을 통과한 시한 도과 1건**(telemetry event 층)과 **시한이 아예 없던
 항목 1건**(spec-gap 분류)을 찾아 Phase 9로 제안 등록했다.
 
-다음 검증 가능한 목표 한 개: **Phase 8 종료 검토(일곱 질문).** 질문 7의 대상은
-Phase 8을 시한으로 쓴 항목들이며, 이번 Phase에서 새로 생긴 미결
-(ADR-0042 §4 부분 커버리지 처분, ADR-0043 Proposed 상태, 배포 승인)도 함께
-처분한다.
+Phase 8 종료 검토는 2026-08-09 수행했다 —
+[progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md). 잡은 것 다섯: tool
+description이 이름의 반복이던 것(검토에서 이행 — CLI `help=` 파생, 24명령),
+stale write 재확인의 **2회 연속 도과**(Phase 9 재지정 + 발동·종료 조건을 함께
+걸어 무한 연기를 끊었다), host 자기 도구 경로의 두 번째 도과(Phase 9 —
+brownfield와 같은 형태의 문제), skill 6종의 근거 부재(등록), 질문 형태 규칙이
+산문 강제인 것(확인).
+
+**Phase 9로 넘어가는 8항목이 성격이 하나로 모인다 — 전부 실물 관측이 있어야
+결정할 수 있는 것들이다** (0008 §3). 그래서 Phase 9는 구현 Phase가 아니라
+**관측 Phase**에 가깝다. 이 점을 놓치면 관측 없이 하나씩 발명하게 된다.
+
+다음 검증 가능한 목표 한 개: **Phase 9 진입 — brownfield 탐색과 worktree 격리.**
+그 둘이 실사용의 첫 관문이고, 나머지 6항목의 관측이 그 위에서 쌓인다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -1030,7 +1048,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 5 — Runtime adapters | **충족 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). 잔여 3항목은 실수요 이연 후 2026-08-09 Phase 배치(7·11)로 재지정. **질문 7 미수행 — Phase 5를 시한으로 쓴 보류 7건이 무처분 통과** (2026-08-09 소급 처분) | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
 | Phase 6 — `mcx` CLI | **충족 (2026-08-09)** — progress record 부재 자체가 첫 발견(0006 신설). 산문뿐이던 import 방향 계약을 검사로 승격(3 tests), ADR-0037 Verification 문장을 구현에 맞게 정정, §5의 upstream enum 국면 대조 무처분 도과를 Phase 10으로 재지정 | [progress 0006](./0006_MCX_CLI.md) |
 | Phase 7 — MCP control surface | **충족 (2026-08-09)** — 로드맵 체크리스트 9항목이 이행 5·부분 2·미이행 2였음을 드러냈다. 미조립 부품 1건 수정(Recover 비동기 짝 — `recover dispatch`가 같은 `codex exec`를 돈다), 무처분 도과 3건 재지정(host 자기 도구 경로·승인 actor→Phase 8, cancelled 상태·resume→Phase 9), 미표시 보류 2건 등재(취소된 attempt, 재귀 경계), 미등록 이탈 1건 등록(서버가 사람에게 직접 묻지 않음, `upstream 미확인`) | [progress 0007](./0007_MCP_CONTROL_SURFACE.md) |
-| Phase 8 — plugin 패키징 (합성 계층) | 대기 | — |
+| Phase 8 — plugin 패키징 (합성 계층) | **충족 (2026-08-09)** — tool description이 이름의 반복이던 것을 검토에서 이행(CLI `help=` 파생, 24명령). 미이행 2건 재지정(stale write 재확인·host 자기 도구 경로 → Phase 9, 전자는 **발동 조건과 종료 조건을 함께 걸어** 무한 연기를 끊었다), 표시 없던 보류 1건 등록(skill 6종의 근거), 산문 강제 1건 확인(질문 형태 규칙) | [progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | 대기 | — |
 | Phase 10 — Reflect/Evolve | 대기 (조사 범위 확정: Hermes 사용 방식 + 다음 작업 연결 경로) | — |
 | Phase 11 — 병렬 실행 | 대기 | — |

@@ -435,11 +435,16 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       ([SEED_UPSTREAM_FINDINGS §12.3](./SEED_UPSTREAM_FINDINGS.md)).
       [ADR-0004](../adr/0004-stage-scoped-minimum-capability.md)는 worker가
       위로 탈출하는 것만 막고 이 방향을 덮지 않는다.
-      → **무처분 도과 → Phase 8 (2026-08-09, Phase 7 종료 검토).** 원래 시한은
+      → **두 번째 도과 → Phase 9 (2026-08-09, Phase 8 종료 검토).** 원래 시한은
       [ADR-0023](../adr/0023-execute-entry-and-provenance.md) §8과
       [ADR-0026](../adr/0026-verify-entry-requires-lineage.md)이 건 *"Phase 7
-      전"* 이었다 — 시작 전에 결정했어야 할 항목이 시작도 끝도 지나갔다. Phase
-      8이 host를 실제로 운전시키는 층이므로 그 경계 ADR의 항목이다.
+      전"* 이었고, Phase 8로 재지정됐으나 또 결정되지 않았다. skill은 **행동
+      규칙**을 담았다(execute skill의 *"Do not write the code yourself"*,
+      verify skill의 *"An agent's claim of success is not evidence"*) — 그러나
+      산문이고, ADR-0026이 요구한 *"기록 요구를 유지한 채"* 라는 제약 아래의
+      결정은 여전히 없다. **Phase 9인 이유**: 같은 Phase의 brownfield가 정확히
+      같은 형태의 문제(루프 밖 코드를 어떻게 Verify에 넣는가)이고, 둘을 따로
+      결정하면 서로 어긋난다.
 - [ ] **worker가 Mission Control을 재귀 호출하는 것을 무엇이 막는지 결정한다
       (2026-08-09 등록, Phase 7 종료 검토).** 로드맵이 Phase 7에 배치한
       `recursion/security tests`가 미이행이고, 실측 결과 방어가 lane마다 다르다 —
@@ -468,11 +473,21 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       ADR-0026의 근거(upstream 실물 사고 §12.3 — 기록 없는 작업이 평가를
       통과했다)는 여전히 유효하므로 요구를 그냥 푸는 것은 답이 아니다. **시한
       Phase 9 진입 전.**
-- [ ] **tool description을 무엇으로 채울지 결정한다 (2026-08-09 등록).** 현재는
-      `f"mcx {stage} {verb}"`, 즉 도구 이름의 반복이라 host LLM이 29개 중
-      무엇을 부를지 고를 근거가 없다. 원인은 파생 원천인 CLI 하위 파서에
-      `help=`가 없는 것이므로 고치는 자리도 파서다. **시한 Phase 8** — 그
-      Phase가 "host가 순서를 스스로 안다"를 목표로 하므로 그때 1급 장애가 된다.
+- [x] **tool description을 무엇으로 채울지 결정한다 (2026-08-09 등록·이행).**
+      → CLI 하위 파서의 `help=`에서 **파생한다.** 24개 명령에 문구를 넣고
+      description이 그것을 읽는다 — 원천이 하나라 `mcx <stage> --help`와 tool
+      목록이 같은 문장을 쓴다. 장기 명령 셋은 `(장기)` 표시를 달아 host가
+      `mcx_start_*` 짝을 언제 쓸지 판단하게 했다. 검사 셋으로 고정(이름 반복
+      금지·원천 일치·장기 표시). Phase 8 시한 안에 이행했으나 skill을 쓰면서도
+      미뤄 두었다가 **종료 검토에서야 고쳤다**
+      ([progress 0008](../progress/0008_PLUGIN_COMPOSITION_LAYER.md) §2.1).
+- [ ] **skill을 몇 개 둘지 결정한다 (2026-08-09 등록, Phase 8 종료 검토).**
+      upstream은 22개, 우리는 6개다. 대응물이 이미 있는 것(`status`·`cancel`)과
+      해당 Phase가 아닌 것(`evolve`·`brownfield`·`auto`·`ralph`)은 근거가
+      명확하다. **판단이 필요한 것은 `setup`·`config`다** — 우리 설정은
+      `config.toml` 하나이고 모델은 자동 seeding되므로 대화형 설정 skill의
+      필요가 upstream보다 작지만, **"필요 없다"는 결정을 내린 적이 없다.**
+      시한 **Phase 9** — 실사용이 설정 UX의 필요를 드러내는 자리다.
 - [ ] **차단 질문을 서버가 사람에게 직접 묻지 않는 결정의 upstream 대응물을
       확인한다 (`upstream 미확인`, 2026-08-09 등록).** 우리는 `HOLD`의
       `blocking_reasons`를 데이터로 돌려주고 host가 사람에게 중계하기를
