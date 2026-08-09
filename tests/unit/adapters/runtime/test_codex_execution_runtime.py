@@ -69,7 +69,48 @@ class TestCommand:
             "/tmp/last.txt",
             "--sandbox",
             "workspace-write",
+            "--ignore-user-config",
         )
+
+    def test_the_worker_never_inherits_the_user_codex_config(self) -> None:
+        """재귀 경계 (ADR-0042 §6).
+
+        상속하면 사용자 설정에 등록된 MCP 서버가 worker에게 보이고, 거기
+        ``mcx-mcp``가 있으면 worker가 Mission Control을 되부를 수 있다
+        (ADR-0004 위반). 모델을 알든 모르든 이 플래그는 빠지지 않는다.
+        """
+        for runtime in (
+            CodexExecutionRuntime(),
+            CodexExecutionRuntime(model="m", reasoning_effort="high"),
+        ):
+            command = runtime.build_command(workspace="/w", last_message_path="/l")
+            assert "--ignore-user-config" in command
+
+    def test_a_known_model_is_named_explicitly(self) -> None:
+        """상속을 끊으면 모델이 우리 손에 있어야 한다."""
+        command = CodexExecutionRuntime(
+            model="gpt-5.6-sol", reasoning_effort="xhigh"
+        ).build_command(workspace="/w", last_message_path="/l")
+
+        assert command[-4:] == ("--model", "gpt-5.6-sol", "-c", "model_reasoning_effort=xhigh")
+
+    def test_an_unknown_model_is_not_invented(self) -> None:
+        """모르면 넘기지 않고 vendor 기본값으로 간다 — 경계는 그래도 선다."""
+        command = CodexExecutionRuntime().build_command(workspace="/w", last_message_path="/l")
+
+        assert "--model" not in command
+        assert not any(part.startswith("model_reasoning_effort=") for part in command)
+
+    def test_with_model_keeps_the_path_and_timeouts(self) -> None:
+        """조립이 모델만 얹는다 — stub CLI 경로가 살아 있어야 conformance가 돈다."""
+        runtime = CodexExecutionRuntime(cli_path="/stub/codex", silence_timeout_seconds=1.0)
+
+        profiled = runtime.with_model("m", None)
+        command = profiled.build_command(workspace="/w", last_message_path="/l")
+
+        assert command[0] == "/stub/codex"
+        assert profiled._silence_timeout_seconds == 1.0  # noqa: SLF001
+        assert "-c" not in command  # effort가 없으면 그 인자도 없다
 
     def test_no_bypass_path_exists(self) -> None:
         """권한 상향 플래그로 가는 코드 경로가 없다 (ADR-0033 §4)."""

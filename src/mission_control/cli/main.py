@@ -32,7 +32,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from mission_control.cancellation import cancel_when
-from mission_control.cli import composition, status_render, status_view
+from mission_control.cli import backend_profile, composition, status_render, status_view
 from mission_control.cli.calls import CallCounter
 from mission_control.cli.composition import Adapters, StateLayout
 from mission_control.cli.journal import MissionJournal
@@ -616,7 +616,11 @@ async def dispatch(
     원장이 관측 행위를 작업으로 보고한다.
     """
     layout = StateLayout.under(args.state_dir)
-    adapters = composition.routed_adapters(layout.root, adapters)
+    # 실행 진입점만 seeding 원천을 넘긴다 — 모델이 설정에 없으면 사용자가 지금
+    # 쓰는 값을 읽어 채택하고 **기록한다** (ADR-0042 §6, 사용자 결정 2026-08-09).
+    adapters = composition.routed_adapters(
+        layout.root, adapters, codex_config=backend_profile.CODEX_CONFIG
+    )
     args.mission = _resolve_mission(args, layout)
 
     if args.stage == "status":

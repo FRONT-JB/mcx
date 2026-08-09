@@ -63,6 +63,26 @@ v1은 그 축에서 시작한다. 스트리밍(`AgentMessage` 스트림)은 even
   > `--full-auto`가 없다 — 같은 의미의 `--sandbox workspace-write`를 직접
   > 지정한다 ([RUNTIME_UPSTREAM_FINDINGS §8](../research/RUNTIME_UPSTREAM_FINDINGS.md)).
   > 의미(WORKSPACE_WRITE 고정, bypass 없음)는 그대로다.
+
+  > **2026-08-09 개정 — worker는 사용자 codex 설정을 상속하지 않는다**
+  > ([ADR-0042](./0042-skill-and-core-ownership-boundary.md) §6). 명령에
+  > `--ignore-user-config`가 조건 없이 붙는다. 이유는 권한이 아니라 **재귀
+  > 경계**다 — 상속하면 사용자 설정에 등록된 MCP 서버가 worker에게 보이고,
+  > 거기 `mcx-mcp`가 있으면 worker가 Mission Control을 되부를 수 있다
+  > (ADR-0004 위반). 실측한 레버 중 서버 목록을 실제로 비우는 것은 이것
+  > 하나다 (`-c mcp_servers={}`는 파싱만 되고 병합이라 효과가 없다).
+  >
+  > 상속을 끊으면 모델이 우리 손에 있어야 하므로 `--model`과
+  > `-c model_reasoning_effort=<level>`을 명시한다. 값의 출처는
+  > `config.toml`의 `[backends.codex_cli]`이며, 없으면 사용자 codex 설정에서
+  > 읽어 채택·기록한다 ([ADR-0039](./0039-stage-runtime-routing-table.md)
+  > 개정 3). 값을 끝내 모르면 넘기지 않는다 — vendor 기본값으로 가며 경계는
+  > 그대로 선다. upstream도 `--model`과 `-c model_reasoning_effort`를 명시적으로
+  > 넘긴다(`_build_command`).
+  >
+  > 실물 확인: 우리가 만드는 명령 그대로 돌려 인증·`thread.started`·JSON
+  > 이벤트·`--output-last-message` 수집이 정상임을 확인했다 (2026-08-09,
+  > Verified by execution).
 - **envelope.allowed_tools의 강제 수준**: Codex CLI에는 도구 단위 allowlist
   전달이 없다 — v1 강제는 sandbox 클래스까지이고, 도구 목록은 기록·전달용으로
   남는다. ADR-0024 §6의 "전달·기록까지"에서 "sandbox 경계까지"로 한 단계

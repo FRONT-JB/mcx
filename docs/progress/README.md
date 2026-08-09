@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연); Phase 6 COMPLETE (2026-08-09, [종료 검토](./0006_MCX_CLI.md)); Phase 7 COMPLETE (2026-08-09, [종료 검토](./0007_MCP_CONTROL_SURFACE.md) — 미이행 2항목은 Phase 8·9로 재지정) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 29종 — CLI 파서 파생, 원장 유도 job, stdio, entry point `mcx-mcp`) |
-| Automated tests | 718 passed (unit + integration) |
+| Automated tests | 731 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-09 |
 
@@ -349,12 +349,14 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   host 둘(Claude Code·Codex), skill이 capability 계약을 선언하고, QA 루프·
   User Adoption Gate·감사 기록·Core 판정 재감사가 전부 skill 소유다. 취소는
   CLI 직접, 동시 쓰기 재확인은 대응물 없음, 재귀 차단은 미확인
-- [-] skill 계층 ADR — 무엇이 skill 소유이고 무엇이 Core 소유인가.
-  **초안 작성 완료, 사용자 결정 2건 대기**
-  ([ADR-0042](../adr/0042-skill-and-core-ownership-boundary.md), Proposed):
-  재귀 차단 레버(§6)와 Fact Resolver 폐기(§7). 같은 ADR §8이 우리 "upstream
-  보다 강하다" 주장 8건을 재대조해 3 성립·2 정당화 만료·1 과장 정정으로
-  처분했다
+- [x] skill 계층 ADR — 2026-08-09 확정
+  ([ADR-0042](../adr/0042-skill-and-core-ownership-boundary.md), Accepted).
+  경계 원칙은 *"Core는 한 번의 판정, skill은 몇 번·어떤 순서로 부르고 무엇을
+  묻는가"*. 사용자 결정 2건 반영: **재귀 차단**(실행 lane이
+  `--ignore-user-config`로 사용자 codex 설정을 상속하지 않고, 모델은
+  `config.toml`이 제공하되 없으면 현재 설정을 읽어 채택·기록)과 **Fact
+  Resolver 폐기**. 같은 ADR §8이 우리 "upstream보다 강하다" 주장 8건을
+  재대조해 3 성립·2 정당화 만료/파생·1 과장 정정으로 처분했다
   **Phase 7 종료 검토가 이 ADR이 답해야 할 항목 5개를 구체적으로 채웠다**
   ([progress 0007](./0007_MCP_CONTROL_SURFACE.md) §3): worker 재귀 경계,
   stale write 재확인의 중계, tool description, QA revision 제시, 승인 actor.
@@ -712,9 +714,17 @@ skill/Core 경계는 2026-08-09 조사·초안 작성했다
 강화가 아니라 **같은 의도를 다른 층에 놓은 것**이었고, 앞으로 층 이동은 강함이
 아니라 층 이동으로 기록한다.
 
-다음 검증 가능한 목표 한 개: **ADR-0042의 사용자 결정 2건**(재귀 차단 레버,
-Fact Resolver 폐기)을 받아 Accepted로 올린다. 그 뒤 Phase 8 구현(skill 작성 +
-plugin manifest)이 이어진다.
+재귀 경계는 2026-08-09 구현·실물 확인했다 (ADR-0042 §6, 731 tests).
+`codex exec`가 `--ignore-user-config`를 조건 없이 달아 사용자 codex 설정을
+상속하지 않고, 모델은 `config.toml`의 `[backends.codex_cli]`가 제공하되 없으면
+사용자 설정을 읽어 채택·기록한다(동작 그대로, 기록만 생김 — ADR-0039 개정 3).
+실측이 레버 선택을 바꿨다: 처음 추천했던 `-c mcp_servers={}`는 파싱만 되고
+**병합이라 효과가 없었다**(`codex mcp list`로 확인). Fact Resolver는 폐기했다
+(ADR-0011 §3 근거가 Phase 8의 host 도입으로 만료 — 미구현이라 비용 0).
+
+다음 검증 가능한 목표 한 개: **Phase 8 구현** — skill 작성 + plugin manifest
+(Claude·Codex 양쪽). Codex host 등록은 이제 열려 있다(실행 lane이 상속하지
+않으므로 `mcx-mcp`를 등록해도 worker에게 보이지 않는다).
 
 ### CLEAR 조건 중 강제되지 않는 것
 

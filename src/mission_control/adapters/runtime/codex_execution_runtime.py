@@ -110,10 +110,29 @@ class CodexExecutionRuntime:
         cli_path: str = "codex",
         silence_timeout_seconds: float = SILENCE_TIMEOUT_SECONDS,
         cancel_poll_seconds: float = CANCEL_POLL_SECONDS,
+        model: str | None = None,
+        reasoning_effort: str | None = None,
     ) -> None:
         self._cli_path = cli_path
         self._silence_timeout_seconds = silence_timeout_seconds
         self._cancel_poll_seconds = cancel_poll_seconds
+        self._model = model
+        self._reasoning_effort = reasoning_effort
+
+    def with_model(self, model: str | None, reasoning_effort: str | None) -> CodexExecutionRuntime:
+        """모델만 갈아끼운 사본. ``cli_path``와 timeout은 보존된다.
+
+        조립 시점에 설정 파일의 값을 얹기 위한 것이다. 원시 타입만 받는 이유는
+        설정 타입이 ``cli`` 층에 살기 때문이며, adapter가 그쪽을 import하면 계층
+        방향이 뒤집힌다.
+        """
+        return CodexExecutionRuntime(
+            cli_path=self._cli_path,
+            silence_timeout_seconds=self._silence_timeout_seconds,
+            cancel_poll_seconds=self._cancel_poll_seconds,
+            model=model,
+            reasoning_effort=reasoning_effort,
+        )
 
     def build_command(self, *, workspace: str, last_message_path: str) -> tuple[str, ...]:
         """`codex exec` 명령을 구성한다. 프롬프트는 여기 없다 — stdin이다.
@@ -121,7 +140,7 @@ class CodexExecutionRuntime:
         순수 함수로 분리한 이유는 conformance test가 CLI 실물 없이 명령
         구성을 고정하기 위해서다 (ADR-0033 Verification).
         """
-        return (
+        command = [
             self._cli_path,
             "exec",
             "--json",
@@ -135,7 +154,20 @@ class CodexExecutionRuntime:
             # (2026-08-08 스모크에서 확인, ADR-0033 정정 노트).
             "--sandbox",
             "workspace-write",
-        )
+            # **재귀 경계** (ADR-0042 §6). worker가 사용자 codex 설정을 상속하면
+            # 거기 등록된 MCP 서버가 보이고, `mcx-mcp`가 있으면 worker가 Mission
+            # Control을 되부를 수 있다 (ADR-0004 위반). 실측한 레버 중 서버 목록을
+            # 실제로 비우는 것은 이것 하나다 — `-c mcp_servers={}`는 파싱만 되고
+            # 병합이라 효과가 없다 (2026-08-09, `codex mcp list` 실측).
+            "--ignore-user-config",
+        ]
+        # 상속을 끊으면 모델이 우리 손에 있어야 한다. 알 수 없으면 넘기지 않고
+        # vendor 기본값으로 간다 — 모델을 고정하지 않은 사용자가 이미 쓰던 값이다.
+        if self._model is not None:
+            command.extend(["--model", self._model])
+        if self._reasoning_effort is not None:
+            command.extend(["-c", f"model_reasoning_effort={self._reasoning_effort}"])
+        return tuple(command)
 
     async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:
         descriptor, last_message_name = tempfile.mkstemp(suffix=".codex-last-message.txt")

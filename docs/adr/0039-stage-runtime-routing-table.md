@@ -91,9 +91,34 @@ upstream 동등). CLI 플래그는 여전히 도입하지 않는다; 라우팅�
 들어온다.
 
 형식은 TOML이다 — upstream은 YAML(`config.yaml`)이지만 stdlib `tomllib`으로
-의존성 없이 읽을 수 있고 우리는 쓰기가 필요 없다 ([ADR-0012](./0012-python-toolchain-and-layout.md)
+의존성 없이 읽을 수 있다 ([ADR-0012](./0012-python-toolchain-and-layout.md)
 의존성 최소 원칙). **형식 차이를 divergence로 등록한다** — 되돌리기 싼 축이며,
 설정 항목의 의미는 upstream과 같다.
+
+> **2026-08-09 개정 3 — `[backends.<name>]` 축과 쓰기**
+> ([ADR-0042](./0042-skill-and-core-ownership-boundary.md) §6).
+>
+> 이 문단의 원문은 *"우리는 쓰기가 필요 없다"* 였다. 더 이상 사실이 아니다.
+>
+> 라우팅 표가 **어느 backend를 부를지**를 정하는 것과 별개로, **그 backend를
+> 어떻게 부를지**(모델·reasoning effort)가 필요해졌다 — 실행 lane이 재귀 경계
+> 때문에 사용자 codex 설정을 상속하지 않기 때문이다. 표 하나를 추가한다:
+>
+> ```toml
+> [backends.codex_cli]
+> model = "gpt-5.6-sol"
+> reasoning_effort = "xhigh"
+> ```
+>
+> 축을 **stage별이 아니라 backend별**로 둔다. upstream은 per-stage model
+> selects를 갖지만(`config.yaml`), 우리는 지금 그것을 요구하는 사용 사례가
+> 없다 — 필요해지면 stage 표에 얹는다(되돌리기 싼 축).
+>
+> **쓰기는 한 곳뿐이다**: `[backends.codex_cli]`가 없을 때 사용자 codex 설정에서
+> 읽은 값을 **덧붙인다**(재작성이 아니라 append — 사용자가 쓴 주석과 배치를
+> 보존한다). 라우팅 항목은 여전히 읽기 전용이며 우리가 쓰지 않는다.
+> `tomllib`은 읽기 전용이지만 덧붙이는 것은 텍스트 한 블록이라 쓰기 라이브러리
+> 의존이 생기지 않는다.
 
 ### 6. 조회 지점은 composition root 하나다
 

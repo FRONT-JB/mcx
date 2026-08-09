@@ -54,6 +54,7 @@ from mission_control.application.execute_service import ExecuteService
 from mission_control.application.ports import ExecutionRuntime, MechanicalRunner
 from mission_control.application.recover_service import RecoverService
 from mission_control.application.verify_service import VerifyService
+from mission_control.cli.backend_profile import BackendProfile, load_codex_profile
 from mission_control.cli.routing import STAGE_LANES, Lane, RoutingConfigError, load_routing
 from mission_control.domain.blueprint.qa import QaPolicy
 from mission_control.domain.brief.clarity import ClarityPolicy
@@ -130,14 +131,21 @@ def default_adapters() -> Adapters:
     )
 
 
-def routed_adapters(state_dir: Path, base: Adapters | None = None) -> Adapters:
+def routed_adapters(
+    state_dir: Path, base: Adapters | None = None, *, codex_config: Path | None = None
+) -> Adapters:
     """``config.toml``을 읽어 Stage별 backend를 확정한다 — 조회 지점 하나 (§6).
 
     설정이 없으면 ``base``가 그대로 쓰인다. 설정이 있는데 읽히지 않으면
     :class:`RoutingConfigError`가 올라간다 — 조용한 fallback은 없다 (§4).
+
+    ``codex_config``는 모델 seeding 원천이며 기본은 ``None``(seeding 없음)이다.
+    실행 진입점만 실물 경로를 넘긴다 — 라이브러리 호출이 사용자 홈을 조용히
+    읽지 않게 한다 (ADR-0042 §6).
     """
     adapters = base if base is not None else default_adapters()
     table = load_routing(state_dir, known=_REGISTERED)
+    profile = load_codex_profile(state_dir, codex_config=codex_config)
 
     completion: dict[Stage, CompletionEngine] = {}
     runtime: dict[Stage, ExecutionRuntime] = {}
@@ -149,10 +157,24 @@ def routed_adapters(state_dir: Path, base: Adapters | None = None) -> Adapters:
         if Lane.EXECUTION in lanes:
             name = table.backend(stage, Lane.EXECUTION)
             if name is not None:
-                runtime[stage] = EXECUTION_BACKENDS[name]()
+                runtime[stage] = _profiled(EXECUTION_BACKENDS[name](), profile)
     return dataclasses.replace(
-        adapters, routed_completion=completion, routed_runtime=runtime
+        adapters,
+        runtime=_profiled(adapters.runtime, profile),
+        routed_completion=completion,
+        routed_runtime=runtime,
     )
+
+
+def _profiled(runtime: ExecutionRuntime, profile: BackendProfile) -> ExecutionRuntime:
+    """설정 파일의 모델을 실행 runtime에 얹는다 (ADR-0042 §6).
+
+    codex가 아닌 runtime(테스트 fake, 이후의 다른 vendor)은 그대로 지난다 —
+    모델 축은 vendor마다 이름이 다르므로 공통 port에 올리지 않는다.
+    """
+    if not profile or not isinstance(runtime, CodexExecutionRuntime):
+        return runtime
+    return runtime.with_model(profile.model, profile.reasoning_effort)
 
 
 @dataclass(frozen=True)

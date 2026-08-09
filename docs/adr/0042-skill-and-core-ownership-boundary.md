@@ -1,6 +1,6 @@
 # ADR 0042 — skill 계층과 Core의 소유 경계
 
-- Status: **Proposed** (§6·§7 두 항목은 사용자 결정 대기)
+- Status: **Accepted** (사용자 승인 2026-08-09 — §6·§7 두 항목 포함)
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0004](./0004-stage-scoped-minimum-capability.md)
   (Stage별 최소 capability), [ADR-0007](./0007-mcp-is-control-surface.md)
@@ -144,13 +144,41 @@ upstream도 그 둘을 명시적으로 넘긴다(`_build_command`).
 [ADR-0023](./0023-execute-entry-and-provenance.md) provenance의 공백이다.
 설정을 우리 `config.toml`로 올리면 재귀 차단과 이 공백이 같이 닫힌다.
 
-**남은 결정**: 어느 모델을 명시할 것인가(비용·품질 축이므로 사용자 결정).
-[ADR-0033](./0033-first-runtime-adapter-contract.md) adapter 계약과
-[ADR-0039](./0039-stage-runtime-routing-table.md) 설정 표면의 동시 변경이다.
+**결정 (2026-08-09 사용자): 고정하지 않고 제공한다.** upstream이 같은 축을
+갖는다 — `~/.ouroboros/config.yaml`의 **per-stage runtime/model selects**와
+`ooo config` 설정 GUI이며, `ooo setup`은 모델을 live-discovery해 고르게 한다.
+skill 원문이 성격을 못박는다: *"optional control over models **without making it
+a requirement**"*, *"saving a model choice **never locks it permanently**"*.
 
-결정 전까지 Phase 8의 **Codex host 등록은 보류**한다 — Claude Code host 등록만
-으로 시작하면 노출이 열리지 않는다(우리 텍스트 lane은 이미 격리되어 있고, 실행
-lane의 codex는 등록 대상이 아니다).
+우리 표면은 이미 있는 `config.toml`이다 (ADR-0039):
+
+```toml
+[backends.codex_cli]
+model = "gpt-5.6-sol"
+reasoning_effort = "xhigh"
+```
+
+**값이 없으면 사용자가 지금 쓰는 값을 읽어 채택하고 그것을 적는다.** 동작은
+그대로이고 기록만 생긴다. 적힌 뒤에는 사용자 설정이 바뀌어도 미션이 조용히
+바뀌지 않는다 — 저장된 값이 이긴다.
+
+모델을 끝내 알 수 없어도 실행을 막지 않는다. 상속만 끊고 모델을 넘기지 않으면
+vendor 기본값으로 가며, 그것은 애초에 모델을 고정하지 않은 사용자가 이미 쓰던
+값이다. **재귀 경계는 모델과 무관하게 선다** — `--ignore-user-config`는 조건
+없이 붙는다.
+
+seeding 원천은 **실행 진입점만** 넘긴다. 기본값이 "seeding 없음"인 이유는 실측
+사고다 — 임시 디렉토리 테스트가 개발자의 실물 `~/.codex`를 읽는 것을
+`test_routed_adapters_keep_the_injected_base_when_no_config`가 잡았다.
+
+**실물 확인 (2026-08-09, Verified by execution).** 우리가 만드는 명령 그대로
+`codex exec ... --sandbox workspace-write --ignore-user-config --model gpt-5.6-sol
+-c model_reasoning_effort=xhigh`를 돌려 인증·`thread.started`·JSON 이벤트·
+`--output-last-message` 수집이 전부 정상임을 확인했다 — 설정 상속을 끊어도
+실행 lane이 산다.
+
+Phase 8의 **Codex host 등록은 이제 열려 있다** — 실행 lane이 사용자 codex 설정을
+상속하지 않으므로, 거기에 `mcx-mcp`가 등록되어도 worker에게 보이지 않는다.
 
 ### 7. Fact Resolver — **정당화가 만료됐다. 폐기를 제안한다**
 
@@ -230,10 +258,15 @@ provenance 의미론([ADR-0010](./0010-answer-provenance-and-requirement-authori
 
 ## 미결로 남기는 것
 
-- **§6 재귀 차단** — 레버는 실측으로 좁혀졌다(`--ignore-user-config` 하나).
-  남은 것은 **명시할 모델·reasoning effort 값**이며 비용·품질 축이라 사용자
-  결정이다.
+- ~~**§6 재귀 차단**~~ → **결정·구현·실물 확인 완료 (2026-08-09).**
 - ~~**§7 Fact Resolver 폐기**~~ → **결정됨 (2026-08-09): 폐기.**
+- **attempt에 모델을 기록하는 것** — 지금은 `config.toml`에만 적히고
+  `ExecutionAttempt`는 `runtime_backend`만 든다. 같은 미션의 두 실행이 다른
+  모델로 돌면(설정을 바꾼 뒤) 기록으로 구분되지 않는다. upstream은 요청 모델과
+  그 출처를 함께 관측한다(`_initial_model_observation`, `source:
+  "command:--model"`)므로 발명이 아니라 정렬이다. **durable 상태 스키마 변경**
+  이므로 별도 결정이며, 시한 **Phase 9 진입 전**
+  ([ADR-0023](./0023-execute-entry-and-provenance.md) provenance 축).
 - **Verify lineage 요구와 brownfield의 충돌** (§8) — ADR-0026이 건
   *"기록 요구를 유지한 채"* 제약과 Phase 9 brownfield가 양립하는지. 시한
   **Phase 9 진입 전**, [Open Questions §8](../research/OPEN_QUESTIONS.md)에 등록.
