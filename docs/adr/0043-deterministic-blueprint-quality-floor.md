@@ -1,6 +1,6 @@
 # ADR 0043 — 결정적 Blueprint 품질 하한
 
-- Status: **Proposed** (§4의 한 항목은 사용자 결정 대기)
+- Status: **Accepted** (사용자 승인 2026-08-10 — §4는 (a) 표시만으로 확정)
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0005](./0005-evidence-over-reasoning.md) (Evidence
   over reasoning), [ADR-0019](./0019-blueprint-qa-loop.md) (LLM 채점 층),
@@ -85,7 +85,7 @@ NO_VERIFIABLE_CRITERION — 확인 수단이 있는 수용 기준이 하나도 �
 (`acceptance_criteria`가 open gap인가)이지 기준 단위가 아니다. 우리 AC 모델이
 기준마다 확인 수단을 갖는 구조라서 생기는 축이며, 발명임을 여기 명시한다.
 
-### 4. 부분 커버리지는 막지 않는다 — 결정 대기
+### 4. 부분 커버리지는 막지 않는다 — **표시만 한다** (확정)
 
 *"AC 10개 중 3개만 확인 수단이 있다"* 는 상태를 막지 않는다. 임계값
 (예: 50%)은 upstream에 근거가 없고, 우리가 지금 그 수치를 정할 근거도 없다 —
@@ -100,9 +100,22 @@ NO_VERIFIABLE_CRITERION — 확인 수단이 있는 수용 기준이 하나도 �
 인용하는 화면이고 이 수치는 차단 사유가 아니다 — §4가 결정되면 그 결과에 맞춰
 싣는 편이 낫다(경고로 승격되면 차단 사유 옆자리, 그대로면 별도 줄).
 
-> **사용자 결정 대기**: 이 상태를 (a) 지금처럼 표시만 할지, (b) `HOLD`가
-> 아닌 **경고**로 승격할지, (c) 임계값을 정해 막을지. 실사용 관측(Phase 9)
-> 전에는 (a)를 권한다 — 수치를 정할 근거가 그때 생긴다.
+> **사용자 결정 2026-08-10: (a) 표시만 한다.** 막지도, 경고로 승격하지도
+> 않는다.
+>
+> 결정 직전 upstream을 다시 대조해 **근거가 추측이 아님을 확인했다**:
+> `has_success_contract`(= `verify_command` 또는 `expected_artifacts` 또는
+> `output_assertion`)는 **AC마다 선택**이고, 계약이 없는 AC는 평가에서 그냥
+> 건너뛴다 (`evaluation_handlers.py:89` — `if not criterion.has_success_contract:
+> continue`). **확인 수단 비율에 대한 규칙이 upstream 어디에도 없다.**
+>
+> upstream이 100%를 요구하는 축은 따로 있으며 그것은 **판정 커버리지**다
+> (`evolution/evaluation_coverage.py` — 모든 AC가 정확히 한 번, 기대 index에,
+> 기대 내용으로 판정을 받아야 한다). 임계값이 아니라 **완전성**이며, 우리는
+> `SEMANTIC_VERDICT_MISSING` blocker로 이미 같은 것을 요구한다.
+>
+> 따라서 **표시만 하는 지금 상태가 upstream과 동등**하고, 막는 쪽이 새
+> divergence다. 근거가 될 수치는 upstream에도 우리에게도 없다.
 
 ## Consequences
 
