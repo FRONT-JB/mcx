@@ -76,6 +76,14 @@ upstream과 우리의 공통 배치다(agent 요약이 아니라 직접 실행�
 
 ### 3. canonical event 층 — 생산자(스트리밍 adapter)와 함께 Phase 5에서 확정한다
 
+> **2026-08-10 종결 — [ADR-0049](./0049-runtime-progress-observation.md).**
+> Phase 9 조사가 이 절의 전제를 갈랐다: 여기서 한 이름으로 부른 것이 upstream
+> 에서는 **성격이 다른 두 층**이었고(정규화 vs 저장), *"실행 중 관찰"* 을 실제로
+> 제공하는 것은 **정규화 쪽**이다 — upstream의 진행 표시는 event store를 읽지
+> 않는다. 정규화 층은 도입했고 **event store는 도입하지 않았다**(소비자 부재,
+> 등록된 divergence). 아래 본문의 *"upstream lifecycle payload와 대조해 확정"*
+> 은 event store를 전제로 한 지시였으므로 그 범위에서 무효다.
+
 > **2026-08-09 — 이 시한은 무처분 도과했다.** Phase 5는 2026-08-08에 종료됐고
 > 스트리밍 adapter는 만들어지지 않았다. Codex adapter는 JSONL을 읽지만 **event를
 > 생산하지 않는다**(`src/`에 event 타입이 없다). Phase 5 종료 검토는 질문 7을

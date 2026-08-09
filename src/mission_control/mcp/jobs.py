@@ -20,6 +20,7 @@ from pathlib import Path
 import re
 
 from mission_control.cli.journal import MissionJournal
+from mission_control.cli.progress import last_activity
 
 _JOB_ID = re.compile(r"\A(?P<mission>[A-Za-z0-9_-]+)#(?P<sequence>[1-9][0-9]*)\Z")
 
@@ -50,6 +51,9 @@ class JobView:
     finished_at: str | None
     duration_seconds: float | None
     exit_code: int | None
+    #: 마지막 진행 줄 — 원장이 답하지 못하는 "그 안에서 무엇을 하는가"
+    #: (ADR-0049 §4). 진행 기록이 없으면 ``None``이고, 그것이 조회를 막지 않는다.
+    activity: str | None = None
 
 
 class UnknownJobError(Exception):
@@ -101,8 +105,14 @@ def job_view(*, root: Path, job: str) -> JobView:
             finished_at=entry.finished_at,
             duration_seconds=entry.duration_seconds,
             exit_code=entry.exit_code,
+            activity=_activity(root=root, mission_id=mission_id, sequence=sequence),
         )
     raise UnknownJobError(f"원장에 없는 job이다: {job}")
+
+
+def _activity(*, root: Path, mission_id: str, sequence: int) -> str | None:
+    line = last_activity(root=root, mission_id=mission_id, sequence=sequence)
+    return line.render() if line is not None else None
 
 
 def _state(

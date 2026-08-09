@@ -26,6 +26,7 @@ from mission_control.domain.recover.packet import (
     FailureSource,
     PreviousFailure,
 )
+from mission_control.progress import RuntimeActivity, record, report_to
 
 CONTRACTED = AcceptanceCriterion(
     description="목록에 댓글이 보인다",
@@ -307,3 +308,52 @@ class TestExecute:
         runtime = CodexExecutionRuntime(cli_path=str(tmp_path / "missing-codex"))
         with pytest.raises(FileNotFoundError):
             await runtime.execute(_request(workspace=str(tmp_path)))
+
+
+PROGRESS_STUB = """
+    import sys
+    arguments = sys.argv[1:]
+    last_message_path = arguments[arguments.index("--output-last-message") + 1]
+    sys.stdin.read()
+    print('{"type": "thread.started", "thread_id": "th-p"}')
+    print('{"type": "item.started", "item": {"type": "command_execution", '
+          '"command": "pytest tests/test_auth.py"}}')
+    print('{"type": "item.completed", "item": {"type": "command_execution"}}')
+    print('{"type": "item.started", "item": {"type": "file_change", '
+          '"changes": [{"path": "src/auth.py"}]}}')
+    with open(last_message_path, "w") as handle:
+        handle.write("끝")
+    sys.exit(0)
+"""
+
+
+class TestProgressObservation:
+    """ADR-0049 §5 — 관측은 설치되어야 하고, 없으면 아무 일도 없다."""
+
+    async def test_installed_progress_receives_tool_starts(self, tmp_path: Path) -> None:
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        runtime = CodexExecutionRuntime(cli_path=_write_stub(tmp_path, "codex-p", PROGRESS_STUB))
+        seen: list[RuntimeActivity] = []
+
+        with report_to(seen.append):
+            outcome = await runtime.execute(_request(workspace=str(workspace)))
+
+        assert outcome.succeeded is True
+        assert [item.line() for item in seen] == [
+            "command_execution pytest tests/test_auth.py",
+            "file_change src/auth.py",
+        ]
+
+    async def test_without_a_sink_nothing_is_produced(self, tmp_path: Path) -> None:
+        """설치가 없으면 파싱조차 하지 않는다 — 기존 동작 그대로다."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        runtime = CodexExecutionRuntime(cli_path=_write_stub(tmp_path, "codex-p2", PROGRESS_STUB))
+        seen: list[RuntimeActivity] = []
+
+        outcome = await runtime.execute(_request(workspace=str(workspace)))
+        record(RuntimeActivity(kind="tool", tool="x", detail="y"))
+
+        assert outcome.succeeded is True
+        assert seen == []

@@ -497,10 +497,26 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   읽힌다. `--stat`·원문 보존·평가자 전달은 미도입(등록된 divergence):
   upstream이 그것을 두는 이유는 QA가 workspace를 관찰할 수 없기 때문이고
   우리 평가자는 직접 관찰한다 (ADR-0034 정정)
-- [ ] **canonical event 층 + 스트리밍 생산자** — Phase 5 시한을 무처분 도과한
-  항목이다 (2026-08-09 확인, [ADR-0027](../adr/0027-telemetry-layers-and-v1-schema.md)
-  §3 주석). 여기로 오는 이유: 실사용에서야 긴 실행의 진행 표시가 실수요가 되고,
-  바로 위 `changed_files`가 같은 생산자를 요구한다
+- [x] **canonical event 층 + 스트리밍 생산자** — **항목이 두 층을 하나의 이름으로
+  가리고 있었다** (2026-08-10 완료,
+  [ADR-0049](../adr/0049-runtime-progress-observation.md) Accepted,
+  [EVENT_LAYER findings](../research/EVENT_LAYER_UPSTREAM_FINDINGS.md), 936 tests).
+  **적은 근거 둘 중 하나는 이미 소멸했다** — `changed_files`는 ADR-0048이
+  `git status`로 끝냈고 event를 한 줄도 쓰지 않았다. 조사가 나머지도 뒤집었다:
+  **upstream에서 진행 표시는 event 층의 소비자가 아니다**(`leaf_dispatcher.py:549`
+  — 콘솔 출력이 store를 읽지 않고 같은 루프에서 정규화 결과를 직접 찍는다).
+  event store를 읽는 넷 중 셋(TUI·auto listeners·replay/resume)이 우리에게 없고,
+  넷째인 job 상태는 ADR-0041이 이미 **원장에서 유도**한다 — 지금 도입하면 그 ADR이
+  기각한 "같은 사실의 두 번째 저장소"가 된다(등록된 divergence).
+  **한 것**: 정규화 층(`RuntimeActivity` — 두 번째 Runtime을 흡수할 자리),
+  codex JSONL 파서(`item.started`만 — 우리 질문은 "지금 무엇을 하는가"),
+  원장이 비워 둔 칸을 채우는 **진행 꼬리**(`progress_<mission>_<seq>.jsonl`,
+  MCP job이 `running` 너머를 답한다), 취소와 같은 **ambient 관측**(설치되지 않으면
+  파싱조차 하지 않는다). 마스킹은 **생성 시점**이다 — detail이 도구 입력에서
+  오므로 새 저장 표면이다 (ADR-0040 §3).
+  **stall 판정은 바꾸지 않았다** — upstream은 도구 호출을 liveness로 보지만
+  오탐이 곧 돌고 있는 프로세스를 죽이는 것이라 관측 없이 조일 일이 아니다
+  (미결, 시한 Phase 10 진입 시)
 - [x] ~~**spec-gap 분류와 `RecoveryDirective`**~~ — **항목 자체가 오류였다.
   Phase 9에서 제거하고 Phase 10 진입 시 재평가로 옮긴다 (2026-08-10 사용자
   질문이 잡았다).** 두 가지가 틀렸다:

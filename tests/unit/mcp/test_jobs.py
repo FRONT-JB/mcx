@@ -11,6 +11,7 @@ import pytest
 
 from mission_control.cancellation import cancel_when, is_cancelled, observed
 from mission_control.cli.journal import MissionJournal
+from mission_control.cli.progress import ProgressTail
 from mission_control.mcp.jobs import (
     JobState,
     UnknownJobError,
@@ -19,6 +20,7 @@ from mission_control.mcp.jobs import (
     parse_job_id,
     request_cancel,
 )
+from mission_control.progress import RuntimeActivity
 
 
 def _journal(root: Path) -> MissionJournal:
@@ -142,3 +144,26 @@ class TestCancellationIsObserved:
         first, second = await asyncio.gather(under(cancelled), under(tmp_path / "b"))
 
         assert (first, second) == (True, False)
+
+
+class TestActivityAnswersWhatTheJournalCannot:
+    """원장은 명령 단위다 — 그 안에서 무엇을 하는지는 진행 꼬리가 답한다 (ADR-0049 §4)."""
+
+    def test_a_running_job_reports_its_last_progress_line(self, tmp_path: Path) -> None:
+        sequence = _open(tmp_path)
+        ProgressTail(root=tmp_path, mission_id="m", sequence=sequence).record(
+            RuntimeActivity(kind="tool", tool="command_execution", detail="pytest tests/"),
+            at="2026-08-09T00:00:30+00:00",
+        )
+
+        view = job_view(root=tmp_path, job=job_id(mission_id="m", sequence=sequence))
+
+        assert view.state is JobState.RUNNING
+        assert view.activity == "command_execution pytest tests/"
+
+    def test_no_progress_record_does_not_break_the_lookup(self, tmp_path: Path) -> None:
+        sequence = _open(tmp_path)
+
+        assert job_view(root=tmp_path, job=job_id(mission_id="m", sequence=sequence)).activity is (
+            None
+        )

@@ -37,6 +37,7 @@ from mission_control.cli import backend_profile, composition, status_render, sta
 from mission_control.cli.calls import CallCounter
 from mission_control.cli.composition import Adapters, StateLayout
 from mission_control.cli.journal import MissionJournal
+from mission_control.cli.progress import ProgressTail
 from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import LoopAction
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
@@ -53,6 +54,7 @@ from mission_control.domain.mission import (
     MissionStatus,
 )
 from mission_control.domain.stage import Stage
+from mission_control.progress import RuntimeActivity, report_to
 
 DEFAULT_STATE_DIR = Path.home() / ".mcx"
 
@@ -127,6 +129,21 @@ def _note(message: str) -> None:
         print(message, file=sys.stderr)
     else:
         sink.append(("note", message))
+
+
+def _progress_sink(tail: ProgressTail) -> Callable[[RuntimeActivity], None]:
+    """진행 한 줄을 파일에 남기고, 터미널이면 함께 보여준다 (ADR-0049 §4).
+
+    수집 중일 때(MCP)는 **찍지 않는다.** 한 실행이 수백 줄을 낼 수 있고, 그
+    질문의 답은 응답 본문이 아니라 진행 꼬리 파일이다.
+    """
+
+    def sink(activity: RuntimeActivity) -> None:
+        tail.record(activity, at=_now())
+        if _COLLECTED.get() is None:
+            print(f"  → {activity.line()}", file=sys.stderr, flush=True)
+
+    return sink
 
 
 def _write(message: str) -> None:
@@ -735,10 +752,13 @@ async def dispatch(
         on_sequence(sequence)
     exit_code = 1
     marker = layout.state / f"cancel_{args.mission}_{sequence}"
+    tail = ProgressTail(root=layout.state, mission_id=args.mission, sequence=sequence)
     try:
         # 이 명령의 취소 마커를 실행 adapter가 관측하게 한다 (ADR-0041 §5).
         # 마커를 놓는 것만으로는 아무것도 멈추지 않는다 — 관측이 있어야 한다.
-        with cancel_when(marker.exists):
+        # 진행 관측도 같은 자리다 (ADR-0049 §5) — sequence가 정해진 뒤여야
+        # 원장과 진행 꼬리의 생명주기가 어긋나지 않는다.
+        with cancel_when(marker.exists), report_to(_progress_sink(tail)):
             exit_code = await handlers[args.stage](args, layout, counter.wrap(adapters))
     finally:
         marker.unlink(missing_ok=True)

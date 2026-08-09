@@ -29,6 +29,8 @@ from pathlib import Path
 import signal
 import tempfile
 
+from mission_control import progress
+from mission_control.adapters.runtime import codex_events
 from mission_control.application.ports import ExecutionOutcome, ExecutionRequest
 from mission_control.cancellation import is_cancelled, observed
 
@@ -230,6 +232,12 @@ class CodexExecutionRuntime:
             text = line.decode("utf-8", errors="replace")
             output_tail = (output_tail + text)[-_OUTPUT_TAIL_CHARS:]
             native_session_id = self._thread_id_from(text) or native_session_id
+            # 진행 관측이 설치되어 있을 때만 접는다 — 없으면 파싱도 하지 않는다
+            # (ADR-0049 §5, 취소 관측과 같은 규율).
+            if progress.observed():
+                found = codex_events.activity(text)
+                if found is not None:
+                    progress.record(found)
 
         try:
             exit_code = await asyncio.wait_for(
