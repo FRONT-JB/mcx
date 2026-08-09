@@ -424,11 +424,15 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
       생산자(스트리밍 adapter)와 함께 Phase 5, bundle은 Phase 4 semantic
       설계에서.
 - [-] retention, redaction, output-size 정책을 결정한다. → 발췌·출력 한도는
-      report 층 구현 시 upstream 상수와 대조(ADR-0027 §5). secret
-      redaction은 **시한 재지정 (2026-08-09, 사용자 결정): Phase 7 진입
-      조건** — 상태·Telemetry가 MCP로 host 세션에 노출되기 전에 Security
-      ADR로 확정. 원래 시한(Phase 5)은 무처분 도과했다 — 로컬 단일 사용자
-      동안의 방어는 파일 권한 0600뿐임을 명시해 둔다.
+      report 층 구현 시 upstream 상수와 대조(ADR-0027 §5). **secret
+      redaction은 닫혔다 (2026-08-09 —
+      [ADR-0040](../adr/0040-secret-redaction-boundaries.md)):** 프로필 둘
+      (저장=자격증명만·경로 유지, host=자격증명+경로), lifecycle 기록은
+      마스킹이 아니라 거부, 강제는 모델·쓰기 경계.
+      원래 시한(Phase 5)은 무처분 도과했고 Phase 7 진입 조건으로 재지정돼
+      해소됐다. 조사에서 `state/current_mission`만 0644였음이 드러나 함께
+      고쳤다 — "0600이 유일한 방어"라는 기존 기술은 전부 참이 아니었다.
+      **retention(원장 보존·회전)은 열려 있다** (ADR-0038 §7 보류, 미조사).
 - [ ] Mission replay와 resume의 최소 보장 수준을 결정한다. → **시한 재지정
       (2026-08-09, 사용자 결정): Phase 7** — 장기 실행 job 계약·취소와 한
       묶음 (ADR-0033 §6 이연분 합류). 현 수준을 명시해 둔다: 명령 단위

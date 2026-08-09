@@ -392,7 +392,11 @@ async def _dispatch_brief(
         state = await service.start(mission_id=mission, initial_intent=args.intent)
         record = MissionRecord.create(mission_id=mission, workspace=workspace)
         await composition.mission_repository(layout).save(record)
-        _current_mission_pointer(layout).write_text(f"{mission}\n", encoding="utf-8")
+        pointer = _current_mission_pointer(layout)
+        pointer.write_text(f"{mission}\n", encoding="utf-8")
+        # 다른 상태 파일과 같은 권한으로 맞춘다 — 이 하나만 0644였다
+        # (ADR-0040 조사에서 실측 발견).
+        pointer.chmod(0o600)
         show({"mission_id": state.mission_id, "revision": state.revision, "workspace": workspace})
     elif verb == "ask":
         show(await service.ask_next_question(mission_id=mission))

@@ -4,11 +4,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | **Phase 6 COMPLETE (2026-08-09)** — 표면 + status 박스 + 라우팅 테이블 + 종료 검토. 다음은 Phase 7 (MCP, 진입 조건: redaction Security ADR) |
+| Project phase | **Phase 6 COMPLETE (2026-08-09)** — 표면 + status 박스 + 라우팅 테이블 + 종료 검토. **Phase 7 진입 조건(secret redaction)도 해소** (ADR-0040) — Phase 7 착수 가능 |
 | Mission status | ACTIVE |
 | Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅) |
-| Automated tests | 621 passed (unit + integration) |
+| Automated tests | 663 passed (unit + integration) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-09 |
 
@@ -648,10 +648,14 @@ Phase 6 종료 검토는 2026-08-09 수행했다 —
 재지정. 질문 7 대상이던 `exit_conditions`는 이미 2026-08-09에 처분되어
 있었다 (사용자 acceptance는 Phase 9 — [ADR-0017](../adr/0017-blueprint-schema-baseline.md)).
 
-다음 검증 가능한 목표 한 개: **Phase 7 진입 조건인 secret redaction
-Security ADR.** MCP는 host가 Core를 호출하는 inbound 표면이므로, Telemetry·
-명령 원장·`status` 응답이 host 대화로 나가기 전에 무엇을 가리는지가 표면
-설계보다 먼저다 ([Open Questions §9](../research/OPEN_QUESTIONS.md)).
+secret redaction은 2026-08-09 확정·구현했다 ([ADR-0040](../adr/0040-secret-redaction-boundaries.md))
+— 프로필 둘(저장=자격증명만·경로 유지, host=자격증명+경로), lifecycle 기록은
+마스킹이 아니라 거부, 강제는 호출이 아니라 모델·쓰기 경계. 조사에서
+`state/current_mission`만 0644였음이 드러나 함께 고쳤다.
+
+다음 검증 가능한 목표 한 개: **Phase 7 착수 — MCP control surface 설계.**
+진입 조건은 해소됐다. tool 이름·schema·transport는 아직 public contract가
+아니며 ([04_MCP](../04_MCP.md) 머리말) 구현 전 ADR로 확정한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -892,7 +896,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 4 — Verify/Recover | **충족 (2026-08-08)** — 예산 리셋 테스트 추가(0186450), directive 저장 vs 파생 충돌 해소, exit_conditions 유예 재평가, canonical Stage 저장 부재 등록, Verify Gate 미검사 조건 표 신설. Gate·Matrix 전수 대조 포함 | [progress 0004](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md) |
 | Phase 5 — Runtime adapters | **충족 (2026-08-08)** — 낡은 약속 1건 갱신(도구 차단 시점), 근거 미인용 1건 보강(무도구 max-turns), 미표시 보류 1건 등재(workspace 밖 부작용). 잔여 3항목은 실수요 이연 후 2026-08-09 Phase 배치(7·11)로 재지정. **질문 7 미수행 — Phase 5를 시한으로 쓴 보류 7건이 무처분 통과** (2026-08-09 소급 처분) | [progress 0005](./0005_RUNTIME_ADAPTERS.md) |
 | Phase 6 — `mcx` CLI | **충족 (2026-08-09)** — progress record 부재 자체가 첫 발견(0006 신설). 산문뿐이던 import 방향 계약을 검사로 승격(3 tests), ADR-0037 Verification 문장을 구현에 맞게 정정, §5의 upstream enum 국면 대조 무처분 도과를 Phase 10으로 재지정 | [progress 0006](./0006_MCX_CLI.md) |
-| Phase 7 — MCP control surface | 대기 (진입 조건: redaction Security ADR) | — |
+| Phase 7 — MCP control surface | 대기 (**진입 조건 해소 2026-08-09** — [ADR-0040](../adr/0040-secret-redaction-boundaries.md)) | [SECURITY findings](../research/SECURITY_UPSTREAM_FINDINGS.md) |
 | Phase 8 — plugin 패키징 (합성 계층) | 대기 | — |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | 대기 | — |
 | Phase 10 — Reflect/Evolve | 대기 (조사 범위 확정: Hermes 사용 방식 + 다음 작업 연결 경로) | — |

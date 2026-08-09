@@ -17,6 +17,8 @@ import json
 from pathlib import Path
 import re
 
+from mission_control.security import reject_replay_unsafe
+
 _SAFE_MISSION_ID = re.compile(r"\A[A-Za-z0-9_-]+\Z")
 
 _OWNER_ONLY = 0o600
@@ -126,6 +128,10 @@ class MissionJournal:
         return tuple(opened[sequence] for sequence in order)
 
     def _append(self, record: dict[str, object]) -> None:
+        # 원장은 lifecycle 기록이다 — 프롬프트·원시 출력은 마스킹이 아니라
+        # **거부**다 (ADR-0040 §2). 쓰기 직전에 검사하므로 새 필드를 추가하는
+        # 경로가 이 가드를 우회할 수 없다.
+        reject_replay_unsafe(record, where="명령 원장")
         self._root.mkdir(parents=True, exist_ok=True)
         line = json.dumps(record, ensure_ascii=False)
         with self.path.open("a", encoding="utf-8") as handle:

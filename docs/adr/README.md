@@ -61,6 +61,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0037](./0037-mission-record-and-canonical-stage.md) | Mission record(current Stage)는 합성 계층 소유로 Phase 6 도입 — enforcement는 Gate 재계산 유지, 닫힌 enum·합법 전이 그래프·전이 시각 (record 0004 질문 4 처분). | Accepted |
 | [0038](./0038-mcx-cli-surface-contract.md) | `mcx` CLI 표면 — 비대화형 단발 명령(service 메서드 1:1), exit code 0/1/2(upstream 정렬), mission record는 CLI만 기록, 기본 조립 Claude 텍스트+Codex 실행. | Accepted |
 | [0039](./0039-stage-runtime-routing-table.md) | Stage→Runtime 라우팅 테이블 — 닫힌 Stage enum 키, lane별 backend 쌍(등록된 divergence: upstream은 stage당 backend 하나), 3단 해석, fail-fast 검증, 설정 표면 `config.toml`(ADR-0038 개정). ADR-0023의 미이행 약속 이행. | Accepted |
+| [0040](./0040-secret-redaction-boundaries.md) | Secret redaction — 프로필 둘(저장=자격증명만·경로 유지, host=자격증명+경로), lifecycle 기록은 마스킹이 아니라 거부(prompt·stdout·stderr가 자격증명과 같은 등급), 강제는 호출이 아니라 모델·쓰기 경계. Phase 7 진입 조건 해소. | Accepted |
 
 ## Template
 

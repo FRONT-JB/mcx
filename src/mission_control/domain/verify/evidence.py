@@ -14,11 +14,12 @@ so a failing check cannot be self-reported away")와 같다
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
 from mission_control.domain.errors import MissionControlError
 from mission_control.domain.verify.verdict import SemanticAssessment
+from mission_control.security import redact_credentials
 
 #: 판정용 발췌 길이. upstream `_VERIFY_OUTPUT_TAIL_CHARS`와 같다
 #: (VERIFY_UPSTREAM_FINDINGS §2).
@@ -94,6 +95,16 @@ class VerificationRun(BaseModel):
     missing_artifacts: tuple[str, ...] = ()
     output_ref: str | None = None
     output_tail: str = ""
+
+    @field_validator("output_tail", "command", mode="after")
+    @classmethod
+    def _mask_credentials(cls, value: str | None) -> str | None:
+        """자격증명은 생성 시점에 가린다 — 부르는 곳이 아니라 경계에서 (ADR-0040 §3).
+
+        경로는 남긴다. 이 발췌는 Recover를 거쳐 worker에게 전달되며, 어느
+        파일이 실패했는지 모르는 worker는 같은 실패를 반복한다.
+        """
+        return value if value is None else redact_credentials(value)
 
     @model_validator(mode="after")
     def _the_fields_tell_one_story(self) -> VerificationRun:

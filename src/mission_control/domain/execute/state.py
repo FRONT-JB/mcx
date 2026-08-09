@@ -27,9 +27,10 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from mission_control.domain.errors import MissionControlError
+from mission_control.security import redact_credentials
 
 
 class OpenAttemptError(MissionControlError):
@@ -123,6 +124,16 @@ class ExecutionAttempt(BaseModel):
     status: AttemptStatus = AttemptStatus.DISPATCHED
     result_summary: str | None = None
     error: str | None = None
+
+    @field_validator("error", "result_summary", mode="after")
+    @classmethod
+    def _mask_credentials(cls, value: str | None) -> str | None:
+        """자격증명은 생성 시점에 가린다 (ADR-0040 §3).
+
+        경로는 남긴다 — 이 발췌가 ``PreviousFailure.error_excerpt``로 worker에게
+        전달되기 때문이다.
+        """
+        return value if value is None else redact_credentials(value)
 
     @model_validator(mode="after")
     def _result_matches_the_status(self) -> ExecutionAttempt:
