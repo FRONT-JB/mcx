@@ -157,8 +157,8 @@ class CodexCompletion:
                 await self._terminate(process)
                 raise CodexCompletionError(
                     reason=(
-                        f"went silent for {self._silence_timeout_seconds:.0f}s; "
-                        "the process group was terminated"
+                        f"{self._silence_timeout_seconds:.0f}초 동안 출력이 없었다; "
+                        "process group을 정리했다"
                     )
                 ) from None
             if not line:
@@ -176,11 +176,11 @@ class CodexCompletion:
             parsed = json.loads(raw)
         except json.JSONDecodeError as error:
             raise CodexCompletionError(
-                reason=f"structured output is not valid JSON ({error}): {raw[:200]!r}"
+                reason=f"구조화 출력이 올바른 JSON이 아니다 ({error}): {raw[:200]!r}"
             ) from error
         if not isinstance(parsed, dict):
             raise CodexCompletionError(
-                reason=f"structured output is not a JSON object: {raw[:200]!r}"
+                reason=f"구조화 출력이 JSON 객체가 아니다: {raw[:200]!r}"
             )
         return parsed
 

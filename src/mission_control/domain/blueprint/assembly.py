@@ -53,7 +53,9 @@ class BlueprintScopeError(MissionControlError):
 
     def __init__(self, *, mission_id: str, findings: tuple[ScopeFinding, ...]) -> None:
         joined = "; ".join(f"{item.violation.value}: {item.detail}" for item in findings)
-        super().__init__(f"blueprint draft leaves the approved scope for {mission_id}: {joined}")
+        super().__init__(
+            f"Blueprint 초안이 mission {mission_id}의 승인된 범위를 벗어난다: {joined}"
+        )
         self.mission_id = mission_id
         self.findings = findings
 
@@ -88,7 +90,7 @@ def check_scope(*, draft: BlueprintDraft, handoff: BriefHandoff) -> tuple[ScopeF
 
     if not draft.goal.strip():
         findings.append(
-            ScopeFinding(violation=ScopeViolation.EMPTY_GOAL, detail="draft goal is empty")
+            ScopeFinding(violation=ScopeViolation.EMPTY_GOAL, detail="초안의 goal이 비어 있다")
         )
 
     allowed_constraints = set(handoff.constraints)
@@ -115,7 +117,7 @@ def check_scope(*, draft: BlueprintDraft, handoff: BriefHandoff) -> tuple[ScopeF
         findings.append(
             ScopeFinding(
                 violation=ScopeViolation.NO_ACCEPTANCE_CRITERIA,
-                detail="a blueprint without acceptance criteria cannot be verified",
+                detail="수용 기준이 없는 Blueprint는 검증할 수 없다",
             )
         )
 

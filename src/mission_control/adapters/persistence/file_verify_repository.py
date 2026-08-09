@@ -63,8 +63,8 @@ class FileVerifyRepository:
     def _path_for(self, mission_id: str) -> Path:
         if not _SAFE_MISSION_ID.match(mission_id):
             raise ValueError(
-                f"unsafe mission id for a file path: {mission_id!r}; "
-                "expected letters, digits, hyphen, or underscore"
+                f"파일 경로에 쓸 수 없는 mission id다: {mission_id!r}; "
+                "영문자·숫자·하이픈·밑줄만 쓴다"
             )
         return self._root / f"verify_{mission_id}.json"
 
@@ -99,9 +99,9 @@ class FileVerificationOutputStore:
 
     async def preserve(self, *, mission_id: str, sequence: int, ac_key: str, content: str) -> str:
         if not _SAFE_MISSION_ID.match(mission_id):
-            raise ValueError(f"unsafe mission id for a file path: {mission_id!r}")
+            raise ValueError(f"파일 경로에 쓸 수 없는 mission id다: {mission_id!r}")
         if not _SAFE_MISSION_ID.match(ac_key):
-            raise ValueError(f"unsafe ac key for a file path: {ac_key!r}")
+            raise ValueError(f"파일 경로에 쓸 수 없는 AC key다: {ac_key!r}")
         self._root.mkdir(parents=True, exist_ok=True)
 
         path = self._root / f"verify_output_{mission_id}_{sequence:04d}_{ac_key}.txt"

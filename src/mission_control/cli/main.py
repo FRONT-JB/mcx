@@ -323,7 +323,7 @@ def _resolve_mission(args: argparse.Namespace, layout: StateLayout) -> str:
         if value:
             return value
     raise LookupError(
-        'no mission specified and none started yet; run `mcx brief "<intent>"` first'
+        '지정된 mission이 없고 시작된 mission도 없다; 먼저 `mcx brief "<의도>"`를 실행한다'
     )
 
 
@@ -335,7 +335,7 @@ async def _require_workspace(layout: StateLayout, mission_id: str) -> str:
     record = await _load_record(layout, mission_id)
     if record is None:
         raise LookupError(
-            f"mission record not found for {mission_id}; run `mcx brief start` first"
+            f"mission {mission_id}의 record가 없다; 먼저 `mcx brief start`를 실행한다"
         )
     return record.workspace
 
@@ -368,12 +368,12 @@ async def _record_transition(
     repository = composition.mission_repository(layout)
     record = await repository.load(mission_id)
     if record is None:
-        _note(f"warning: no mission record for {mission_id}; transition not recorded")
+        _note(f"경고: mission {mission_id}의 record가 없다; 전이를 기록하지 않았다")
         return
     try:
         moved = record.transit(destination=destination, at=_now(), reason=f"mcx {stage} {verb}")
     except (InvalidStageTransitionError, MissionCompletedError) as exc:
-        _note(f"warning: transition not recorded ({exc}); gate recomputation wins")
+        _note(f"경고: 전이를 기록하지 않았다 ({exc}); Gate 재계산이 이긴다")
         return
     if moved is not record:
         await repository.save(moved)
@@ -383,14 +383,14 @@ async def _record_completion(layout: StateLayout, mission_id: str) -> None:
     repository = composition.mission_repository(layout)
     record = await repository.load(mission_id)
     if record is None:
-        _note(f"warning: no mission record for {mission_id}; MISSION COMPLETE not recorded")
+        _note(f"경고: mission {mission_id}의 record가 없다; MISSION COMPLETE를 기록하지 않았다")
         return
     if record.status is MissionStatus.COMPLETE:
         return
     try:
         await repository.save(record.complete(at=_now()))
     except Exception as exc:  # noqa: BLE001 — 기록 실패는 판정을 뒤집지 않는다
-        _note(f"warning: MISSION COMPLETE not recorded ({exc}); gate recomputation wins")
+        _note(f"경고: MISSION COMPLETE를 기록하지 않았다 ({exc}); Gate 재계산이 이긴다")
 
 
 def _load_draft(path: Path) -> BlueprintDraft:
@@ -417,7 +417,7 @@ async def _status(
     """읽기 전용 요약. 원장을 늘리지 않는다 (ADR-0038 §6.1 a)."""
     record = await _load_record(layout, mission_id)
     if record is None:
-        _note(f"error: mission record not found for {mission_id}")
+        _note(f"오류: mission {mission_id}의 record가 없다")
         return 1
 
     if args.json:
@@ -456,8 +456,8 @@ async def _status_json(layout: StateLayout, record: MissionRecord, mission_id: s
     mismatch = None
     if not stage_evidence[record.current_stage]:
         mismatch = (
-            f"record says {record.current_stage.value} but its stage store is empty; "
-            "gate recomputation wins"
+            f"record는 {record.current_stage.value}라고 하는데 그 Stage 저장소가 비어 있다; "
+            "Gate 재계산이 이긴다"
         )
 
     show(
@@ -740,10 +740,10 @@ async def amain(argv: list[str] | None = None, adapters: Adapters | None = None)
     try:
         return await dispatch(args, adapters or composition.default_adapters())
     except Exception as exc:  # noqa: BLE001 — 표면 경계: 오류는 exit 1로 수렴한다
-        _note(f"error: {type(exc).__name__}: {exc}")
+        _note(f"오류: {type(exc).__name__}: {exc}")
         cause = exc.__cause__
         while cause is not None:
-            _note(f"  caused by: {type(cause).__name__}: {cause}")
+            _note(f"  원인: {type(cause).__name__}: {cause}")
             cause = cause.__cause__
         return 1
 

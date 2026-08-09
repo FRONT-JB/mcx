@@ -69,7 +69,7 @@ class TestStaleWrites:
 
 class TestFileSafety:
     async def test_unsafe_mission_id_is_rejected(self, repository: FileVerifyRepository) -> None:
-        with pytest.raises(ValueError, match="unsafe mission id"):
+        with pytest.raises(ValueError, match="쓸 수 없는 mission id"):
             await repository.load("../escape")
 
     async def test_file_is_owner_only(
@@ -93,7 +93,7 @@ class TestOutputStore:
 
     async def test_unsafe_names_are_rejected(self, tmp_path: Path) -> None:
         store = FileVerificationOutputStore(root=tmp_path)
-        with pytest.raises(ValueError, match="unsafe"):
+        with pytest.raises(ValueError, match="쓸 수 없는"):
             await store.preserve(mission_id="../m", sequence=1, ac_key="ac_a", content="")
-        with pytest.raises(ValueError, match="unsafe"):
+        with pytest.raises(ValueError, match="쓸 수 없는"):
             await store.preserve(mission_id="m-1", sequence=1, ac_key="../k", content="")

@@ -58,7 +58,7 @@ class AcceptanceCriterion(BaseModel):
         아예 없는 AC보다 나쁘다 — 없다는 사실이 드러나지 않기 때문이다.
         """
         if self.output_assertion and not self.verify_command:
-            raise ValueError("output_assertion requires verify_command")
+            raise ValueError("output_assertion에는 verify_command가 필요하다")
         return self
 
     @computed_field  # type: ignore[prop-decorator]
@@ -128,7 +128,7 @@ class Blueprint(BaseModel):
         seen: set[str] = set()
         for item in self.acceptance_criteria:
             if item.key in seen:
-                raise ValueError(f"duplicate acceptance criterion contract: {item.description!r}")
+                raise ValueError(f"수용 기준 계약이 중복된다: {item.description!r}")
             seen.add(item.key)
         return self
 
@@ -191,7 +191,9 @@ class BlueprintApproval(BaseModel):
         """
         below = self.qa_best_score < self.qa_threshold
         if below and not self.accepted_below_threshold:
-            raise ValueError("qa_best_score below threshold requires accepted_below_threshold")
+            raise ValueError("임계값 미만의 qa_best_score에는 accepted_below_threshold가 필요하다")
         if not below and self.accepted_below_threshold:
-            raise ValueError("accepted_below_threshold set while qa_best_score passed")
+            raise ValueError(
+                "qa_best_score가 임계값을 넘었는데 accepted_below_threshold가 설정됐다"
+            )
         return self

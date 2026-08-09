@@ -143,9 +143,9 @@ class BriefState(BaseModel):
         답변이 어느 질문의 것인지 알 수 없다.
         """
         if not question.strip():
-            raise ValueError("question must not be empty")
+            raise ValueError("질문이 비어 있을 수 없다")
         if self.pending_question is not None:
-            raise ValueError("a question is already awaiting an answer")
+            raise ValueError("이미 답변을 기다리는 질문이 있다")
 
         posed = BriefRound(
             number=len(self.rounds) + 1,
@@ -175,7 +175,9 @@ class BriefState(BaseModel):
         요구사항 추출이 존재하지 않는 근거를 사실로 다루게 된다 (§8.1 규칙 5).
         """
         if not answer.strip():
-            raise ValueError("answer must not be empty; an unanswered round is not a recorded one")
+            raise ValueError(
+                "답변이 비어 있을 수 없다; 답하지 않은 라운드는 기록된 라운드가 아니다"
+            )
 
         pending = self.pending_question
         if pending is not None:
@@ -183,7 +185,7 @@ class BriefState(BaseModel):
             rounds = (*self.rounds[:-1], filled)
         else:
             if question is None:
-                raise ValueError("no pending question; question is required to record an answer")
+                raise ValueError("대기 중인 질문이 없다; 답변을 기록하려면 질문이 필요하다")
             rounds = (
                 *self.rounds,
                 BriefRound(
@@ -224,7 +226,7 @@ class BriefState(BaseModel):
         기록과 동시에 일어나지 않는다.
         """
         if not text.strip():
-            raise ValueError("candidate text must not be empty")
+            raise ValueError("후보 문장이 비어 있을 수 없다")
 
         candidate = RequirementCandidate(
             number=len(self.candidates) + 1,
@@ -260,7 +262,7 @@ class BriefState(BaseModel):
         """
         matched = [item for item in self.candidates if item.number == number]
         if not matched:
-            raise ValueError(f"no requirement candidate numbered {number}")
+            raise ValueError(f"{number}번 요구사항 후보가 없다")
 
         updated = tuple(
             item.model_copy(

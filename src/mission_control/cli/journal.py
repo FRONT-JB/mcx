@@ -50,7 +50,7 @@ class MissionJournal:
 
     def __init__(self, *, root: Path, mission_id: str) -> None:
         if not _SAFE_MISSION_ID.match(mission_id):
-            raise ValueError(f"unsafe mission id for a journal path: {mission_id!r}")
+            raise ValueError(f"원장 경로에 쓸 수 없는 mission id다: {mission_id!r}")
         self._root = root
         self._mission_id = mission_id
 

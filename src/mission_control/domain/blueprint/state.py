@@ -45,8 +45,8 @@ class QaBudgetExhaustedError(MissionControlError):
 
     def __init__(self, *, mission_id: str, max_iterations: int) -> None:
         super().__init__(
-            f"QA budget for mission {mission_id} is exhausted "
-            f"({max_iterations} iterations); a user decision is required"
+            f"mission {mission_id}의 QA 예산이 소진됐다 "
+            f"({max_iterations}회); 사용자 결정이 필요하다"
         )
         self.mission_id = mission_id
         self.max_iterations = max_iterations
@@ -62,7 +62,7 @@ class QaAlreadyPassedError(MissionControlError):
 
     def __init__(self, *, mission_id: str, revision: int) -> None:
         super().__init__(
-            f"blueprint revision {revision} for mission {mission_id} already passed QA"
+            f"mission {mission_id}의 Blueprint revision {revision}은 이미 QA를 통과했다"
         )
         self.mission_id = mission_id
         self.revision = revision
@@ -78,7 +78,7 @@ class QaEscalatedError(MissionControlError):
 
     def __init__(self, *, mission_id: str) -> None:
         super().__init__(
-            f"QA for mission {mission_id} escalated on a FAIL verdict; the loop does not continue"
+            f"mission {mission_id}의 QA가 FAIL 판정으로 escalate됐다; 루프를 이어가지 않는다"
         )
         self.mission_id = mission_id
 
@@ -93,8 +93,8 @@ class UnassessedRevisionError(MissionControlError):
 
     def __init__(self, *, mission_id: str, revision: int) -> None:
         super().__init__(
-            f"blueprint revision {revision} for mission {mission_id} has no QA assessment; "
-            "approval requires one"
+            f"mission {mission_id}의 Blueprint revision {revision}에 QA 평가가 없다; "
+            "승인에는 QA 평가가 필요하다"
         )
         self.mission_id = mission_id
         self.revision = revision
@@ -109,8 +109,8 @@ class QaLoopStillOpenError(MissionControlError):
 
     def __init__(self, *, mission_id: str, revision: int) -> None:
         super().__init__(
-            f"blueprint revision {revision} for mission {mission_id} is below the QA "
-            "threshold and the iteration budget is not exhausted; refine it instead"
+            f"mission {mission_id}의 Blueprint revision {revision}이 QA 임계값 미만이고 "
+            "반복 예산도 남아 있다; 먼저 다듬는다"
         )
         self.mission_id = mission_id
         self.revision = revision
@@ -158,17 +158,17 @@ class BlueprintState(BaseModel):
         찾을 수 없게 되고, 그 순간 기록이 검증 불가능해진다.
         """
         if not self.revisions:
-            raise ValueError("a blueprint state must hold at least one revision")
+            raise ValueError("Blueprint 상태에는 revision이 최소 하나 있어야 한다")
         for index, item in enumerate(self.revisions):
             if item.revision != index + 1:
                 raise ValueError(
-                    f"blueprint revisions must be contiguous from 1: "
-                    f"position {index} holds revision {item.revision}"
+                    f"Blueprint revision은 1부터 연속이어야 한다: "
+                    f"{index}번 자리에 revision {item.revision}이 있다"
                 )
             if item.mission_id != self.mission_id:
                 raise ValueError(
-                    f"revision {item.revision} belongs to mission {item.mission_id}, "
-                    f"not {self.mission_id}"
+                    f"revision {item.revision}은 mission {item.mission_id}의 것이다 — "
+                    f"{self.mission_id}가 아니다"
                 )
         return self
 
@@ -262,10 +262,13 @@ class BlueprintState(BaseModel):
         """
         if blueprint.mission_id != self.mission_id:
             raise ValueError(
-                f"revision belongs to mission {blueprint.mission_id}, not {self.mission_id}"
+                f"이 revision은 mission {blueprint.mission_id}의 것이다 — "
+                f"{self.mission_id}가 아니다"
             )
         if blueprint.revision != self.revision + 1:
-            raise ValueError(f"expected revision {self.revision + 1}, got {blueprint.revision}")
+            raise ValueError(
+                f"revision {self.revision + 1}이 와야 하는데 {blueprint.revision}이 왔다"
+            )
         return self.model_copy(
             update={
                 "sequence": self.sequence + 1,

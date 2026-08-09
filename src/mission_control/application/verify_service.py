@@ -60,7 +60,7 @@ class VerdictMismatchError(MissionControlError):
     """
 
     def __init__(self, *, expected: str, received: str) -> None:
-        super().__init__(f"evaluator returned a verdict for {received} while judging {expected}")
+        super().__init__(f"{expected}를 판정하는데 평가자가 {received}의 verdict를 돌려주었다")
         self.expected = expected
         self.received = received
 
@@ -74,7 +74,7 @@ class ExecuteNotClearedError(MissionControlError):
 
     def __init__(self, *, mission_id: str, reasons: tuple[str, ...]) -> None:
         joined = "; ".join(reasons)
-        super().__init__(f"mission {mission_id} is not cleared for Verify: {joined}")
+        super().__init__(f"mission {mission_id}가 Verify 진입 CLEAR가 아니다: {joined}")
         self.mission_id = mission_id
         self.reasons = reasons
 

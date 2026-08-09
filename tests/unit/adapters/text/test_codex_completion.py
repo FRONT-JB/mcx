@@ -133,5 +133,5 @@ class TestCompleteJson:
     async def test_garbage_output_is_never_interpreted_as_success(self, tmp_path: Path) -> None:
         """손상 출력은 성공이 아니라 예외다 (ADR-0034 §4)."""
         engine = CodexCompletion(cli_path=_write_stub(tmp_path, "codex-junk", GARBAGE_STUB))
-        with pytest.raises(CodexCompletionError, match="not valid JSON"):
+        with pytest.raises(CodexCompletionError, match="올바른 JSON이 아니다"):
             await engine.complete_json(prompt="질문", schema=SCHEMA)

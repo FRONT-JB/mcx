@@ -173,7 +173,7 @@ class TestCompleteJson:
         )
         engine = ClaudeCompletion(cli_path=stub)
 
-        with pytest.raises(ClaudeCompletionError, match="no structured_output"):
+        with pytest.raises(ClaudeCompletionError, match="structured_output 객체가 없다"):
             await engine.complete_json(prompt="p", schema=SCHEMA)
 
     async def test_a_non_json_body_reports_the_cli_failure(self, tmp_path: Path) -> None:
@@ -207,7 +207,7 @@ class TestCompleteJson:
         )
         engine = ClaudeCompletion(cli_path=stub, timeout_seconds=0.5)
 
-        with pytest.raises(ClaudeCompletionError, match="exceeded"):
+        with pytest.raises(ClaudeCompletionError, match="초를 넘겼다"):
             await engine.complete_json(prompt="p", schema=SCHEMA)
 
 

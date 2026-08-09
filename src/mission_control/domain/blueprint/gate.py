@@ -87,9 +87,9 @@ def evaluate_blueprint_gate(*, state: BlueprintState, brief_revision: int) -> Bl
             BlueprintGateBlocker(
                 condition=BlueprintGateBlockingCondition.BRIEF_REVISION_STALE,
                 detail=(
-                    f"blueprint revision {state.revision} was built from Brief revision "
-                    f"{state.current.brief_revision} but the current Brief revision is "
-                    f"{brief_revision}"
+                    f"Blueprint revision {state.revision}은 Brief revision "
+                    f"{state.current.brief_revision}에서 나왔는데 현재 Brief revision은 "
+                    f"{brief_revision}이다"
                 ),
             )
         )
@@ -98,7 +98,7 @@ def evaluate_blueprint_gate(*, state: BlueprintState, brief_revision: int) -> Bl
         gate_blockers.append(
             BlueprintGateBlocker(
                 condition=BlueprintGateBlockingCondition.APPROVAL_MISSING,
-                detail="user approval for the current Blueprint revision is missing",
+                detail="현재 Blueprint revision에 대한 사용자 승인이 없다",
             )
         )
     elif not state.has_current_approval:
@@ -106,8 +106,8 @@ def evaluate_blueprint_gate(*, state: BlueprintState, brief_revision: int) -> Bl
             BlueprintGateBlocker(
                 condition=BlueprintGateBlockingCondition.APPROVAL_STALE,
                 detail=(
-                    f"approval targets revision {state.approval.revision} "
-                    f"but the current revision is {state.revision}"
+                    f"승인은 revision {state.approval.revision}을 대상으로 하는데 "
+                    f"현재 revision은 {state.revision}이다"
                 ),
             )
         )
@@ -119,8 +119,8 @@ def evaluate_blueprint_gate(*, state: BlueprintState, brief_revision: int) -> Bl
             BlueprintGateBlocker(
                 condition=BlueprintGateBlockingCondition.NO_VERIFIABLE_CRITERION,
                 detail=(
-                    f"none of the {len(criteria)} acceptance criteria carry a means of "
-                    "mechanical verification — completion could not be declared on evidence"
+                    f"수용 기준 {len(criteria)}개 중 어느 것도 기계적 확인 수단을 갖고 있지 "
+                    "않다 — 완료를 증거로 선언할 수 없다"
                 ),
             )
         )

@@ -82,7 +82,7 @@ class TestAmbiguityAggregation:
             policy_version=policy.version,
         )
 
-        with pytest.raises(ValueError, match="dimension"):
+        with pytest.raises(ValueError, match="축이 빠졌다"):
             policy.ambiguity_of(partial)
 
 

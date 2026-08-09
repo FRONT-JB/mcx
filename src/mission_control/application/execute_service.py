@@ -52,7 +52,9 @@ class BlueprintNotClearedError(MissionControlError):
 
     def __init__(self, *, mission_id: str, reasons: tuple[str, ...]) -> None:
         joined = "; ".join(reasons)
-        super().__init__(f"blueprint for mission {mission_id} is not cleared for Execute: {joined}")
+        super().__init__(
+            f"mission {mission_id}의 Blueprint가 Execute 진입 CLEAR가 아니다: {joined}"
+        )
         self.mission_id = mission_id
         self.reasons = reasons
 
@@ -67,8 +69,8 @@ class UnknownCriterionError(MissionControlError):
 
     def __init__(self, *, mission_id: str, ac_key: str, blueprint_revision: int) -> None:
         super().__init__(
-            f"criterion {ac_key} does not exist in blueprint revision "
-            f"{blueprint_revision} of mission {mission_id}"
+            f"mission {mission_id}의 Blueprint revision {blueprint_revision}에 "
+            f"{ac_key}가 없다"
         )
         self.mission_id = mission_id
         self.ac_key = ac_key
@@ -84,8 +86,8 @@ class AllCriteriaExecutedError(MissionControlError):
 
     def __init__(self, *, mission_id: str, blueprint_revision: int) -> None:
         super().__init__(
-            f"every criterion of blueprint revision {blueprint_revision} for mission "
-            f"{mission_id} is already executed; decide the gate instead"
+            f"mission {mission_id}의 Blueprint revision {blueprint_revision}은 모든 수용 기준이 "
+            f"이미 실행됐다; 대신 Gate를 판정한다"
         )
         self.mission_id = mission_id
         self.blueprint_revision = blueprint_revision

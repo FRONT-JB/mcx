@@ -68,14 +68,14 @@ def _mechanical_failure_reason(ac_key: str, run: VerificationRun) -> str:
     별도 reason 필드를 두지 않는 이유다 (ADR-0028 §4).
     """
     if run.missing_artifacts:
-        return f"criterion {ac_key}: expected artifacts missing: " + ", ".join(
+        return f"{ac_key}: 선언된 artifact가 없다: " + ", ".join(
             run.missing_artifacts
         )
     if run.timed_out:
-        return f"criterion {ac_key}: verify command timed out"
+        return f"{ac_key}: 확인 명령이 시간을 초과했다"
     if run.exit_code not in (0, None):
-        return f"criterion {ac_key}: verify command exited with status {run.exit_code}"
-    return f"criterion {ac_key}: output assertion not found in verify command output"
+        return f"{ac_key}: 확인 명령이 status {run.exit_code}로 종료됐다"
+    return f"{ac_key}: 확인 명령 출력에서 기대한 문구를 찾지 못했다"
 
 
 def evaluate_verify_gate(
@@ -112,7 +112,7 @@ def evaluate_verify_gate(
                 gate_blockers.append(
                     VerifyGateBlocker(
                         condition=VerifyGateBlockingCondition.CRITERION_UNVERIFIED,
-                        detail=(f"criterion {criterion.key} has not been mechanically verified"),
+                        detail=(f"{criterion.key}가 기계적으로 확인되지 않았다"),
                     )
                 )
             elif not run.passed:
@@ -128,7 +128,7 @@ def evaluate_verify_gate(
             gate_blockers.append(
                 VerifyGateBlocker(
                     condition=VerifyGateBlockingCondition.SEMANTIC_VERDICT_MISSING,
-                    detail=f"criterion {criterion.key} has no semantic verdict",
+                    detail=f"{criterion.key}에 semantic 판정이 없다",
                 )
             )
             continue
@@ -137,9 +137,9 @@ def evaluate_verify_gate(
                 VerifyGateBlocker(
                     condition=VerifyGateBlockingCondition.REWARD_HACKING_SUSPECTED,
                     detail=(
-                        f"criterion {criterion.key}: reward hacking risk "
-                        f"{verdict.reward_hacking_risk:.2f} is at or above the veto "
-                        f"threshold {policy.reward_hacking_veto:.2f}"
+                        f"{criterion.key}: reward hacking 위험도 "
+                        f"{verdict.reward_hacking_risk:.2f}가 거부 임계값 "
+                        f"{policy.reward_hacking_veto:.2f} 이상이다"
                     ),
                 )
             )
@@ -148,9 +148,9 @@ def evaluate_verify_gate(
                 VerifyGateBlocker(
                     condition=VerifyGateBlockingCondition.ESCALATION_REQUIRED,
                     detail=(
-                        f"criterion {criterion.key}: verdict uncertainty "
-                        f"{verdict.uncertainty:.2f} exceeds {policy.uncertainty_threshold:.2f}; "
-                        "escalation is not available in v1"
+                        f"{criterion.key}: 판정 불확실성 "
+                        f"{verdict.uncertainty:.2f}가 {policy.uncertainty_threshold:.2f}를 넘는다; "
+                        "v1에는 escalation 경로가 없다"
                     ),
                 )
             )
@@ -159,11 +159,11 @@ def evaluate_verify_gate(
                 VerifyGateBlocker(
                     condition=VerifyGateBlockingCondition.CRITERION_NOT_SATISFIED,
                     detail=(
-                        f"criterion {criterion.key}: "
+                        f"{criterion.key}: "
                         + (
-                            f"score {verdict.score:.2f} is below {policy.pass_score:.2f}"
+                            f"점수 {verdict.score:.2f}가 {policy.pass_score:.2f} 미만이다"
                             if verdict.satisfied
-                            else f"not satisfied — {verdict.reasoning}"
+                            else f"충족되지 않았다 — {verdict.reasoning}"
                         )
                     ),
                 )

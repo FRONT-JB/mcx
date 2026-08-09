@@ -82,7 +82,7 @@ async def test_illegal_transition_warns_but_command_succeeds(
     assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
     assert await amain(["verify", "mechanical", *argv("m", tmp_path)], adapters) == 0
 
-    assert "transition not recorded" in capsys.readouterr().err
+    assert "전이를 기록하지 않았다" in capsys.readouterr().err
     record = await repository(tmp_path).load("m")
     assert record is not None
     assert record.current_stage is Stage.BRIEF
@@ -123,7 +123,7 @@ async def test_verify_gate_clear_outside_verify_warns_not_fails(
     assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
     assert await amain(["verify", "gate", *argv("m", tmp_path)], adapters) == 0
 
-    assert "MISSION COMPLETE not recorded" in capsys.readouterr().err
+    assert "MISSION COMPLETE를 기록하지 않았다" in capsys.readouterr().err
     record = await repository(tmp_path).load("m")
     assert record is not None
     assert record.status is MissionStatus.ACTIVE
@@ -147,10 +147,10 @@ async def test_status_reports_record_and_mismatch(
     assert stored is not None
     await repo.save(stored.transit(destination=Stage.BLUEPRINT, at="t", reason="drift"))
     assert await amain(["status", "--json", *argv("m", tmp_path)], adapters) == 0
-    assert "gate recomputation wins" in capsys.readouterr().out
+    assert "Gate 재계산이 이긴다" in capsys.readouterr().out
     # 사람용 렌더도 같은 어긋남을 표시한다.
     assert await amain(["status", *argv("m", tmp_path)], adapters) == 0
-    assert "gate recomputation wins" in capsys.readouterr().out
+    assert "Gate 재계산이 이긴다" in capsys.readouterr().out
 
 
 async def test_repository_rejects_stale_writes(tmp_path: Path) -> None:

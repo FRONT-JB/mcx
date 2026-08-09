@@ -115,7 +115,7 @@ class TestVerifiability:
     def test_output_assertion_without_a_command_is_rejected(self) -> None:
         """검사할 출력을 만드는 것이 명령이므로, 명령 없는 출력 조건은 아무것도
         대조하지 않으면서 검증 수단이 있는 것처럼 보인다."""
-        with pytest.raises(ValidationError, match="output_assertion requires verify_command"):
+        with pytest.raises(ValidationError, match="output_assertion에는 verify_command가 필요하다"):
             _criterion(verify_command=None, output_assertion="출력에 OK가 있다")
 
     def test_unverifiable_criteria_are_reported(self) -> None:
@@ -152,7 +152,7 @@ class TestImmutabilityAndShape:
         criterion = AcceptanceCriterion(description="목록에 보인다", verify_command="pytest")
         twin = AcceptanceCriterion(description="목록에 보인다", verify_command="pytest")
 
-        with pytest.raises(ValidationError, match="duplicate acceptance criterion"):
+        with pytest.raises(ValidationError, match="수용 기준 계약이 중복"):
             _blueprint(acceptance_criteria=(criterion, twin))
 
     def test_distinct_contracts_with_the_same_description_are_allowed(self) -> None:

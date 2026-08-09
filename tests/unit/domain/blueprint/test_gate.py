@@ -144,7 +144,7 @@ class TestVerifiabilityFloor:
 
         decision, _ = _conditions(state)
 
-        assert "mechanical verification" in " ".join(decision.blocking_reasons)
+        assert "기계적 확인 수단" in " ".join(decision.blocking_reasons)
 
 
 class TestTransition:

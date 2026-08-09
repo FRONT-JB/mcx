@@ -64,39 +64,39 @@ def _blocker_for(packet: FailurePacket, policy: RecoverPolicy) -> RecoverGateBlo
         return RecoverGateBlocker(
             condition=RecoverGateBlockingCondition.BLOCKED_ON_PRECONDITION,
             detail=(
-                f"criterion {packet.ac_key}: hard precondition — needs a user "
-                f"decision, not a retry: {packet.error_excerpt}"
+                f"{packet.ac_key}: 선행 조건이 막고 있다 — 재시도가 아니라 사용자 "
+                f"결정이 필요하다: {packet.error_excerpt}"
             ),
         )
     if packet.classification is FailureClassification.STALL:
         return RecoverGateBlocker(
             condition=RecoverGateBlockingCondition.STALLED,
             detail=(
-                f"criterion {packet.ac_key}: the same error repeated "
-                f"{policy.stall_threshold} times; retrying is pointless"
+                f"{packet.ac_key}: 같은 오류가 {policy.stall_threshold}번 반복됐다; "
+                "재시도는 의미가 없다"
             ),
         )
     if packet.source is FailureSource.ESCALATION_PENDING:
         return RecoverGateBlocker(
             condition=RecoverGateBlockingCondition.USER_DECISION_REQUIRED,
             detail=(
-                f"criterion {packet.ac_key}: verdict uncertainty needs escalation; "
-                "v1 has no consensus — a user decision is required"
+                f"{packet.ac_key}: 판정 불확실성이 escalation을 요구한다; "
+                "v1에는 합의 절차가 없다 — 사용자 결정이 필요하다"
             ),
         )
     if packet.budget_exhausted(policy):
         return RecoverGateBlocker(
             condition=RecoverGateBlockingCondition.RETRY_BUDGET_EXHAUSTED,
             detail=(
-                f"criterion {packet.ac_key}: {packet.retries_used} corrective retries "
-                f"used of {policy.retry_budget}; a user decision is required"
+                f"{packet.ac_key}: 교정 재시도를 {policy.retry_budget}회 중 "
+                f"{packet.retries_used}회 썼다; 사용자 결정이 필요하다"
             ),
         )
     return RecoverGateBlocker(
         condition=RecoverGateBlockingCondition.CORRECTION_PENDING,
         detail=(
-            f"criterion {packet.ac_key}: {packet.source} awaits a corrective retry "
-            f"({packet.retries_used}/{policy.retry_budget} used)"
+            f"{packet.ac_key}: {packet.source}가 교정 재시도를 기다린다 "
+            f"({policy.retry_budget}회 중 {packet.retries_used}회 사용)"
         ),
     )
 

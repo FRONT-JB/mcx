@@ -95,7 +95,7 @@ class TestRefusals:
     ) -> None:
         (repo / "wip.py").write_text("unfinished\n")
 
-        with pytest.raises(worktree.WorktreeError, match="dirty checkout"):
+        with pytest.raises(worktree.WorktreeError, match="격리 worktree를 시작할 수 없다"):
             worktree.prepare(str(repo), mission_id="m1", root=root)
 
     def test_a_dirty_checkout_does_not_block_an_existing_worktree(
@@ -112,15 +112,15 @@ class TestRefusals:
         empty.mkdir()
         git("init", "-b", "main", cwd=empty)
 
-        with pytest.raises(worktree.WorktreeError, match="initial commit"):
+        with pytest.raises(worktree.WorktreeError, match="최초 커밋"):
             worktree.prepare(str(empty), mission_id="m1", root=root)
 
     def test_a_worktree_root_inside_the_repository_is_refused(self, repo: Path) -> None:
-        with pytest.raises(worktree.WorktreeError, match="inside the target repository"):
+        with pytest.raises(worktree.WorktreeError, match="대상 저장소.*안에 있다"):
             worktree.prepare(str(repo), mission_id="m1", root=repo / ".mcx" / "worktrees")
 
     def test_a_mission_id_that_is_not_a_git_ref_is_refused(self, repo: Path, root: Path) -> None:
-        with pytest.raises(worktree.WorktreeError, match="valid git branch name"):
+        with pytest.raises(worktree.WorktreeError, match="git 브랜치 이름으로 쓸 수 없다"):
             worktree.prepare(str(repo), mission_id="has space", root=root)
 
     def test_a_stray_directory_is_refused_rather_than_deleted(
@@ -130,7 +130,7 @@ class TestRefusals:
         stray.mkdir(parents=True)
         (stray / "someones-file.txt").write_text("do not delete me\n")
 
-        with pytest.raises(worktree.WorktreeError, match="git does not know it"):
+        with pytest.raises(worktree.WorktreeError, match="worktree로 알지 못한다"):
             worktree.prepare(str(repo), mission_id="m1", root=root)
 
         assert (stray / "someones-file.txt").exists()
@@ -159,7 +159,7 @@ class TestLock:
         assert isolation is not None
 
         with worktree.hold(isolation):
-            with pytest.raises(worktree.WorktreeError, match="already running"):
+            with pytest.raises(worktree.WorktreeError, match="이미 돌고 있다"):
                 with worktree.hold(isolation):
                     pass
 
@@ -184,7 +184,7 @@ class TestLock:
         lock.parent.mkdir(parents=True, exist_ok=True)
         lock.write_text(json.dumps({"pid": 1, "host": "some-other-machine"}))
 
-        with pytest.raises(worktree.WorktreeError, match="already running"):
+        with pytest.raises(worktree.WorktreeError, match="이미 돌고 있다"):
             with worktree.hold(isolation):
                 pass
 
@@ -195,7 +195,7 @@ class TestLock:
         lock.parent.mkdir(parents=True, exist_ok=True)
         lock.write_text("{ truncated")
 
-        with pytest.raises(worktree.WorktreeError, match="unreadable lock"):
+        with pytest.raises(worktree.WorktreeError, match="lock 파일을 읽을 수 없다"):
             with worktree.hold(isolation):
                 pass
 

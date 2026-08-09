@@ -338,8 +338,8 @@ async def build_snapshot(
             None
             if stored[record.current_stage]
             else (
-                f"record says {record.current_stage.value} but its stage store is empty; "
-                "gate recomputation wins"
+                f"record는 {record.current_stage.value}라고 하는데 그 Stage 저장소가 비어 있다; "
+                "Gate 재계산이 이긴다"
             )
         ),
         journal=entries,

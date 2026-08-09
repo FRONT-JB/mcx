@@ -154,4 +154,4 @@ class TestHold:
             ac_key=COMMANDED.key, command="pytest -k list", exit_code=0, passed=False
         )
         decision, _ = _conditions(_evidence(missed), None)
-        assert any("assertion" in reason for reason in decision.blocking_reasons)
+        assert any("기대한 문구를 찾지 못했다" in reason for reason in decision.blocking_reasons)

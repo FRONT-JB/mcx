@@ -144,8 +144,8 @@ class ClaudeCompletion:
             await self._terminate(process)
             raise ClaudeCompletionError(
                 reason=(
-                    f"claude -p exceeded {self._timeout_seconds:.0f}s total; "
-                    "the process group was terminated"
+                    f"claude -p가 총 {self._timeout_seconds:.0f}초를 넘겼다; "
+                    "process group을 정리했다"
                 )
             ) from None
 
@@ -165,8 +165,8 @@ class ClaudeCompletion:
         if not isinstance(structured, dict):
             raise ClaudeCompletionError(
                 reason=(
-                    "success envelope carries no structured_output object; "
-                    f"result preview: {str(envelope.get('result'))[:200]!r}"
+                    "성공 응답에 structured_output 객체가 없다; "
+                    f"result 앞부분: {str(envelope.get('result'))[:200]!r}"
                 )
             )
         return structured

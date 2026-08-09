@@ -49,7 +49,7 @@ class BlueprintNotFoundError(LookupError):
     """존재하지 않는 Mission의 Blueprint를 조작하려 했다."""
 
     def __init__(self, mission_id: str) -> None:
-        super().__init__(f"no Blueprint exists for mission {mission_id}")
+        super().__init__(f"mission {mission_id}의 Blueprint가 없다")
         self.mission_id = mission_id
 
 
@@ -62,7 +62,7 @@ class BlueprintAlreadyExistsError(ValueError):
     """
 
     def __init__(self, mission_id: str) -> None:
-        super().__init__(f"Blueprint for mission {mission_id} already exists")
+        super().__init__(f"mission {mission_id}의 Blueprint가 이미 있다")
         self.mission_id = mission_id
 
 
@@ -75,8 +75,8 @@ class StaleBriefRevisionError(MissionControlError):
 
     def __init__(self, *, mission_id: str, built_from: int, current: int) -> None:
         super().__init__(
-            f"blueprint for mission {mission_id} was built from Brief revision "
-            f"{built_from} but the current Brief revision is {current}"
+            f"mission {mission_id}의 Blueprint는 Brief revision {built_from}에서 나왔는데 "
+            f"현재 Brief revision은 {current}이다"
         )
         self.mission_id = mission_id
         self.built_from = built_from
@@ -92,7 +92,7 @@ class QaAssessmentError(RuntimeError):
     """
 
     def __init__(self, mission_id: str) -> None:
-        super().__init__(f"QA assessment produced no result for mission {mission_id}")
+        super().__init__(f"mission {mission_id}의 QA 평가가 결과를 내지 못했다")
         self.mission_id = mission_id
 
 

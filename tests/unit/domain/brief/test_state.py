@@ -59,7 +59,7 @@ class TestRoundAccumulation:
         """§8.1 규칙 5 — 미답변 질문을 답변된 것처럼 저장하지 않는다."""
         state = _started()
 
-        with pytest.raises(ValueError, match="answer"):
+        with pytest.raises(ValueError, match="답변이 비어"):
             state.record_answer(question="q", answer="   ", authority="decision")
 
     def test_state_is_immutable(self) -> None:
@@ -120,15 +120,15 @@ class TestPendingQuestion:
         """답변이 어느 질문의 것인지 알 수 없게 된다."""
         state = _started().pose_question(question="q1")
 
-        with pytest.raises(ValueError, match="already awaiting"):
+        with pytest.raises(ValueError, match="이미 답변을 기다리는"):
             state.pose_question(question="q2")
 
     def test_empty_question_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="question"):
+        with pytest.raises(ValueError, match="질문이 비어"):
             _started().pose_question(question="  ")
 
     def test_answer_without_pending_question_requires_a_question(self) -> None:
-        with pytest.raises(ValueError, match="question is required"):
+        with pytest.raises(ValueError, match="질문이 필요하다"):
             _started().record_answer(answer="a", authority="decision")
 
     def test_authority_of_a_posed_round_is_settled_by_the_answer(self) -> None:

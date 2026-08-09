@@ -117,13 +117,13 @@ class TestJudgeRun:
             judge_run(criterion=PROSE, missing_artifacts=(), execution=None, output_ref=None)
 
     def test_a_command_contract_requires_an_execution(self) -> None:
-        with pytest.raises(ValueError, match="no execution"):
+        with pytest.raises(ValueError, match="실행 결과가 오지 않았다"):
             judge_run(criterion=COMMANDED, missing_artifacts=(), execution=None, output_ref=None)
 
 
 class TestRunConsistency:
     def test_missing_artifacts_preclude_command_execution(self) -> None:
-        with pytest.raises(ValidationError, match="preclude"):
+        with pytest.raises(ValidationError, match="명령을 실행하지 않는다"):
             VerificationRun(
                 ac_key="ac_a",
                 command="pytest",
@@ -133,7 +133,7 @@ class TestRunConsistency:
             )
 
     def test_an_unexecuted_command_cannot_carry_results(self) -> None:
-        with pytest.raises(ValidationError, match="unexecuted"):
+        with pytest.raises(ValidationError, match="실행하지 않은 명령"):
             VerificationRun(ac_key="ac_a", passed=False, exit_code=1)
 
     @pytest.mark.parametrize(
@@ -149,13 +149,13 @@ class TestRunConsistency:
             VerificationRun(ac_key="ac_a", **fields)
 
     def test_a_completed_run_requires_an_exit_code(self) -> None:
-        with pytest.raises(ValidationError, match="requires an exit code"):
+        with pytest.raises(ValidationError, match="exit code가 필요하다"):
             VerificationRun(ac_key="ac_a", command="pytest", passed=False)
 
 
 class TestEvidence:
     def test_two_runs_for_one_criterion_are_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="more than one run"):
+        with pytest.raises(ValidationError, match="실행 기록이 둘 이상"):
             VerificationEvidence(
                 mission_id="m-1",
                 blueprint_revision=1,
@@ -192,5 +192,5 @@ class TestVerifyState:
             blueprint_revision=1,
             execution_attempt_numbers=(1,),
         )
-        with pytest.raises(ValueError, match="cannot be recorded"):
+        with pytest.raises(ValueError, match="기록할 수 없다"):
             VerifyState.start(mission_id="m-1").record(evidence)

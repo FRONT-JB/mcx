@@ -148,9 +148,9 @@ class ExecutionOutcome(BaseModel):
     @model_validator(mode="after")
     def _error_matches_the_outcome(self) -> ExecutionOutcome:
         if self.succeeded and self.error is not None:
-            raise ValueError("a successful outcome cannot carry an error")
+            raise ValueError("성공한 결과는 오류를 담을 수 없다")
         if not self.succeeded and not self.error:
-            raise ValueError("a failed outcome requires an error")
+            raise ValueError("실패한 결과에는 오류가 필요하다")
         return self
 
 

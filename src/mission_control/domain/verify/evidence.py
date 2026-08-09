@@ -38,8 +38,8 @@ class VerdictWithoutEvidenceError(MissionControlError):
 
     def __init__(self, *, mission_id: str, assessed_revision: int) -> None:
         super().__init__(
-            f"mission {mission_id} has no mechanical evidence for blueprint "
-            f"revision {assessed_revision}; semantic verdicts need that evidence first"
+            f"mission {mission_id}에 Blueprint revision {assessed_revision}의 "
+            f"mechanical 증거가 없다; semantic 판정에는 그 증거가 먼저 필요하다"
         )
         self.mission_id = mission_id
         self.assessed_revision = assessed_revision
@@ -54,8 +54,8 @@ class UnverifiableCriterionError(MissionControlError):
 
     def __init__(self, *, ac_key: str) -> None:
         super().__init__(
-            f"criterion {ac_key} has no success contract; it cannot produce "
-            "a mechanical verification run"
+            f"{ac_key}에 성공 계약이 없다; mechanical 검증 기록을 "
+            "만들 수 없다"
         )
         self.ac_key = ac_key
 
@@ -72,9 +72,9 @@ class CommandExecution(BaseModel):
     @model_validator(mode="after")
     def _timeout_has_no_exit_code(self) -> CommandExecution:
         if self.timed_out and self.exit_code is not None:
-            raise ValueError("a timed out execution cannot carry an exit code")
+            raise ValueError("시간 초과된 실행은 exit code를 담을 수 없다")
         if not self.timed_out and self.exit_code is None:
-            raise ValueError("a completed execution requires an exit code")
+            raise ValueError("완료된 실행에는 exit code가 필요하다")
         return self
 
 
@@ -114,22 +114,22 @@ class VerificationRun(BaseModel):
         진실인지 판정할 수 없는 증거가 된다.
         """
         if self.missing_artifacts and self.command is not None:
-            raise ValueError("missing artifacts preclude command execution")
+            raise ValueError("artifact가 빠져 있으면 명령을 실행하지 않는다")
         if self.command is None:
             if self.exit_code is not None or self.timed_out or self.output_tail:
-                raise ValueError("an unexecuted command cannot carry execution results")
+                raise ValueError("실행하지 않은 명령은 실행 결과를 담을 수 없다")
         else:
             if self.timed_out and self.exit_code is not None:
-                raise ValueError("a timed out run cannot carry an exit code")
+                raise ValueError("시간 초과된 실행 기록은 exit code를 담을 수 없다")
             if not self.timed_out and self.exit_code is None:
-                raise ValueError("a completed run requires an exit code")
+                raise ValueError("완료된 실행 기록에는 exit code가 필요하다")
         if self.passed:
             if self.missing_artifacts:
-                raise ValueError("a passed run cannot have missing artifacts")
+                raise ValueError("통과한 실행 기록에 빠진 artifact가 있을 수 없다")
             if self.timed_out:
-                raise ValueError("a passed run cannot have timed out")
+                raise ValueError("통과한 실행 기록이 시간 초과일 수 없다")
             if self.command is not None and self.exit_code != 0:
-                raise ValueError("a passed run requires exit code 0")
+                raise ValueError("통과한 실행 기록에는 exit code 0이 필요하다")
         return self
 
 
@@ -162,7 +162,7 @@ def judge_run(
 
     if execution is None:
         raise ValueError(
-            f"criterion {criterion.key} has a verify command but no execution was supplied"
+            f"{criterion.key}에 확인 명령이 있는데 실행 결과가 오지 않았다"
         )
 
     asserted = criterion.output_assertion
@@ -200,7 +200,7 @@ class VerificationEvidence(BaseModel):
     def _one_run_per_criterion(self) -> VerificationEvidence:
         keys = [run.ac_key for run in self.runs]
         if len(keys) != len(set(keys)):
-            raise ValueError("evidence carries more than one run for the same criterion")
+            raise ValueError("같은 수용 기준에 대한 실행 기록이 둘 이상이다")
         return self
 
     def run_for(self, ac_key: str) -> VerificationRun | None:
@@ -238,8 +238,8 @@ class VerifyState(BaseModel):
         """
         if evidence.mission_id != self.mission_id:
             raise ValueError(
-                f"evidence for mission {evidence.mission_id} cannot be recorded "
-                f"on mission {self.mission_id}"
+                f"mission {evidence.mission_id}의 증거를 "
+                f"mission {self.mission_id}에 기록할 수 없다"
             )
         return self.model_copy(
             update={"sequence": self.sequence + 1, "evidence": evidence, "verdicts": None}

@@ -32,8 +32,8 @@ class InvalidStageTransitionError(MissionControlError):
 
     def __init__(self, *, mission_id: str, source: Stage, destination: Stage) -> None:
         super().__init__(
-            f"mission {mission_id}: transition {source.value} -> {destination.value} "
-            "is not in the Lifecycle §9 table"
+            f"mission {mission_id}: {source.value} -> {destination.value} 전이는 "
+            "Lifecycle §9 표에 없다"
         )
         self.mission_id = mission_id
         self.source = source
@@ -45,8 +45,8 @@ class CompletionNotFromVerifyError(MissionControlError):
 
     def __init__(self, *, mission_id: str, source: Stage) -> None:
         super().__init__(
-            f"mission {mission_id}: MISSION COMPLETE can only be recorded at verify, "
-            f"not {source.value}"
+            f"mission {mission_id}: MISSION COMPLETE는 verify에서만 기록할 수 있다 — "
+            f"{source.value}에서는 안 된다"
         )
         self.mission_id = mission_id
         self.source = source
@@ -56,7 +56,7 @@ class MissionCompletedError(MissionControlError):
     """완료된 mission의 record를 다시 바꾸려 했다."""
 
     def __init__(self, *, mission_id: str) -> None:
-        super().__init__(f"mission {mission_id} is already complete")
+        super().__init__(f"mission {mission_id}는 이미 완료됐다")
         self.mission_id = mission_id
 
 

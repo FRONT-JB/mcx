@@ -90,7 +90,7 @@ class TestVerdict:
 
 class TestAssessment:
     def test_two_verdicts_for_one_criterion_are_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="more than one verdict"):
+        with pytest.raises(ValidationError, match="verdict가 둘 이상"):
             SemanticAssessment(
                 blueprint_revision=1,
                 policy_version=POLICY.version,

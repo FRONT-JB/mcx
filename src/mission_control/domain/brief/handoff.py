@@ -47,7 +47,7 @@ class HandoffNotClearedError(MissionControlError):
 
     def __init__(self, *, mission_id: str, outcome: str) -> None:
         super().__init__(
-            f"cannot build a Brief handoff for mission {mission_id}: gate outcome is {outcome}"
+            f"mission {mission_id}의 Brief handoff를 만들 수 없다: Gate 판정이 {outcome}이다"
         )
         self.mission_id = mission_id
         self.outcome = outcome
@@ -96,12 +96,12 @@ def build_brief_handoff(*, state: BriefState, decision: BriefGateDecision) -> Br
     if decision.revision != state.revision:
         raise HandoffNotClearedError(
             mission_id=state.mission_id,
-            outcome=f"CLEAR for revision {decision.revision}, not {state.revision}",
+            outcome=f"revision {decision.revision}에 대한 CLEAR다 — {state.revision}이 아니다",
         )
     if state.approval is None:
         # Gate가 CLEAR했다면 승인이 있어야 한다. 방어적으로 남기는 이유는 이
         # 불변 조건이 깨지면 다음 Stage가 승인 없이 진행하기 때문이다.
-        raise HandoffNotClearedError(mission_id=state.mission_id, outcome="CLEAR without approval")
+        raise HandoffNotClearedError(mission_id=state.mission_id, outcome="승인 없는 CLEAR다")
 
     promotion = state.promotion
     promoted = promotion.promoted

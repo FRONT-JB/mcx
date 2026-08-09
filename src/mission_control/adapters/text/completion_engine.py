@@ -48,7 +48,7 @@ class CompletionError(MissionControlError):
     """
 
     def __init__(self, *, reason: str, engine: str) -> None:
-        super().__init__(f"{engine} completion failed: {reason}")
+        super().__init__(f"{engine} 완성 호출이 실패했다: {reason}")
         self.reason = reason
         self.engine = engine
 

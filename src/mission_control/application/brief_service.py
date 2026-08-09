@@ -57,7 +57,7 @@ class BriefNotFoundError(LookupError):
     """존재하지 않는 Mission의 Brief를 조작하려 했다."""
 
     def __init__(self, mission_id: str) -> None:
-        super().__init__(f"no Brief exists for mission {mission_id}")
+        super().__init__(f"mission {mission_id}의 Brief가 없다")
         self.mission_id = mission_id
 
 
@@ -68,7 +68,7 @@ class BriefAlreadyExistsError(ValueError):
     """
 
     def __init__(self, mission_id: str) -> None:
-        super().__init__(f"Brief for mission {mission_id} already exists")
+        super().__init__(f"mission {mission_id}의 Brief가 이미 있다")
         self.mission_id = mission_id
 
 
@@ -89,7 +89,7 @@ class ClarityAssessmentError(RuntimeError):
     """
 
     def __init__(self, mission_id: str) -> None:
-        super().__init__(f"clarity assessment produced no result for mission {mission_id}")
+        super().__init__(f"mission {mission_id}의 clarity 평가가 결과를 내지 못했다")
         self.mission_id = mission_id
 
 
@@ -102,7 +102,7 @@ class ClosureAuditError(RuntimeError):
     """
 
     def __init__(self, mission_id: str) -> None:
-        super().__init__(f"closure audit produced no result for mission {mission_id}")
+        super().__init__(f"mission {mission_id}의 closure 감사가 결과를 내지 못했다")
         self.mission_id = mission_id
 
 
@@ -151,7 +151,7 @@ class BriefService:
 
         generated = await self.question_generator.generate(self._request_for(state))
         if not generated.question.strip():
-            raise QuestionContractError("question generator returned an empty question")
+            raise QuestionContractError("질문 생성기가 빈 질문을 돌려주었다")
 
         posed = state.pose_question(question=generated.question)
         await self.repository.save(posed)
@@ -310,7 +310,8 @@ class BriefService:
         )
         if report.lane is not lane:
             raise ClosureContractError(
-                f"challenger was asked for lane {lane.value} but returned lane {report.lane.value}"
+                f"challenger에게 {lane.value} lane을 요청했는데 "
+                f"{report.lane.value} lane을 돌려주었다"
             )
         return report
 

@@ -56,13 +56,13 @@ def _git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
             check=False,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
-        raise WorktreeError(f"git {' '.join(args)} failed: {exc}") from exc
+        raise WorktreeError(f"git {' '.join(args)} 실행에 실패했다: {exc}") from exc
 
 
 def _git_output(args: list[str], cwd: Path) -> str:
     result = _git(args, cwd)
     if result.returncode != 0:
-        raise WorktreeError(f"git {' '.join(args)} failed: {result.stderr.strip()}")
+        raise WorktreeError(f"git {' '.join(args)} 실행에 실패했다: {result.stderr.strip()}")
     return result.stdout.strip()
 
 
@@ -81,7 +81,7 @@ def repo_root(workspace: str | Path) -> Path | None:
 def _branch_name(root: Path, mission_id: str) -> str:
     branch = f"{BRANCH_PREFIX}/{mission_id}"
     if _git(["check-ref-format", "--branch", branch], root).returncode != 0:
-        raise WorktreeError(f"mission id {mission_id!r} is not a valid git branch name")
+        raise WorktreeError(f"mission id {mission_id!r}는 git 브랜치 이름으로 쓸 수 없다")
     return branch
 
 
@@ -97,8 +97,8 @@ def _require_clean(root: Path) -> None:
     """worktree는 HEAD에서 분기하므로 커밋되지 않은 변경은 따라오지 않는다."""
     if _git_output(["status", "--porcelain"], root):
         raise WorktreeError(
-            f"cannot start an isolated worktree from a dirty checkout ({root}); "
-            "commit or stash first — uncommitted work does not follow into the worktree"
+            f"커밋되지 않은 변경이 있어 격리 worktree를 시작할 수 없다 ({root}); "
+            "먼저 커밋하거나 stash한다 — 커밋되지 않은 작업은 worktree로 따라오지 않는다"
         )
 
 
@@ -106,8 +106,8 @@ def _head(root: Path) -> str:
     result = _git(["rev-parse", "--verify", "HEAD"], root)
     if result.returncode != 0:
         raise WorktreeError(
-            f"cannot branch from an empty repository ({root}); create an initial commit "
-            'first (for example: git commit --allow-empty -m "chore: initialize")'
+            f"빈 저장소에서는 분기할 수 없다 ({root}); 먼저 최초 커밋을 만든다 "
+            '(예: git commit --allow-empty -m "chore: initialize")'
         )
     return result.stdout.strip()
 
@@ -138,8 +138,8 @@ def prepare(workspace: str, *, mission_id: str, root: Path) -> Isolation | None:
         # 저장소 안에 worktree가 생기면 그 저장소가 영구히 dirty가 되어
         # 이후 모든 미션이 clean checkout 전제에서 막힌다 (ADR-0045 Verification).
         raise WorktreeError(
-            f"worktree root {root} lies inside the target repository {repository}; "
-            "point --state-dir outside the repository"
+            f"worktree 루트 {root}가 대상 저장소 {repository} 안에 있다; "
+            "--state-dir를 저장소 밖으로 지정한다"
         )
 
     if str(worktree_path) not in _registered(repository):
@@ -147,8 +147,8 @@ def prepare(workspace: str, *, mission_id: str, root: Path) -> Isolation | None:
             # upstream은 이 경우 남은 디렉토리를 rmtree하고 다시 만든다. 우리는
             # 지우지 않는다 (ADR-0045 §7) — 거부는 사용자가 되돌릴 수 있다.
             raise WorktreeError(
-                f"{worktree_path} exists but git does not know it as a worktree; "
-                "remove it (or run `git worktree prune`) and retry"
+                f"{worktree_path}가 있는데 git은 이것을 worktree로 알지 못한다; "
+                "그 디렉토리를 지우거나 `git worktree prune`을 실행한 뒤 다시 시도한다"
             )
         _create(repository, worktree_path, branch)
 
@@ -215,13 +215,13 @@ def _acquire(path: Path, isolation: Isolation) -> None:
             owner = _read_owner(path)
             if owner is None:
                 raise WorktreeError(
-                    f"unreadable lock file {path}; remove it if no mission is running"
+                    f"lock 파일을 읽을 수 없다: {path}; 돌고 있는 mission이 없으면 그 파일을 지운다"
                 ) from None
             if _owner_is_live(owner):
                 raise WorktreeError(
-                    f"mission is already running in {isolation.worktree_path} "
-                    f"(pid {owner.get('pid')} on {owner.get('host')}); "
-                    f"wait for it, or remove {path} if it is not"
+                    f"{isolation.worktree_path}에서 mission이 이미 돌고 있다 "
+                    f"(pid {owner.get('pid')}, host {owner.get('host')}); "
+                    f"끝날 때까지 기다리거나, 돌고 있지 않다면 {path}를 지운다"
                 ) from None
             path.unlink(missing_ok=True)
             continue
@@ -239,7 +239,7 @@ def _acquire(path: Path, isolation: Isolation) -> None:
                 sort_keys=True,
             )
         return
-    raise WorktreeError(f"could not acquire {path}")
+    raise WorktreeError(f"{path}를 잡을 수 없다")
 
 
 def _release(path: Path) -> None:
@@ -297,7 +297,7 @@ def _is_merged(repository: Path, branch: str) -> bool:
     result = _git(["merge-base", "--is-ancestor", branch, "HEAD"], repository)
     if result.returncode in (0, 1):
         return result.returncode == 0
-    raise WorktreeError(f"cannot tell whether {branch} is merged: {result.stderr.strip()}")
+    raise WorktreeError(f"{branch}가 병합됐는지 판정할 수 없다: {result.stderr.strip()}")
 
 
 def sweep(root: Path, *, force: bool = False, dry_run: bool = False) -> Sweep:

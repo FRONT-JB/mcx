@@ -147,7 +147,7 @@ class ClarityPolicy:
         for dimension, weight in self.weights.items():
             clarity = assessment.clarity_of(dimension)
             if clarity is None:
-                raise ValueError(f"assessment is missing a weighted dimension: {dimension}")
+                raise ValueError(f"평가에 가중치가 걸린 축이 빠졌다: {dimension}")
             weighted += clarity * weight
         return round(1.0 - weighted, 4)
 
@@ -170,7 +170,7 @@ class ClarityPolicy:
             blockers.append(
                 CompletionBlocker(
                     condition=BlockingCondition.MINIMUM_ROUNDS_NOT_REACHED,
-                    detail=f"answered {answered_rounds} of minimum {self.minimum_rounds} rounds",
+                    detail=f"최소 {self.minimum_rounds}라운드 중 {answered_rounds}라운드만 답했다",
                 )
             )
 
@@ -178,7 +178,7 @@ class ClarityPolicy:
             blockers.append(
                 CompletionBlocker(
                     condition=BlockingCondition.ASSESSMENT_MISSING,
-                    detail="no clarity assessment is available for the current revision",
+                    detail="현재 revision에 대한 명확도 평가가 없다",
                 )
             )
         else:
@@ -188,7 +188,7 @@ class ClarityPolicy:
             blockers.append(
                 CompletionBlocker(
                     condition=BlockingCondition.STABILITY_NOT_ESTABLISHED,
-                    detail=(f"stability {stability_signal} of required {self.required_stability}"),
+                    detail=(f"안정성 {stability_signal} — 필요한 값은 {self.required_stability}다"),
                 )
             )
 
@@ -222,7 +222,7 @@ class ClarityPolicy:
             blockers.append(
                 CompletionBlocker(
                     condition=BlockingCondition.AMBIGUITY_ABOVE_THRESHOLD,
-                    detail=f"ambiguity {ambiguity} exceeds {self.max_ambiguity}",
+                    detail=f"모호함 {ambiguity}가 상한 {self.max_ambiguity}를 넘는다",
                 )
             )
 
@@ -232,7 +232,7 @@ class ClarityPolicy:
                 blockers.append(
                     CompletionBlocker(
                         condition=BlockingCondition.DIMENSION_FLOOR_NOT_MET,
-                        detail=f"{dimension} clarity {clarity} is below floor {floor}",
+                        detail=f"{dimension} 명확도 {clarity}가 하한 {floor} 미만이다",
                     )
                 )
 

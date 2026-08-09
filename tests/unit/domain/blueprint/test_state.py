@@ -54,15 +54,15 @@ class TestRevisionHistory:
         assert state.approval is None
 
     def test_state_needs_at_least_one_revision(self) -> None:
-        with pytest.raises(ValueError, match="at least one revision"):
+        with pytest.raises(ValueError, match="revision이 최소 하나"):
             BlueprintState(mission_id="m-1", revisions=())
 
     def test_revision_gaps_are_rejected(self) -> None:
-        with pytest.raises(ValueError, match="contiguous"):
+        with pytest.raises(ValueError, match="1부터 연속"):
             BlueprintState(mission_id="m-1", revisions=(_blueprint(revision=2),))
 
     def test_foreign_mission_revision_is_rejected(self) -> None:
-        with pytest.raises(ValueError, match="belongs to mission"):
+        with pytest.raises(ValueError, match="의 것이다"):
             BlueprintState(mission_id="m-2", revisions=(_blueprint(),))
 
     def test_revise_appends_without_touching_the_past(self) -> None:
@@ -74,12 +74,12 @@ class TestRevisionHistory:
         assert state.revision == 1
 
     def test_revise_requires_the_next_revision_number(self) -> None:
-        with pytest.raises(ValueError, match="expected revision 2"):
+        with pytest.raises(ValueError, match="revision 2이 와야"):
             _started().revise(blueprint=_blueprint(revision=3))
 
     def test_revise_rejects_a_foreign_mission(self) -> None:
         foreign = _blueprint(revision=2).model_copy(update={"mission_id": "m-2"})
-        with pytest.raises(ValueError, match="belongs to mission"):
+        with pytest.raises(ValueError, match="의 것이다"):
             _started().revise(blueprint=foreign)
 
 

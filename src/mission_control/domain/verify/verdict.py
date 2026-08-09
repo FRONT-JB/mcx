@@ -82,7 +82,7 @@ class SemanticAssessment(BaseModel):
     def _one_verdict_per_criterion(self) -> SemanticAssessment:
         keys = [verdict.ac_key for verdict in self.verdicts]
         if len(keys) != len(set(keys)):
-            raise ValueError("assessment carries more than one verdict for the same criterion")
+            raise ValueError("같은 수용 기준에 대한 verdict가 둘 이상이다")
         return self
 
     def verdict_for(self, ac_key: str) -> CriterionVerdict | None:

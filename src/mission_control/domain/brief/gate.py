@@ -110,7 +110,7 @@ def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGat
         gate_blockers.append(
             GateBlocker(
                 condition=GateBlockingCondition.CLOSURE_AUDIT_MISSING,
-                detail="closure audit for the current Brief revision is missing",
+                detail="현재 Brief revision에 대한 closure 감사가 없다",
             )
         )
     elif not state.has_current_closure_audit:
@@ -118,8 +118,8 @@ def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGat
             GateBlocker(
                 condition=GateBlockingCondition.CLOSURE_AUDIT_STALE,
                 detail=(
-                    f"closure audit targets revision {state.closure_audit.revision} "
-                    f"but the current revision is {state.revision}"
+                    f"closure 감사는 revision {state.closure_audit.revision}을 대상으로 하는데 "
+                    f"현재 revision은 {state.revision}이다"
                 ),
             )
         )
@@ -136,7 +136,7 @@ def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGat
         gate_blockers.append(
             GateBlocker(
                 condition=GateBlockingCondition.APPROVAL_MISSING,
-                detail="user approval for the current Brief revision is missing",
+                detail="현재 Brief revision에 대한 사용자 승인이 없다",
             )
         )
     elif not state.has_current_approval:
@@ -144,8 +144,8 @@ def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGat
             GateBlocker(
                 condition=GateBlockingCondition.APPROVAL_STALE,
                 detail=(
-                    f"approval targets revision {state.approval.revision} "
-                    f"but the current revision is {state.revision}"
+                    f"승인은 revision {state.approval.revision}을 대상으로 하는데 "
+                    f"현재 revision은 {state.revision}이다"
                 ),
             )
         )

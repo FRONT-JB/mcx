@@ -42,8 +42,8 @@ class OpenAttemptError(MissionControlError):
 
     def __init__(self, *, mission_id: str, ac_key: str) -> None:
         super().__init__(
-            f"mission {mission_id} already has a dispatched attempt for {ac_key}; "
-            "record its result before dispatching again"
+            f"mission {mission_id}에 {ac_key}의 dispatch된 시도가 이미 있다; "
+            "다시 dispatch하기 전에 그 결과를 기록한다"
         )
         self.mission_id = mission_id
         self.ac_key = ac_key
@@ -58,8 +58,8 @@ class HaltedByFailedCriterionError(MissionControlError):
 
     def __init__(self, *, mission_id: str, failed_ac_key: str, requested_ac_key: str) -> None:
         super().__init__(
-            f"mission {mission_id} halted: {failed_ac_key} failed and blocks "
-            f"dispatching {requested_ac_key}; retry the failed criterion or resolve it"
+            f"mission {mission_id}가 멈춰 있다: {failed_ac_key}가 실패해 "
+            f"{requested_ac_key}의 dispatch를 막는다; 실패한 수용 기준을 재시도하거나 해소한다"
         )
         self.mission_id = mission_id
         self.failed_ac_key = failed_ac_key
@@ -74,7 +74,7 @@ class NoOpenAttemptError(MissionControlError):
     """
 
     def __init__(self, *, mission_id: str) -> None:
-        super().__init__(f"mission {mission_id} has no dispatched attempt awaiting a result")
+        super().__init__(f"mission {mission_id}에 결과를 기다리는 dispatch된 시도가 없다")
         self.mission_id = mission_id
 
 
@@ -145,11 +145,11 @@ class ExecutionAttempt(BaseModel):
         """
         if self.status is AttemptStatus.DISPATCHED:
             if self.result_summary is not None or self.error is not None:
-                raise ValueError("a dispatched attempt cannot carry a result yet")
+                raise ValueError("dispatch된 시도는 아직 결과를 담을 수 없다")
         if self.status is AttemptStatus.EXECUTED_UNVERIFIED and self.error is not None:
-            raise ValueError("an executed attempt cannot carry an error")
+            raise ValueError("실행에 성공한 시도는 오류를 담을 수 없다")
         if self.status is AttemptStatus.EXECUTION_FAILED and not self.error:
-            raise ValueError("a failed attempt requires an error")
+            raise ValueError("실패한 시도에는 오류가 필요하다")
         return self
 
 
@@ -174,11 +174,11 @@ class ExecuteState(BaseModel):
         for index, item in enumerate(self.attempts):
             if item.number != index + 1:
                 raise ValueError(
-                    f"attempt numbers must be contiguous from 1: "
-                    f"position {index} holds number {item.number}"
+                    f"시도 번호는 1부터 연속이어야 한다: "
+                    f"{index}번 자리에 번호 {item.number}이 있다"
                 )
             if item.status is AttemptStatus.DISPATCHED and index != len(self.attempts) - 1:
-                raise ValueError("only the last attempt may still be dispatched")
+                raise ValueError("dispatch 상태로 남을 수 있는 것은 마지막 시도뿐이다")
         return self
 
     @classmethod

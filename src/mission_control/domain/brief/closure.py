@@ -155,9 +155,9 @@ class ClosureAudit(BaseModel):
         기록이 거짓이 된다. 차단 판정은 같아도 감사의 근거가 오염된다.
         """
         if self.contrarian.lane is not AdvisoryLane.CONTRARIAN:
-            raise ValueError("contrarian slot carries a different lane's report")
+            raise ValueError("contrarian 자리에 다른 lane의 보고가 들어 있다")
         if self.gap_hunter.lane is not AdvisoryLane.GAP_HUNTER:
-            raise ValueError("gap_hunter slot carries a different lane's report")
+            raise ValueError("gap_hunter 자리에 다른 lane의 보고가 들어 있다")
         return self
 
     @property

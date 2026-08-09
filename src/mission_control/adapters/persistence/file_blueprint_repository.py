@@ -65,8 +65,8 @@ class FileBlueprintRepository:
     def _path_for(self, mission_id: str) -> Path:
         if not _SAFE_MISSION_ID.match(mission_id):
             raise ValueError(
-                f"unsafe mission id for a file path: {mission_id!r}; "
-                "expected letters, digits, hyphen, or underscore"
+                f"파일 경로에 쓸 수 없는 mission id다: {mission_id!r}; "
+                "영문자·숫자·하이픈·밑줄만 쓴다"
             )
         return self._root / f"blueprint_{mission_id}.json"
 

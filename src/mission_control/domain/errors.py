@@ -25,8 +25,8 @@ class StaleWriteError(MissionControlError):
 
     def __init__(self, *, mission_id: str, stored_sequence: int, incoming_sequence: int) -> None:
         super().__init__(
-            f"refusing stale write for mission {mission_id}: "
-            f"stored sequence is {stored_sequence}, incoming sequence is {incoming_sequence}"
+            f"mission {mission_id}의 뒤처진 쓰기를 거부한다: "
+            f"저장된 sequence는 {stored_sequence}, 들어온 sequence는 {incoming_sequence}다"
         )
         self.mission_id = mission_id
         self.stored_sequence = stored_sequence
@@ -44,8 +44,8 @@ class StaleGateDecisionError(MissionControlError):
 
     def __init__(self, *, mission_id: str, decision_revision: int, current_revision: int) -> None:
         super().__init__(
-            f"gate decision for mission {mission_id} evaluated revision {decision_revision} "
-            f"but the current revision is {current_revision}"
+            f"mission {mission_id}의 Gate 판정은 revision {decision_revision}을 평가했는데 "
+            f"현재 revision은 {current_revision}이다"
         )
         self.mission_id = mission_id
         self.decision_revision = decision_revision

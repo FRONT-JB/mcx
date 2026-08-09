@@ -54,7 +54,7 @@ class NothingToRecoverError(MissionControlError):
     """
 
     def __init__(self, *, mission_id: str) -> None:
-        super().__init__(f"mission {mission_id} has no failing gate; there is nothing to recover")
+        super().__init__(f"mission {mission_id}에 실패한 Gate가 없다; 교정할 것이 없다")
         self.mission_id = mission_id
 
 
@@ -68,7 +68,7 @@ class NoRetryableFailureError(MissionControlError):
 
     def __init__(self, *, mission_id: str, reasons: tuple[str, ...]) -> None:
         joined = "; ".join(reasons) if reasons else "no failure packets remain"
-        super().__init__(f"mission {mission_id} has no retryable failure: {joined}")
+        super().__init__(f"mission {mission_id}에 재시도할 수 있는 실패가 없다: {joined}")
         self.mission_id = mission_id
         self.reasons = reasons
 

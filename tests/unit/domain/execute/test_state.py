@@ -89,12 +89,12 @@ class TestRecordResult:
 
     def test_failure_requires_an_error(self) -> None:
         state = _dispatched(ExecuteState.start(mission_id="m-1"))
-        with pytest.raises(ValidationError, match="requires an error"):
+        with pytest.raises(ValidationError, match="오류가 필요하다"):
             state.record_result(succeeded=False)
 
     def test_success_cannot_carry_an_error(self) -> None:
         state = _dispatched(ExecuteState.start(mission_id="m-1"))
-        with pytest.raises(ValidationError, match="cannot carry an error"):
+        with pytest.raises(ValidationError, match="오류를 담을 수 없다"):
             state.record_result(succeeded=True, error="but it failed?")
 
     def test_a_result_needs_an_open_attempt(self) -> None:
@@ -117,7 +117,7 @@ class TestStructuralInvariants:
             ac_key="ac_a",
             envelope=ENVELOPE,
         )
-        with pytest.raises(ValidationError, match="contiguous"):
+        with pytest.raises(ValidationError, match="1부터 연속"):
             ExecuteState(mission_id="m-1", attempts=(attempt,))
 
     def test_only_the_last_attempt_may_be_open(self) -> None:
@@ -135,11 +135,11 @@ class TestStructuralInvariants:
                 "status": AttemptStatus.EXECUTED_UNVERIFIED,
             }
         )
-        with pytest.raises(ValidationError, match="last attempt"):
+        with pytest.raises(ValidationError, match="마지막 시도뿐"):
             ExecuteState(mission_id="m-1", attempts=(open_first, resolved_second))
 
     def test_a_dispatched_attempt_cannot_carry_a_result(self) -> None:
-        with pytest.raises(ValidationError, match="cannot carry a result"):
+        with pytest.raises(ValidationError, match="결과를 담을 수 없다"):
             ExecutionAttempt(
                 number=1,
                 execution_id="exec-m-1-0001",

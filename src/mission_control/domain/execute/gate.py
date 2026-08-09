@@ -73,8 +73,8 @@ def evaluate_execute_gate(*, state: ExecuteState, blueprint: Blueprint) -> Execu
             ExecuteGateBlocker(
                 condition=ExecuteGateBlockingCondition.ATTEMPT_OPEN,
                 detail=(
-                    f"attempt {open_attempt.number} for {open_attempt.ac_key} has no "
-                    "recorded result; its outcome is unknown"
+                    f"{open_attempt.ac_key}의 시도 {open_attempt.number}에 기록된 결과가 "
+                    "없다; 결과를 알 수 없다"
                 ),
             )
         )
@@ -85,7 +85,7 @@ def evaluate_execute_gate(*, state: ExecuteState, blueprint: Blueprint) -> Execu
             gate_blockers.append(
                 ExecuteGateBlocker(
                     condition=ExecuteGateBlockingCondition.CRITERION_UNEXECUTED,
-                    detail=f"criterion {criterion.key} has not been executed",
+                    detail=f"{criterion.key}가 아직 실행되지 않았다",
                 )
             )
         elif latest.status is AttemptStatus.EXECUTION_FAILED:
@@ -93,7 +93,7 @@ def evaluate_execute_gate(*, state: ExecuteState, blueprint: Blueprint) -> Execu
                 ExecuteGateBlocker(
                     condition=ExecuteGateBlockingCondition.CRITERION_FAILED,
                     detail=(
-                        f"criterion {criterion.key} failed on attempt {latest.number}: "
+                        f"{criterion.key}가 시도 {latest.number}에서 실패했다: "
                         f"{latest.error}"
                     ),
                 )

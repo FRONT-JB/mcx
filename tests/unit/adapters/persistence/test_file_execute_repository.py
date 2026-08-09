@@ -77,7 +77,7 @@ class TestStaleWrites:
 
 class TestFileSafety:
     async def test_unsafe_mission_id_is_rejected(self, repository: FileExecuteRepository) -> None:
-        with pytest.raises(ValueError, match="unsafe mission id"):
+        with pytest.raises(ValueError, match="쓸 수 없는 mission id"):
             await repository.load("../escape")
 
     async def test_file_is_owner_only(
