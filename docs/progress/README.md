@@ -544,7 +544,20 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
   필드). 로컬 실물도 있다 (`~/.local/bin/hermes`) — 실 검증이 가능하다.
 
 - [ ] Hermes를 reflect 단계에서 **어떻게 쓰는지** 깊이 조사 — 호출 계약,
-  프롬프트, 출력 스키마, 다른 backend와 다른 점
+  프롬프트, 출력 스키마, 다른 backend와 다른 점.
+  **2026-08-10 정정**: 앞 문단의 *"지정된 하네스는 Hermes"* 는 과했다 —
+  `orchestrator_stage.py`의 4단계 배치는 **아키텍처 문서의 의도**이고 코드는
+  3단 fallback이라 설정이 없으면 Hermes로 가지 않는다
+  (`stages.get(stage) or profile.default or orchestrator.runtime_backend`).
+  즉 우리 [ADR-0039](../adr/0039-stage-runtime-routing-table.md) 라우팅
+  테이블과 같은 물건이며 새 층이 아니다.
+  **사용자 결정 2026-08-10: 고정 여부는 Phase 10에서 실측 후 확정.**
+  진입 조건 — Wonder/Reflect를 **Hermes와 Claude로 각각 1회** 돌려 출력 품질·
+  비용·지연을 대조한다. 우리가 vendor를 고정한 두 번(텍스트=Claude,
+  실행=Codex)은 전부 도그푸딩 실측 뒤였고 Hermes는 실측이 0회다. 기다리는
+  비용은 0이다(라우팅 테이블이 이미 있어 나중 고정은 설정 한 줄).
+  배포 관점도 함께 본다 — Hermes는 별도 설치물이라 필수로 만들면 설치
+  의존이 claude+codex+hermes 셋이 된다
 - [ ] **자가개선 결과가 다음 작업에 연결되는 경로** 조사 —
   `evolution/loop.py`, `projector.py`, `parent_seed_id` lineage,
   `evolve_step` MCP tool. "무엇이 다음 세대의 입력이 되는가"의 전체 경로
