@@ -28,9 +28,11 @@ from mission_control.application.ports import (
     BriefRepository,
     ExecuteRepository,
     VerifyRepository,
+    WorkspaceRollback,
 )
 from mission_control.domain.blueprint.gate import evaluate_blueprint_gate
 from mission_control.domain.blueprint.spec import Blueprint
+from mission_control.domain.checkpoint import Rollback
 from mission_control.domain.errors import MissionControlError
 from mission_control.domain.execute.gate import evaluate_execute_gate
 from mission_control.domain.execute.state import ExecuteState
@@ -85,6 +87,9 @@ class RecoverService:
     execute: ExecuteService
     semantic_policy: SemanticPolicy
     policy: RecoverPolicy
+    #: 재투입 전에 잔해를 지우는 수단 (ADR-0047). 주입되지 않으면 되돌리지
+    #: 않는다 — 테스트와 대체 조립이 git을 요구받지 않는다.
+    rollback: WorkspaceRollback | None = None
 
     async def plan(self, *, mission_id: str) -> tuple[FailurePacket, ...]:
         """저장된 기록에서 실패 packet들을 파생한다. 읽기 전용이다."""
@@ -123,6 +128,22 @@ class RecoverService:
                 error_excerpt=candidate.error_excerpt,
                 change_approach=candidate.retries_used + 1 >= self.policy.retry_budget,
             ),
+        )
+
+    def rewind(self, *, mission_id: str) -> Rollback | None:
+        """실패한 시도의 잔해를 지우고 마지막 입증 지점으로 되돌린다 (ADR-0047).
+
+        **``dispatch_correction`` 앞에 부른다.** 잔해 위에서 재시도하면 다음
+        worker가 반쯤 만들어진 것을 물려받고, 그것이 실패의 원인인지 이전 시도의
+        찌꺼기인지 구분할 수 없게 된다.
+
+        순서를 강제하는 자리는 호출자(조율 계층)다 — upstream도 되돌리기를
+        Core가 아니라 루프 스크립트가 부른다 (findings §2).
+        """
+        if self.rollback is None:
+            return None
+        return self.rollback.to_last_proven(
+            self.execute.envelope.workspace, mission_id=mission_id
         )
 
     async def decide_gate(self, *, mission_id: str) -> RecoverGateDecision:

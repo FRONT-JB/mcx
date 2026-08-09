@@ -24,3 +24,18 @@ class Checkpoint:
     skipped: str | None = None
     #: 비밀 경로 규칙으로 스테이징에서 뺀 파일들 (ADR-0046 §4).
     excluded: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Rollback:
+    """마지막 입증 지점으로 되돌린 결과 (ADR-0047).
+
+    ``reverted``가 거짓이면 트리는 그대로다 — 되돌릴 지점이 없었거나 되돌리기
+    자체가 실패했다는 뜻이며, 어느 쪽인지는 ``skipped``에 남는다.
+    """
+
+    reverted: bool
+    #: 되돌아간 지점. 우리 브랜치의 커밋은 checkpoint뿐이므로 곧 HEAD다.
+    commit: str | None = None
+    #: 되돌리지 않은 이유. 실패는 미션을 죽이지 않으므로 여기로만 드러난다.
+    skipped: str | None = None

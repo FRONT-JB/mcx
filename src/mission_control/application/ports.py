@@ -30,7 +30,7 @@ from mission_control.domain.brief.requirement import (
     RequirementSection,
 )
 from mission_control.domain.brief.state import BriefState
-from mission_control.domain.checkpoint import Checkpoint
+from mission_control.domain.checkpoint import Checkpoint, Rollback
 from mission_control.domain.execute.state import ExecuteState
 from mission_control.domain.mechanical import MechanicalCommands
 from mission_control.domain.recover.packet import PreviousFailure
@@ -553,6 +553,16 @@ class MechanicalDetectionRequest(BaseModel):
     workspace: str
     #: (파일 이름, 발췌) 쌍. 비어 있으면 호출 자체를 하지 않는다.
     manifests: tuple[tuple[str, str], ...]
+
+
+class WorkspaceRollback(Protocol):
+    """실패한 시도의 잔해를 지우고 마지막 입증 지점으로 되돌리는 제한된 역할.
+
+    **실패가 예외로 올라오지 않는다** — 되돌리지 못한 것이 교정 재시도를 막지
+    않는다. 이유는 결과에 실려 사용자에게 보인다 (ADR-0047 §6).
+    """
+
+    def to_last_proven(self, workspace: str, *, mission_id: str) -> Rollback: ...
 
 
 class CheckpointRecorder(Protocol):

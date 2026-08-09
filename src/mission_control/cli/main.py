@@ -664,6 +664,15 @@ async def _dispatch_recover(
         # 교정도 변경을 만든다 — Execute와 같은 worktree를 재사용한다.
         with _isolated(layout, args.mission, workspace) as effective:
             service = composition.recover_service(layout, adapters, workspace=effective)
+            # 잔해 위에서 재시도하지 않는다 — 되돌리기가 재투입보다 먼저다
+            # (ADR-0047 §1). 순서를 정하는 자리가 조율 계층이라 여기 있다.
+            rewound = service.rewind(mission_id=args.mission)
+            if rewound is not None:
+                _note(
+                    f"rollback: {rewound.commit}로 되돌림"
+                    if rewound.reverted
+                    else f"rollback 없음: {rewound.skipped}"
+                )
             state = await service.dispatch_correction(mission_id=args.mission)
         show(state.attempts[-1])
         return 0

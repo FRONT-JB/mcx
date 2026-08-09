@@ -29,7 +29,7 @@
 | REDISPATCH_ALT_HARNESS (vendor 교체 재실행) | meta-harness 고유 수단 | **Phase 11**에서 재평가 — 다중 runtime 실물(OpenCode adapter)이 이연이라 그 전에는 대상이 없다 (2026-08-09) | 위 findings §2 |
 | lateral 전환 (persona 선택, 개입 예산 1회) | RecoveryPlanner | v1 미도입 — 접근 전환은 마지막 재시도의 지시문까지 | [ADR-0031](./0031-recover-v1-failure-and-retry-contract.md) §5, findings §5 |
 | OSCILLATION·NO_DRIFT·DIMINISHING_RETURNS 탐지 | 4패턴 해시·이력 기반 | v1은 SPINNING(동일 오류 3회)만 — 나머지는 실행 이력 축적 후 | findings §4 |
-| rollback / worktree 복구 | `core/worktree.py` | **Phase 9 실사용 진입** (2026-08-09 사용자 결정 — brownfield·worktree 격리·AC별 checkpoint 커밋과 한 묶음). 원래 시한 "workspace 관리(Phase 5)"는 Phase 5가 단발 실행 계약만 확정하고 지나가 낡았다 | [Open Questions §6](../research/OPEN_QUESTIONS.md) |
+| rollback / worktree 복구 | ~~`core/worktree.py`~~ → **정정 2026-08-09**: 그 파일에 되돌리기는 없다. 실제 위치는 `scripts/ralph.sh`(파일)와 `core/lineage.py`(계보) 둘이다 ([ROLLBACK findings](../research/ROLLBACK_UPSTREAM_FINDINGS.md) §0) | **해소 2026-08-09** ([ADR-0047](./0047-rollback-to-the-last-proven-point.md) Proposed) — 재투입 전 마지막 입증 지점으로 되돌린다. 태그 없이 HEAD가 지점이며, dirty 가드는 격리·checkpoint가 대신하므로 이식하지 않는다 | [Open Questions §6](../research/OPEN_QUESTIONS.md) |
 | cancelled 상태 | 존재 | **Phase 9로 재지정** (2026-08-09, Phase 7 종료 검토 — Phase 7 시한 무처분 도과). Recover 쪽 대가가 특히 크다: 취소 오류 문자열이 상수라 3회 취소가 `STALL` 오판을 만든다 ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §2.3) | [ADR-0025](./0025-execute-deliberate-divergences.md) 보류와 같은 시점 |
 
 ### 미확인 — 대조하지 못했다. "차이 없음"이 아니다

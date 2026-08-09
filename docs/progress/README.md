@@ -470,7 +470,21 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   커밋 후 트리가 깨끗하므로 상태를 만들지 않는다(ADR-0045 §2와 같은 판단).
   정책 스위치는 만들지 않았다: upstream이 `none` 기본값으로 막는 위험(사용자
   checkout 오염)을 ADR-0045가 **구조로** 막았다
-- [ ] rollback 범위 (ADR-0032 보류 해제)
+- [-] rollback 범위 — **2026-08-09 조사·구현 완료, ADR 승인 대기**
+  ([ROLLBACK findings](../research/ROLLBACK_UPSTREAM_FINDINGS.md),
+  [ADR-0047](../adr/0047-rollback-to-the-last-proven-point.md) Proposed,
+  878 tests). **조사가 ADR-0032의 근거 포인터를 정정했다** — `core/worktree.py`에
+  되돌리기는 없고, 파일 되돌리기는 Core가 아니라 `scripts/ralph.sh`에 있다.
+  범위는 **마지막 입증 지점**이고 시점은 **재투입 직전**이다(잔해 위에서
+  재시도하면 실패 원인이 새 시도의 것인지 이전 찌꺼기인지 섞인다). 태그는
+  도입하지 않았다(사용자 결정) — 브랜치의 커밋이 checkpoint뿐이라 **HEAD가 곧
+  upstream의 "직전 성공 세대 태그"** 이고, 세대가 없는 v1에는 고를 지점이 없다.
+  `reset --hard`가 아니라 upstream 세 걸음(`checkout HEAD -- .`·`reset HEAD`·
+  `clean -fd`, `-x` 없음)이라 커밋 이력과 `.gitignore` 대상이 남는다.
+  **dirty 가드는 이식하지 않았다** — 옮기면 실패 후 worktree가 늘 dirty라
+  영원히 발동하지 않으며, 그 가드가 지키려던 것(사용자 미커밋 변경 보호)을
+  격리(0045)와 checkpoint(0046)가 이미 지킨다. **둘 중 하나가 무너지면 이
+  divergence의 근거가 사라진다**
 - [ ] `changed_files` 수집 (ADR-0029 보류 — git 기반이라 이 자리)
 - [ ] **canonical event 층 + 스트리밍 생산자** — Phase 5 시한을 무처분 도과한
   항목이다 (2026-08-09 확인, [ADR-0027](../adr/0027-telemetry-layers-and-v1-schema.md)

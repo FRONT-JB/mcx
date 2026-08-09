@@ -29,6 +29,7 @@ from mission_control.domain.brief.closure import (
     ClosureSeverity,
 )
 from mission_control.domain.brief.state import BriefState
+from mission_control.domain.checkpoint import Rollback
 from mission_control.domain.execute.state import CapabilityEnvelope
 from mission_control.domain.recover.gate import RecoverGateBlockingCondition
 from mission_control.domain.recover.packet import FailureSource, RecoverPolicy
@@ -117,8 +118,20 @@ class ScriptedRuntime:
         return self.outcomes[index]
 
 
+class RecordingRollback:
+    """되돌리기 요청을 기록만 하는 대역 — git을 요구하지 않는다."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    def to_last_proven(self, workspace: str, *, mission_id: str) -> Rollback:
+        self.calls.append((workspace, mission_id))
+        return Rollback(reverted=True, commit="abc1234")
+
+
 def _services(
     *outcomes: ExecutionOutcome,
+    rollback: RecordingRollback | None = None,
 ) -> tuple[RecoverService, ExecuteService, InMemoryRepository, InMemoryRepository, ScriptedRuntime]:
     briefs = InMemoryRepository()
     briefs.states["m-1"] = _cleared_brief()
@@ -142,6 +155,7 @@ def _services(
         execute=execute_service,
         semantic_policy=SemanticPolicy.verify_v1(),
         policy=RecoverPolicy.recover_v1(),
+        rollback=rollback,
     )
     return recover, execute_service, executes, verifies, runtime
 
@@ -257,3 +271,30 @@ class TestCorrection:
 
         decision = await recover.decide_gate(mission_id="m-1")
         assert decision.outcome == "CLEAR"
+
+
+class TestRewind:
+    """되돌리기는 재투입보다 먼저다 (ADR-0047 §1)."""
+
+    def test_nothing_happens_without_a_rollback(self) -> None:
+        recover, _, _, _, _ = _services()
+
+        assert recover.rewind(mission_id="m-1") is None
+
+    def test_it_rewinds_where_the_execution_runs(self) -> None:
+        rollback = RecordingRollback()
+        recover, _, _, _, _ = _services(rollback=rollback)
+
+        result = recover.rewind(mission_id="m-1")
+
+        assert result is not None and result.reverted
+        assert rollback.calls == [(ENVELOPE.workspace, "m-1")]
+
+    def test_rewinding_does_not_dispatch(self) -> None:
+        """되돌리기와 재투입은 별개 단계다 — 순서는 조율 계층이 정한다."""
+        rollback = RecordingRollback()
+        recover, _, _, _, runtime = _services(rollback=rollback)
+
+        recover.rewind(mission_id="m-1")
+
+        assert runtime.requests == []

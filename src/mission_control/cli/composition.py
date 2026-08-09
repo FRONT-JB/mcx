@@ -53,6 +53,7 @@ from mission_control.adapters.verification.mechanical_detection import (
     VerifiedMechanicalDetector,
 )
 from mission_control.adapters.workspace.checkpoint import GitCheckpointRecorder
+from mission_control.adapters.workspace.rollback import GitRollback
 from mission_control.application.blueprint_service import BlueprintService
 from mission_control.application.brief_service import BriefService
 from mission_control.application.execute_service import ExecuteService
@@ -287,4 +288,6 @@ def recover_service(layout: StateLayout, adapters: Adapters, *, workspace: str) 
         execute=execute_service(layout, adapters, workspace=workspace, stage=Stage.RECOVER),
         semantic_policy=SEMANTIC_POLICY,
         policy=RECOVER_POLICY,
+        # 재투입 전에 잔해를 지운다 (ADR-0047).
+        rollback=GitRollback(),
     )
