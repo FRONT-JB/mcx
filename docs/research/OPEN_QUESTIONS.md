@@ -158,8 +158,14 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       "Core가 actor를 기록할 것인가, skill이 사용자 확인을 보증할 것인가"다
       ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §1.7).
 - [ ] user-edited YAML을 지원할지 결정한다.
-- [ ] **결정적 품질 gate(upstream `GradeGate`)의 대응물을 도입한다.** →
-      **시한 지정 (2026-08-09, 사용자 결정): Phase 8 합성 계층.**
+- [-] **결정적 품질 gate(upstream `GradeGate`)의 대응물을 도입한다.** →
+      **2026-08-09 조사·구현 ([ADR-0043](../adr/0043-deterministic-blueprint-quality-floor.md),
+      Proposed).** 조사가 아래 기술을 좁혔다 — upstream의 결정적 층이 실제로
+      보는 것은 섹션 단위 충족 여부이고 그것은 `check_scope`가 이미 한다.
+      등급·점수는 이식하지 않았고(판정 어휘가 둘이 된다), 새로 막는 것은
+      **확인 수단이 하나도 없는 Blueprint** 하나다 — 이 축은 upstream 대응물
+      없는 발명이다. **잔여: 부분 커버리지 처분(§4) — 표시만/경고/임계값 중
+      선택, 실사용 관측 전에는 표시만 권고.**
       upstream의 Seed 품질 방어는 두 층이다 — LLM 채점(우리 ADR-0019 QA)과
       `auto/grading.py`의 **결정적** gate(`may_run = grade == A and not
       blockers`, gap 개수·가정 개수로 coverage·risk를 계산). 우리에겐 구조

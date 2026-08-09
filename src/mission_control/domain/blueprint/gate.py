@@ -31,6 +31,10 @@ class BlueprintGateBlockingCondition(StrEnum):
     APPROVAL_MISSING = "approval_missing"
     APPROVAL_STALE = "approval_stale"
     BRIEF_REVISION_STALE = "brief_revision_stale"
+    #: 확인 수단이 있는 수용 기준이 하나도 없다 (ADR-0043 §3). 이 상태로
+    #: 진행하면 mechanical 층이 돌 것이 없어 공허하게 통과하고,
+    #: ``MISSION COMPLETE``가 semantic 판정 하나에만 얹힌다.
+    NO_VERIFIABLE_CRITERION = "no_verifiable_criterion"
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +56,11 @@ class BlueprintGateDecision:
     brief_revision: int
     gate_blockers: tuple[BlueprintGateBlocker, ...]
     next_destination: Stage | None
+    #: 확인 수단이 있는 수용 기준의 수와 전체 수 (ADR-0043 §4). 부분 커버리지는
+    #: **막지 않는다** — 임계값에 근거가 없다. 대신 세어서 드러내, 사용자가
+    #: 모르고 지나치지 않게 한다.
+    verifiable_criteria: int = 0
+    total_criteria: int = 0
 
     @property
     def blocking_reasons(self) -> tuple[str, ...]:
@@ -103,6 +112,19 @@ def evaluate_blueprint_gate(*, state: BlueprintState, brief_revision: int) -> Bl
             )
         )
 
+    criteria = state.current.acceptance_criteria
+    verifiable = sum(1 for item in criteria if item.is_mechanically_verifiable)
+    if criteria and verifiable == 0:
+        gate_blockers.append(
+            BlueprintGateBlocker(
+                condition=BlueprintGateBlockingCondition.NO_VERIFIABLE_CRITERION,
+                detail=(
+                    f"none of the {len(criteria)} acceptance criteria carry a means of "
+                    "mechanical verification — completion could not be declared on evidence"
+                ),
+            )
+        )
+
     cleared = not gate_blockers
     return BlueprintGateDecision(
         outcome="CLEAR" if cleared else "HOLD",
@@ -110,6 +132,8 @@ def evaluate_blueprint_gate(*, state: BlueprintState, brief_revision: int) -> Bl
         brief_revision=brief_revision,
         gate_blockers=tuple(gate_blockers),
         next_destination=Stage.EXECUTE if cleared else None,
+        verifiable_criteria=verifiable,
+        total_criteria=len(criteria),
     )
 
 

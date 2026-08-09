@@ -364,10 +364,19 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 - [ ] **worker 재귀 차단** — 이 Phase가 `mcx-mcp`를 host·worker 설정에 등록해
   경로를 실제로 연다. 결정 대상은 profile 축 도입 vs
   `codex exec --ignore-user-config` ([Open Questions §8](../research/OPEN_QUESTIONS.md))
-- [ ] 결정적 품질 gate (upstream `GradeGate` 대응물 — 사용자 결정
-  2026-08-09): LLM 채점과 별개로 계산만으로 등급을 매기고 미달 Blueprint의
-  실행을 막는 층. upstream 위치가 합성 계층(`auto/grading.py`)이라 이 Phase
-  소관이다 ([SEED findings §11](../research/SEED_UPSTREAM_FINDINGS.md))
+- [-] 결정적 품질 gate — **2026-08-09 조사·구현, §4 한 항목 결정 대기**
+  ([ADR-0043](../adr/0043-deterministic-blueprint-quality-floor.md), Proposed).
+  조사가 전제를 좁혔다: upstream의 결정적 층이 실제로 보는 것은 **섹션 단위로
+  필수 칸이 채워졌는가**이고(`gap_detector.py`), 그것은 우리 `check_scope`가
+  이미 하는 일이다. 따라서 **등급 A/B/C와 점수 사전은 이식하지 않았다** —
+  `CLEAR`/`HOLD` + `blocking_reasons`가 이미 같은 일을 하고, 더하면 "왜 못
+  가는가"의 답이 두 군데가 된다. 새로 막는 것은 하나다: **확인 수단이 하나도
+  없는 Blueprint**(`NO_VERIFIABLE_CRITERION`). `unverifiable_criteria`는 이미
+  계산되고 있었으나 **어떤 Gate도 소비하지 않았다** — 전 AC가 확인 수단이
+  없으면 mechanical 층이 공허하게 통과하고 `MISSION COMPLETE`가 semantic 판정
+  하나에 얹힌다. 이 축은 **upstream 대응물 없는 발명**이며(upstream의
+  `testability`는 섹션 단위) 그렇게 표시했다. 위치는 Core — 층 이동이다
+  (upstream은 `auto/`). 부분 커버리지는 막지 않고 세어서 드러낸다(§4 결정 대기)
 - [x] skill 작성 + plugin manifest (Claude·Codex 양쪽 MCP 클라이언트) —
   2026-08-09. skill 6종(`mcx` 우산 + Stage 5종), `.claude-plugin/plugin.json`·
   `.codex-plugin/plugin.json`이 **같은 `./skills/`와 같은 `./.mcp.json`**을

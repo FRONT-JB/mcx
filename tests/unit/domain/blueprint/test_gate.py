@@ -85,6 +85,68 @@ class TestHold:
         assert all(isinstance(reason, str) and reason for reason in decision.blocking_reasons)
 
 
+def _approved_with(*criteria: AcceptanceCriterion) -> BlueprintState:
+    blueprint = _blueprint().model_copy(update={"acceptance_criteria": criteria})
+    state = BlueprintState.start(blueprint=blueprint)
+    state = state.record_qa(assessment=QaAssessment(score=0.92), policy=POLICY)
+    return state.approve(statement="이대로 진행", policy=POLICY)
+
+
+class TestVerifiabilityFloor:
+    """확인 수단이 하나도 없는 Blueprint는 진행하지 못한다 (ADR-0043 §3)."""
+
+    def test_criteria_with_no_means_of_verification_hold(self) -> None:
+        """mechanical 층이 돌 것이 없으면 완료를 증거로 선언할 수 없다."""
+        state = _approved_with(
+            AcceptanceCriterion(description="사용하기 편하다"),
+            AcceptanceCriterion(description="빠르다"),
+        )
+
+        decision, conditions = _conditions(state)
+
+        assert decision.outcome == "HOLD"
+        assert BlueprintGateBlockingCondition.NO_VERIFIABLE_CRITERION in conditions
+
+    def test_one_verifiable_criterion_is_enough(self) -> None:
+        """부분 커버리지는 막지 않는다 — 임계값에 근거가 없다 (§4)."""
+        state = _approved_with(
+            AcceptanceCriterion(description="사용하기 편하다"),
+            AcceptanceCriterion(description="테스트가 통과한다", verify_command="pytest"),
+        )
+
+        decision, conditions = _conditions(state)
+
+        assert BlueprintGateBlockingCondition.NO_VERIFIABLE_CRITERION not in conditions
+        assert decision.outcome == "CLEAR"
+
+    def test_the_counts_are_carried_even_when_nothing_is_blocked(self) -> None:
+        """막지 않는 대신 세어서 드러낸다 (§4)."""
+        state = _approved_with(
+            AcceptanceCriterion(description="사용하기 편하다"),
+            AcceptanceCriterion(description="테스트가 통과한다", verify_command="pytest"),
+            AcceptanceCriterion(description="파일이 생긴다", expected_artifacts=("out.txt",)),
+        )
+
+        decision, _ = _conditions(state)
+
+        assert (decision.verifiable_criteria, decision.total_criteria) == (2, 3)
+
+    def test_approval_does_not_clear_it(self) -> None:
+        """승인은 확인 수단을 만들어 주지 않는다."""
+        state = _approved_with(AcceptanceCriterion(description="사용하기 편하다"))
+
+        _, conditions = _conditions(state)
+
+        assert BlueprintGateBlockingCondition.NO_VERIFIABLE_CRITERION in conditions
+
+    def test_the_reason_says_what_is_missing(self) -> None:
+        state = _approved_with(AcceptanceCriterion(description="사용하기 편하다"))
+
+        decision, _ = _conditions(state)
+
+        assert "mechanical verification" in " ".join(decision.blocking_reasons)
+
+
 class TestTransition:
     def test_clear_moves_to_execute(self) -> None:
         state = _approved()
