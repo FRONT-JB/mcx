@@ -423,6 +423,16 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       [ADR-0033](../adr/0033-first-runtime-adapter-contract.md) adapter 계약
       변경이자 실행 모델 축이라 구현 편의로 확정하지 않는다. **시한 Phase 8**
       ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §2.2).
+- [ ] **Verify lineage 요구와 brownfield가 양립하는지 결정한다 (2026-08-09
+      등록, [ADR-0042](../adr/0042-skill-and-core-ownership-boundary.md) §8).**
+      [ADR-0026](../adr/0026-verify-entry-requires-lineage.md)은 Verify 진입에
+      Execute Gate `CLEAR`를 요구하고, 위 항목의 결정이 *"기록 요구를 유지한 채"*
+      내려져야 한다는 제약까지 걸어 뒀다. 그런데 **Phase 9 brownfield는 본래
+      루프 밖 코드를 다루는 일**이다 — 기존 코드베이스의 코드는 우리 Execute가
+      만들지 않았다. 두 요구가 그대로면 brownfield에서 Verify를 쓸 수 없다.
+      ADR-0026의 근거(upstream 실물 사고 §12.3 — 기록 없는 작업이 평가를
+      통과했다)는 여전히 유효하므로 요구를 그냥 푸는 것은 답이 아니다. **시한
+      Phase 9 진입 전.**
 - [ ] **tool description을 무엇으로 채울지 결정한다 (2026-08-09 등록).** 현재는
       `f"mcx {stage} {verb}"`, 즉 도구 이름의 반복이라 host LLM이 29개 중
       무엇을 부를지 고를 근거가 없다. 원인은 파생 원천인 CLI 하위 파서에

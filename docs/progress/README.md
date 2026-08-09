@@ -344,8 +344,17 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 "skill 래퍼와 manifest만 얹으면 된다"(Open Questions §8 원문)가 같은 문서
 §2의 조사 결과와 충돌함을 확인해 정정했다.
 
-- [ ] upstream skills 계층 조사 — 합성 규칙의 실제 내용과 CLI/MCP와의 경계
-- [ ] skill 계층 ADR — 무엇이 skill 소유이고 무엇이 Core 소유인가.
+- [x] upstream skills 계층 조사 — 2026-08-09 완료
+  ([SKILLS findings](../research/SKILLS_UPSTREAM_FINDINGS.md)). plugin은 3층·
+  host 둘(Claude Code·Codex), skill이 capability 계약을 선언하고, QA 루프·
+  User Adoption Gate·감사 기록·Core 판정 재감사가 전부 skill 소유다. 취소는
+  CLI 직접, 동시 쓰기 재확인은 대응물 없음, 재귀 차단은 미확인
+- [-] skill 계층 ADR — 무엇이 skill 소유이고 무엇이 Core 소유인가.
+  **초안 작성 완료, 사용자 결정 2건 대기**
+  ([ADR-0042](../adr/0042-skill-and-core-ownership-boundary.md), Proposed):
+  재귀 차단 레버(§6)와 Fact Resolver 폐기(§7). 같은 ADR §8이 우리 "upstream
+  보다 강하다" 주장 8건을 재대조해 3 성립·2 정당화 만료·1 과장 정정으로
+  처분했다
   **Phase 7 종료 검토가 이 ADR이 답해야 할 항목 5개를 구체적으로 채웠다**
   ([progress 0007](./0007_MCP_CONTROL_SURFACE.md) §3): worker 재귀 경계,
   stale write 재확인의 중계, tool description, QA revision 제시, 승인 actor.
@@ -693,10 +702,19 @@ host가 900초까지 블로킹된 채 취소 수단이 없었다 — 고침), �
 tool description이 도구 이름의 반복, 그리고 미이행을 담은 채 "구현 완료"로
 기록돼 있던 체크리스트.
 
-다음 검증 가능한 목표 한 개: **Phase 8 진입 전 skill/Core 경계 ADR** —
-"무엇이 skill 소유이고 무엇이 Core 소유인가"
-([Open Questions §8](../research/OPEN_QUESTIONS.md)). Phase 7 종료 검토가 이
-ADR이 답해야 할 항목 5개를 채워 두었다.
+skill/Core 경계는 2026-08-09 조사·초안 작성했다
+([SKILLS findings](../research/SKILLS_UPSTREAM_FINDINGS.md),
+[ADR-0042](../adr/0042-skill-and-core-ownership-boundary.md) — Proposed).
+경계 원칙은 *"Core는 한 번의 판정, skill은 몇 번·어떤 순서로 부르고 무엇을
+묻는가"* 이고 판별 질문은 *"같은 입력에 항상 같은 답인가"* 다. 같은 작업에서
+사용자 지적으로 **우리 "upstream보다 강하다" 주장 8건을 전수 재대조**해
+3 성립·2 정당화 만료·1 과장 정정으로 처분했다 (ADR-0042 §8) — 대부분은
+강화가 아니라 **같은 의도를 다른 층에 놓은 것**이었고, 앞으로 층 이동은 강함이
+아니라 층 이동으로 기록한다.
+
+다음 검증 가능한 목표 한 개: **ADR-0042의 사용자 결정 2건**(재귀 차단 레버,
+Fact Resolver 폐기)을 받아 Accepted로 올린다. 그 뒤 Phase 8 구현(skill 작성 +
+plugin manifest)이 이어진다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

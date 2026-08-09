@@ -63,6 +63,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0039](./0039-stage-runtime-routing-table.md) | Stage→Runtime 라우팅 테이블 — 닫힌 Stage enum 키, lane별 backend 쌍(등록된 divergence: upstream은 stage당 backend 하나), 3단 해석, fail-fast 검증, 설정 표면 `config.toml`(ADR-0038 개정). ADR-0023의 미이행 약속 이행. | Accepted |
 | [0040](./0040-secret-redaction-boundaries.md) | Secret redaction — 프로필 둘(저장=자격증명만·경로 유지, host=자격증명+경로), lifecycle 기록은 마스킹이 아니라 거부(prompt·stdout·stderr가 자격증명과 같은 등급), 강제는 호출이 아니라 모델·쓰기 경계. Phase 7 진입 조건 해소. | Accepted |
 | [0041](./0041-mcp-control-surface-contract.md) | MCP control surface — tool은 CLI 명령과 1:1이며 `build_parser()`에서 파생, 호출은 같은 `dispatch`를 지난다(등록된 divergence: upstream은 반대 방향). exit 2(HOLD)는 `is_error=false`. job은 원장에서 유도하고 별도 저장소를 두지 않는다. 취소는 디스크 마커 + runtime 관측. transport는 stdio, SDK는 optional extra. | Accepted |
+| [0042](./0042-skill-and-core-ownership-boundary.md) | skill/Core 소유 경계 — Core는 "한 번의 판정", skill은 "몇 번·어떤 순서로 부르고 무엇을 묻는가". 판별 질문은 "같은 입력에 항상 같은 답인가". 사용자에게 묻는 것은 전부 skill이고 Core는 드러내기만 한다. 승인 actor는 Core에 넣지 않고 skill이 결정 흔적을 남긴다. QA 루프 divergence는 유지하되 대가를 명시. **재귀 차단 레버와 Fact Resolver 폐기는 결정 대기.** | Proposed |
 
 ## Template
 

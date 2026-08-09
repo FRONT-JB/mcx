@@ -61,9 +61,21 @@ run_shell · refine_answer · maintain_ledger · run_closure_gate · restate_goa
 
 **우리와의 대조 (등록된 divergence, [ADR-0019](../adr/0019-blueprint-qa-loop.md)
 §1).** 우리는 QA 루프를 Core에 뒀다. 실질 차이는 수치가 아니라 **수정의
-경로**다 — upstream의 revision은 main session의 YAML 직접 편집이라 어떤 검사도
-지나지 않고, 우리 `blueprint revise`는 Core의 범위 재검사(제약·Non-goal 원문
-보존)를 지난다. 우리 쪽이 강제가 더 세다.
+경로**다 — upstream의 revision은 main session의 YAML 직접 편집이고, 우리
+`blueprint revise`는 Core의 범위 재검사(제약·Non-goal 원문 보존)를 지난다.
+
+> **2026-08-09 정정.** 이 문단은 처음에 *"우리 쪽이 강제가 더 세다"* 로 끝났다.
+> 과장이다. upstream의 편집이 무검사인 것이 아니라 **검사 지점이 다르다** —
+> Restate의 규칙(*"수락한 항목만, 처음부터 다시 쓰지 말 것, 이미 맞던 필드를
+> 잃지 말 것"*)은 host에 대한 지시이고, 실제 방어는 **다음 QA 라운드**다. 우리
+> 범위 재검사는 다른 종류의 검사이며, 더 세다는 대가로 upstream에 있는 경로
+> 하나를 닫았다 — 제약·Non-goal의 verbatim 잠금 때문에 **QA가 제약을 지적해도
+> 실행할 수 없다**. 도그푸딩 0001에서 실제로 관측됐고
+> ([DOGFOODING_0001 §3.4](./DOGFOODING_0001.md)), upstream은 같은 자리에서
+> Socrates·lateral 제안이 user gate를 거쳐 제약을 수정할 수 있다
+> ([ADR-0035](../adr/0035-dogfooding-cost-parity-dispositions.md) 대조표 —
+> 보상 조치는 §4). **"더 세다"가 아니라 "다른 것을 막고 다른 것을 잃었다"가
+> 정확하다.**
 
 ## 4. User Adoption Gate — 질문의 **형태까지** skill이 규정한다
 
