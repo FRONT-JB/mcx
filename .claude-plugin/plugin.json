@@ -1,0 +1,17 @@
+{
+  "name": "mcx",
+  "description": "Mission Control — coordinates AI coding missions. Executed is not verified.",
+  "author": {
+    "name": "FRONT-JB"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mission",
+    "specification",
+    "gate",
+    "evidence",
+    "verification"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

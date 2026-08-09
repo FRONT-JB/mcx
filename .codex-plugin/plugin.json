@@ -1,0 +1,30 @@
+{
+  "name": "mcx",
+  "description": "Mission Control — coordinates AI coding missions. Executed is not verified.",
+  "author": {
+    "name": "FRONT-JB"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mission",
+    "specification",
+    "gate",
+    "evidence",
+    "verification"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Mission Control",
+    "shortDescription": "Coordinates AI coding missions. Executed is not verified.",
+    "longDescription": "Remove ambiguity from an intent, freeze it as an approved specification, execute it under that specification, and let evidence decide whether it is done.",
+    "developerName": "FRONT-JB",
+    "category": "Development",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Start a mission for this idea.",
+      "Show me where my mission is stuck.",
+      "Verify the work against the approved specification."
+    ]
+  }
+}

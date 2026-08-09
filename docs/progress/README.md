@@ -368,8 +368,19 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   2026-08-09): LLM 채점과 별개로 계산만으로 등급을 매기고 미달 Blueprint의
   실행을 막는 층. upstream 위치가 합성 계층(`auto/grading.py`)이라 이 Phase
   소관이다 ([SEED findings §11](../research/SEED_UPSTREAM_FINDINGS.md))
-- [ ] skill 작성 + plugin manifest (Claude·Codex 양쪽 MCP 클라이언트)
-- [ ] 설치·발견·설정 UX ([Open Questions §8](../research/OPEN_QUESTIONS.md))
+- [x] skill 작성 + plugin manifest (Claude·Codex 양쪽 MCP 클라이언트) —
+  2026-08-09. skill 6종(`mcx` 우산 + Stage 5종), `.claude-plugin/plugin.json`·
+  `.codex-plugin/plugin.json`이 **같은 `./skills/`와 같은 `./.mcp.json`**을
+  가리킨다(upstream은 server가 runtime 플래그를 받아 둘로 나누지만 우리 라우팅은
+  `config.toml` 소유라 나눌 이유가 없다 — 등록된 divergence).
+  `tests/unit/skills/test_skill_artifacts.py` 23건이 **skill이 존재하지 않는
+  tool·인자를 부르지 못하게** 묶는다 — skill은 산문이라 컴파일되지 않으므로
+  이 검사가 유일한 강제다. 실제로 작성 중 오류 3건을 잡았다(QA 액션 어휘를
+  upstream 것으로 씀, `revise`의 `--draft-file` 누락, 임계 미달 승인의
+  `--accept-below-threshold` 누락)
+- [ ] 설치·발견·설정 UX ([Open Questions §8](../research/OPEN_QUESTIONS.md)) —
+  매니페스트는 있고 **설치 경로의 실물 검증이 없다**(`uvx --from
+  mission-control[mcp] mcx-mcp`는 배포된 패키지를 전제한다)
 
 ### Phase 9 — 실사용 진입: brownfield + 되돌리기 (사용자 결정 2026-08-09)
 
