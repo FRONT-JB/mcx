@@ -76,9 +76,25 @@ def _ready_audit() -> ClosureAudit:
     )
 
 
+def _with_success_criterion(state: BriefState) -> BriefState:
+    """승격되는 성공 조건 하나. ADR-0050 §3 이후 CLEAR의 필수 재료다."""
+    state = state.record_candidate(
+        section=RequirementSection.ACCEPTANCE_CRITERION,
+        text="댓글을 작성하면 목록에 보인다",
+        content_source=CandidateContentSource.USER_STATED,
+        resolution=CandidateResolution.CONFIRMED,
+        confirmation_authority=ConfirmationAuthority.USER,
+    )
+    return state
+
+
 def _ready_brief() -> BriefState:
-    """네 조건, closure 감사, 승인을 모두 갖춘 상태."""
-    state = _assessed(_answered_brief(), _assessment(), times=POLICY.required_stability)
+    """네 조건, closure 감사, 승인, 승격된 성공 조건을 모두 갖춘 상태."""
+    state = _assessed(
+        _with_success_criterion(_answered_brief()),
+        _assessment(),
+        times=POLICY.required_stability,
+    )
     return state.record_closure_audit(audit=_ready_audit()).approve(
         statement="이대로 진행해 주세요"
     )
@@ -173,7 +189,7 @@ class TestApprovalIsNotSufficient:
         assert GateBlockingCondition.UNPROMOTABLE_REQUIREMENT in _conditions(decision)
 
     def test_optional_unresolved_candidate_does_not_hold(self) -> None:
-        state = _answered_brief().record_candidate(
+        state = _with_success_criterion(_answered_brief()).record_candidate(
             section=RequirementSection.CONSTRAINT,
             text="버튼 색상 미정",
             content_source=CandidateContentSource.USER_STATED,
@@ -364,3 +380,46 @@ class TestClosureAuditGatesClear:
 
         assert decision.outcome == "HOLD"
         assert GateBlockingCondition.CLOSURE_AUDIT_STALE in _conditions(decision)
+
+
+class TestPromotedSuccessCriteriaAreRequired:
+    """ADR-0050 §3 — Guide §13.1이 요구하던 것을 구현이 하지 않았다.
+
+    도그푸딩 0004: clarity 0.96 · closure ready · 승인 있음인데 handoff의 칸이
+    전부 비어 `CLEAR`가 났고, 증상은 두 층 뒤 `no_acceptance_criteria`로 나왔다.
+    """
+
+    def test_no_promoted_success_criterion_holds(self) -> None:
+        state = _assessed(_answered_brief(), _assessment(), times=POLICY.required_stability)
+        state = state.record_closure_audit(audit=_ready_audit()).approve(statement="진행")
+
+        decision = evaluate_brief_gate(state=state, policy=POLICY)
+
+        assert decision.outcome == "HOLD"
+        assert GateBlockingCondition.REQUIREMENTS_MISSING in _conditions(decision)
+
+    def test_missing_constraints_alone_does_not_hold(self) -> None:
+        """사소한 미션에서 정당하게 빈다 — Gate가 계약보다 두꺼워지지 않는다."""
+        decision = evaluate_brief_gate(state=_ready_brief(), policy=POLICY)
+
+        assert decision.outcome == "CLEAR"
+        assert not any(
+            item.section is RequirementSection.CONSTRAINT
+            for item in _ready_brief().promotion.promoted
+        )
+
+    def test_an_unpromoted_success_criterion_does_not_count(self) -> None:
+        """기록만으로는 부족하다 — 승격된 것이라야 handoff의 칸에 들어간다."""
+        state = _answered_brief().record_candidate(
+            section=RequirementSection.ACCEPTANCE_CRITERION,
+            text="목록에 보인다",
+            content_source=CandidateContentSource.USER_STATED,
+            resolution=CandidateResolution.CONFIRMED,
+        )  # authority 없음 → OMIT
+        state = _assessed(state, _assessment(), times=POLICY.required_stability)
+        state = state.record_closure_audit(audit=_ready_audit()).approve(statement="진행")
+
+        decision = evaluate_brief_gate(state=state, policy=POLICY)
+
+        assert decision.outcome == "HOLD"
+        assert GateBlockingCondition.REQUIREMENTS_MISSING in _conditions(decision)

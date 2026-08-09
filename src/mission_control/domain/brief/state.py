@@ -24,6 +24,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityPolicy
 from mission_control.domain.brief.closure import ClosureAudit, ClosureAuditRecord
+from mission_control.domain.brief.derivation import (
+    DERIVED_AUTHORITY,
+    DERIVED_CONTENT_SOURCE,
+    DERIVED_REQUIRED,
+    DERIVED_RESOLUTION,
+    DerivedCandidate,
+    derive_from_answer,
+    derive_from_intent,
+)
 from mission_control.domain.brief.provenance import AnswerAuthority, BriefRound
 from mission_control.domain.brief.requirement import (
     CandidateContentSource,
@@ -105,8 +114,19 @@ class BriefState(BaseModel):
 
     @classmethod
     def start(cls, *, mission_id: str, initial_intent: str) -> BriefState:
-        """사용자의 원문 의도를 보존한 채 Brief를 시작한다."""
-        return cls(mission_id=mission_id, initial_intent=initial_intent)
+        """사용자의 원문 의도를 보존한 채 Brief를 시작한다.
+
+        의도는 **동시에 GOAL 후보가 된다** (ADR-0050 §1, upstream
+        ``initial-goal``). 후보 기록을 별도 명령에 맡기면 그것을 빠뜨린 채
+        Gate를 통과해 빈 handoff에 도달한다 — 도그푸딩 0004가 관측한 경로다.
+        """
+        state = cls(mission_id=mission_id, initial_intent=initial_intent)
+        derived = derive_from_intent(initial_intent)
+        if derived is None:
+            return state
+        return state.model_copy(
+            update={"candidates": (_as_candidate(derived, number=1),)}
+        )
 
     @property
     def has_current_approval(self) -> bool:
@@ -196,11 +216,21 @@ class BriefState(BaseModel):
                 ),
             )
 
+        # 결정 답변이 요구사항 어휘를 담고 있으면 후보가 함께 생긴다
+        # (ADR-0050 §1). observation은 사실이지 결정이 아니므로 어휘와 무관하게
+        # 건너뛴다 — upstream이 같은 자리에서 같은 이유로 건너뛴다.
+        candidates = self.candidates
+        if authority == "decision":
+            derived = derive_from_answer(answer)
+            if derived is not None:
+                candidates = (*candidates, _as_candidate(derived, number=len(candidates) + 1))
+
         return self.model_copy(
             update={
                 "revision": self.revision + 1,
                 "sequence": self.sequence + 1,
                 "rounds": rounds,
+                "candidates": candidates,
                 "assessment": None,
                 "stability_signal": 0,
                 "history": (*self.history, self._current_snapshot()),
@@ -357,3 +387,16 @@ class BriefState(BaseModel):
 
     def _current_snapshot(self) -> BriefRevisionSnapshot:
         return BriefRevisionSnapshot(revision=self.revision, rounds=self.rounds)
+
+
+def _as_candidate(derived: DerivedCandidate, *, number: int) -> RequirementCandidate:
+    """파생 재료를 저장 형태로. 값은 ADR-0050 §1이 고정한 것뿐이다."""
+    return RequirementCandidate(
+        number=number,
+        section=derived.section,
+        text=derived.text,
+        content_source=DERIVED_CONTENT_SOURCE,
+        resolution=DERIVED_RESOLUTION,
+        confirmation_authority=DERIVED_AUTHORITY,
+        required=DERIVED_REQUIRED,
+    )

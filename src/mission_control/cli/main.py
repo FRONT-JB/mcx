@@ -210,11 +210,11 @@ def build_parser() -> argparse.ArgumentParser:
         dest="verb", required=True
     )
     p = brief.add_parser("start", parents=[common], help="새 mission을 열고 초기 의도를 기록한다")
-    p.add_argument("intent", help="mission의 초기 의도")
+    p.add_argument("intent", help="mission의 초기 의도 (`-`로 시작하면 `--` 뒤에 둔다)")
     p.add_argument("--workspace", default=None, help="실행 workspace (기본: 현재 디렉터리)")
     brief.add_parser("ask", parents=[common], help="사용자에게 물을 질문 하나를 생성한다")
     p = brief.add_parser("answer", parents=[common], help="열린 질문에 대한 답을 기록한다")
-    p.add_argument("answer", help="질문에 대한 답변")
+    p.add_argument("answer", help="질문에 대한 답변 (`-`로 시작하면 `--` 뒤에 둔다)")
     p.add_argument("--authority", default="decision", choices=["decision", "observation"])
     p.add_argument(
         "--question", default=None, help="닫힌 질문 밖에서 온 질문(예: closure 차단 질문)"
@@ -223,7 +223,7 @@ def build_parser() -> argparse.ArgumentParser:
         "candidate", parents=[common], help="질문 답변 밖에서 온 요구사항 후보를 기록한다"
     )
     p.add_argument("--section", required=True, choices=[s.value for s in RequirementSection])
-    p.add_argument("--text", required=True)
+    p.add_argument("--text", required=True, help="후보 문장 (`-`로 시작하면 `--` 뒤에 둔다)")
     p.add_argument(
         "--source", default="user_stated", choices=[s.value for s in CandidateContentSource]
     )
@@ -241,7 +241,7 @@ def build_parser() -> argparse.ArgumentParser:
     brief.add_parser("assess", parents=[common], help="명확도를 채점하고 종료 조건 충족을 본다")
     brief.add_parser("audit", parents=[common], help="종료 감사 3-lane을 돌려 차단 질문을 받는다")
     p = brief.add_parser("approve", parents=[common], help="사용자 승인을 현재 revision에 기록한다")
-    p.add_argument("statement", help="승인 문장")
+    p.add_argument("statement", help="승인 문장 (`-`로 시작하면 `--` 뒤에 둔다)")
     brief.add_parser("gate", parents=[common], help="Blueprint 진입 가능 여부를 판정한다")
     brief.add_parser("handoff", parents=[common], help="승인된 Brief를 Blueprint 입력으로 투영한다")
 
@@ -259,7 +259,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = blueprint.add_parser(
         "approve", parents=[common], help="사용자 승인을 채점된 현재 revision에 기록한다"
     )
-    p.add_argument("statement", help="승인 문장")
+    p.add_argument("statement", help="승인 문장 (`-`로 시작하면 `--` 뒤에 둔다)")
     p.add_argument("--accept-below-threshold", action="store_true")
     blueprint.add_parser("gate", parents=[common], help="Execute 진입 가능 여부를 판정한다")
 

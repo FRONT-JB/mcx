@@ -214,6 +214,18 @@ async def _answered(service: BriefService, rounds: int = 3) -> BriefState:
     return state
 
 
+async def _with_success_criterion(service: BriefService) -> BriefState:
+    """승격되는 성공 조건 하나 — ADR-0050 §3 이후 CLEAR의 필수 재료다."""
+    return await service.record_candidate(
+        mission_id="m-1",
+        section=RequirementSection.ACCEPTANCE_CRITERION,
+        text="목록에 새 댓글이 보인다",
+        content_source=CandidateContentSource.USER_STATED,
+        resolution=CandidateResolution.CONFIRMED,
+        confirmation_authority=ConfirmationAuthority.USER,
+    )
+
+
 class TestStart:
     async def test_started_brief_is_persisted(
         self, service: BriefService, repository: InMemoryBriefRepository
@@ -550,6 +562,7 @@ class TestMaterialChangeInvalidatesAssessment:
 
     async def test_answer_resets_both(self, service: BriefService) -> None:
         await _answered(service)
+        await _with_success_criterion(service)
         await service.assess_clarity(mission_id="m-1")
         qualified = await service.assess_clarity(mission_id="m-1")
         await service.audit_closure(mission_id="m-1")
@@ -649,6 +662,7 @@ class TestCandidateEntryPoint:
 
     async def test_confirming_the_candidate_clears_the_gate(self, service: BriefService) -> None:
         await _answered(service)
+        await _with_success_criterion(service)
         await service.record_candidate(
             mission_id="m-1",
             section=RequirementSection.NON_GOAL,
@@ -659,7 +673,8 @@ class TestCandidateEntryPoint:
         )
         await service.resolve_candidate(
             mission_id="m-1",
-            number=1,
+            # 1은 ``brief start``가 파생한 goal, 2는 성공 조건이다 (ADR-0050 §1).
+            number=3,
             resolution=CandidateResolution.CONFIRMED,
             confirmation_authority=ConfirmationAuthority.USER,
         )
@@ -700,8 +715,14 @@ class TestCandidateEntryPoint:
         await service.ask_next_question(mission_id="m-1")
 
         sent = generator.requests[-1].requirement_candidates
-        assert [item.text for item in sent] == ["로그인 사용자만 작성", "알림을 보낼지 미정"]
+        # 첫 항목은 ``brief start``가 파생한 goal이다 (ADR-0050 §1).
+        assert [item.text for item in sent] == [
+            "댓글 기능을 추가하고 싶다",
+            "로그인 사용자만 작성",
+            "알림을 보낼지 미정",
+        ]
         assert [item.resolution for item in sent] == [
+            CandidateResolution.CONFIRMED,
             CandidateResolution.CONFIRMED,
             CandidateResolution.UNKNOWN,
         ]

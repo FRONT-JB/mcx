@@ -30,6 +30,12 @@ from mission_control.domain.brief.closure import (
     ClosureSeverity,
 )
 from mission_control.domain.brief.gate import next_stage_after_brief
+from mission_control.domain.brief.requirement import (
+    CandidateContentSource,
+    CandidateResolution,
+    ConfirmationAuthority,
+    RequirementSection,
+)
 from mission_control.domain.stage import Stage
 
 POLICY = ClarityPolicy.greenfield_v1()
@@ -99,6 +105,17 @@ def _service(root: Path) -> BriefService:
 
 
 async def _answer_the_minimum_rounds(service: BriefService) -> None:
+    # ADR-0050 §3 — 승격된 성공 조건이 없으면 CLEAR가 될 수 없다. 답변만으로는
+    # 칸이 채워지지 않는다는 것이 도그푸딩 0004가 관측한 지점이다. 후보 기록은
+    # material 변경이라 평가를 되돌리므로 **평가보다 먼저** 온다.
+    await service.record_candidate(
+        mission_id="m-1",
+        section=RequirementSection.ACCEPTANCE_CRITERION,
+        text="목록에 새 댓글이 보인다",
+        content_source=CandidateContentSource.USER_STATED,
+        resolution=CandidateResolution.CONFIRMED,
+        confirmation_authority=ConfirmationAuthority.USER,
+    )
     for answer in ("로그인 사용자만", "이번에는 작성과 조회만", "목록에 새 댓글이 보이면 완료"):
         await service.ask_next_question(mission_id="m-1")
         await service.record_answer(mission_id="m-1", answer=answer, authority="decision")

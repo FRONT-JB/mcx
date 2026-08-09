@@ -71,8 +71,9 @@ class TestRoundTrip:
         assert restored is not None
         assert restored.approval is not None
         assert restored.approval.revision == state.approval.revision  # type: ignore[union-attr]
-        assert len(restored.candidates) == 1
-        assert restored.candidates[0].resolution is CandidateResolution.UNKNOWN
+        # 파생된 초기 의도 goal + 수동 후보 (ADR-0050 §1)
+        assert len(restored.candidates) == 2
+        assert restored.candidates[-1].resolution is CandidateResolution.UNKNOWN
         assert restored.promotion.blockers != ()
 
     async def test_revision_history_survives(self, repository: FileBriefRepository) -> None:

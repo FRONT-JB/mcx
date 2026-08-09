@@ -31,6 +31,7 @@ from enum import StrEnum
 from typing import Literal
 
 from mission_control.domain.brief.clarity import ClarityPolicy, CompletionBlocker
+from mission_control.domain.brief.requirement import RequirementSection
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.errors import StaleGateDecisionError
 from mission_control.domain.stage import Stage
@@ -45,6 +46,7 @@ class GateBlockingCondition(StrEnum):
     APPROVAL_MISSING = "approval_missing"
     APPROVAL_STALE = "approval_stale"
     UNPROMOTABLE_REQUIREMENT = "unpromotable_requirement"
+    REQUIREMENTS_MISSING = "requirements_missing"
     CLOSURE_AUDIT_MISSING = "closure_audit_missing"
     CLOSURE_AUDIT_STALE = "closure_audit_stale"
     CLOSURE_BLOCKED = "closure_blocked"
@@ -157,6 +159,25 @@ def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGat
                 detail=(
                     f"{decision.reason.value} — "
                     f"[{decision.candidate.section.value}] {decision.candidate.text}"
+                ),
+            )
+        )
+
+    # Blueprint는 AC 없이는 검증 불가능한 물건이므로 AC의 부재는 언제나 결함이다
+    # (ADR-0050 §3). Guide §13.1이 이미 요구하던 것을 구현이 하지 않았고, 그
+    # 결과 "CLEAR인데 만들 수 없는" 상태가 도그푸딩 0004에서 관측됐다.
+    # constraints·non_goals는 사소한 미션에서 정당하게 비므로 막지 않는다.
+    if not any(
+        item.section is RequirementSection.ACCEPTANCE_CRITERION
+        for item in state.promotion.promoted
+    ):
+        gate_blockers.append(
+            GateBlocker(
+                condition=GateBlockingCondition.REQUIREMENTS_MISSING,
+                detail=(
+                    "승격된 성공 조건이 하나도 없다 — Blueprint가 검증할 것이 없다; "
+                    "`mcx brief candidate --section acceptance_criterion`으로 기록하고 "
+                    "`mcx brief resolve --authority user`로 확정한다"
                 ),
             )
         )

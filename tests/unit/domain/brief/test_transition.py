@@ -20,6 +20,12 @@ from mission_control.domain.brief.closure import (
     ClosureSeverity,
 )
 from mission_control.domain.brief.gate import evaluate_brief_gate, next_stage_after_brief
+from mission_control.domain.brief.requirement import (
+    CandidateContentSource,
+    CandidateResolution,
+    ConfirmationAuthority,
+    RequirementSection,
+)
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.errors import StaleGateDecisionError
 from mission_control.domain.stage import Stage
@@ -58,7 +64,14 @@ def _brief(*, rounds: int = 3) -> BriefState:
 
 
 def _clear_brief() -> BriefState:
-    state = _brief()
+    # ADR-0050 §3 — 승격된 성공 조건이 없으면 CLEAR가 될 수 없다.
+    state = _brief().record_candidate(
+        section=RequirementSection.ACCEPTANCE_CRITERION,
+        text="목록에 새 댓글이 보인다",
+        content_source=CandidateContentSource.USER_STATED,
+        resolution=CandidateResolution.CONFIRMED,
+        confirmation_authority=ConfirmationAuthority.USER,
+    )
     for _ in range(POLICY.required_stability):
         state = state.record_assessment(assessment=_assessment(), policy=POLICY)
     return state.record_closure_audit(audit=_ready_audit()).approve(

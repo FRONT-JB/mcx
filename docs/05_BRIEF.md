@@ -710,6 +710,11 @@ Brief Gate는 다음 조건을 모두 만족할 때만 `CLEAR`할 수 있다.
 - 승격할 수 없는 요구사항 후보가 없다. 충돌은 `required` 여부와 무관하게 막고,
   미해결·미확인·권위 부족은 `required`인 후보에서 막는다
   ([ADR-0015](./adr/0015-requirement-candidate-model.md)).
+- **승격된 성공 조건이 하나 이상 있다.** Blueprint는 AC 없이는 검증 불가능한
+  물건이므로 그 부재는 언제나 결함이다. constraints·non_goals는 사소한 미션에서
+  정당하게 빌 수 있으므로 막지 않는다
+  ([ADR-0050](./adr/0050-requirement-candidate-provenance.md) §3 — 이 줄은
+  2026-08-10까지 산문에만 있었고 구현이 검사하지 않았다).
 - clarity policy의 종료 후보 조건 네 가지를 모두 만족한다 (§11.1).
 - 현재 revision의 closure 감사가 존재하고 ready다 (§11.6,
   [ADR-0020](./adr/0020-brief-closure-audit.md)).

@@ -256,7 +256,7 @@ class TestGenerate:
 
         assert state.revision == 1
         assert state.current.brief_revision == briefs.states["m-1"].revision
-        assert state.current.goal == "댓글을 쓰고 볼 수 있다"
+        assert state.current.goal == "댓글 기능을 추가하고 싶다 / 댓글을 쓰고 볼 수 있다"
         assert state.current.non_goals == ("수정·삭제는 이번 범위 아님",)
         assert blueprints.states["m-1"] == state
 
@@ -266,7 +266,7 @@ class TestGenerate:
         await service.generate(mission_id="m-1")
 
         request = generator.requests[0]
-        assert request.goals == ("댓글을 쓰고 볼 수 있다",)
+        assert request.goals == ("댓글 기능을 추가하고 싶다", "댓글을 쓰고 볼 수 있다")
         assert request.constraints == ("로그인 사용자만 작성",)
         assert request.success_criteria == ("목록 맨 위에 새 댓글이 보인다",)
 

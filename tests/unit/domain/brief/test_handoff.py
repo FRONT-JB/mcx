@@ -124,7 +124,9 @@ class TestSectionsAreSeparated:
     def test_each_section_lands_in_its_own_list(self) -> None:
         handoff = _handoff_of(_cleared_brief())
 
-        assert handoff.goals == ("댓글을 쓰고 볼 수 있다",)
+        # 첫 칸은 ``brief start``가 파생한 초기 의도다 (ADR-0050 §1) — 수동
+        # 후보보다 먼저 등록되므로 순서가 고정된다.
+        assert handoff.goals == ("댓글 기능을 추가하고 싶다", "댓글을 쓰고 볼 수 있다")
         assert handoff.constraints == ("로그인 사용자만 작성",)
         assert handoff.non_goals == ("수정·삭제는 이번 범위 아님",)
         assert handoff.success_criteria == ("목록 맨 위에 새 댓글이 보인다",)
