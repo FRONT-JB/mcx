@@ -1,6 +1,7 @@
 # ADR 0045 — worktree 격리 계약: 미션은 사용자의 checkout을 건드리지 않는다
 
-- Status: **Proposed**
+- Status: **Accepted** (사용자 승인 2026-08-09 — 우회 플래그 없음 · 항상 격리 ·
+  `mcx cleanup` 도입 · 자동 병합 미도입)
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0004](./0004-stage-capability-boundaries.md)
   (Stage별 최소 capability), [ADR-0024](./0024-execute-v1-dispatch-contract.md) §6
@@ -87,17 +88,23 @@ worktree는 HEAD에서 분기하므로 커밋되지 않은 변경은 worktree에
 거부하고, 오류 메시지가 해결 방법을 직접 준다. **이미 있는 worktree를 재사용할
 때는 검사하지 않는다** — upstream도 `prepare`에만 있고 `restore`에는 없다.
 
-`--allow-dirty` 같은 우회 플래그는 만들지 않는다. upstream의 `allow_dirty=True`
-호출자는 Auto와 resume이며 우리에겐 둘 다 없다 (resume은 Phase 9 미도입).
-요구가 생기면 그때 만든다.
+`--allow-dirty` 같은 우회 플래그는 만들지 않는다 (**사용자 결정 2026-08-09 —
+거부**). upstream의 `allow_dirty=True` 호출자는 Auto와 resume이며 우리에겐 둘 다
+없다 (resume은 Phase 9 미도입). 우회를 주면 *"AI가 내가 방금 쓴 코드를 못 본다"*
+는 상황이 조용히 허용되고, 그 결과는 나중에 병합 충돌로만 드러난다.
 
 빈 저장소도 거부한다 — 분기할 HEAD가 없다.
 
 ### 4. git 저장소가 아니면 **격리하지 않고 그대로 간다**
 
 upstream `maybe_prepare_task_workspace`와 같다 — git 저장소가 아니면 `None`이고
-호출자는 원래 디렉토리를 쓴다. 켜고 끄는 설정 키는 만들지 않는다. 설정이 아니라
-**사실에 대한 반응**이다.
+호출자는 원래 디렉토리를 쓴다.
+
+**켜고 끄는 설정 키는 만들지 않는다** (사용자 결정 2026-08-09 — 무조건 격리).
+upstream에는 `use_worktrees`가 있지만 우리 `config.toml`은 라우팅만 받으며
+(ADR-0039 §5), 격리 여부는 설정이 아니라 **사실에 대한 반응**이다. 스위치를 두면
+같은 명령이 같은 저장소에서 다르게 동작하고, 사용자는 어느 쪽이었는지를 결과를
+보고 역추적해야 한다.
 
 ### 5. 되돌려 합치지 않는다 — 대신 **어디에 있는지 반드시 보인다**
 
@@ -247,8 +254,13 @@ mission에 속하지 않는 운용 명령이라 그 계약에 자리가 없다. 
   한다. **시한 Phase 9 종료 검토.**
 - **Auto가 run보다 덜 격리하는 이유** — upstream에서 전체 파이프라인의 기본은
   사용자 checkout이고 단발 실행의 기본은 격리다 (findings §8). 소스로는 이유를
-  알 수 없어 `upstream 미확인`이며, 우리 결정(§1, 항상 격리)이 그 반대편일
-  가능성이 남는다. **시한 Phase 9 종료 검토.**
+  알 수 없어 `upstream 미확인`이다. **우리는 항상 격리로 확정했고**(사용자 결정
+  2026-08-09) 이것이 upstream Auto의 반대편이라는 사실은 남는다 — 실사용에서
+  마찰이 관측되면 그때 이 미확인을 먼저 푼다. **시한 Phase 9 종료 검토.**
+- **깨끗한 checkout 요구의 마찰** — 우회 플래그를 두지 않기로 확정했으므로
+  (§3, 사용자 결정) 사용자는 매번 커밋하거나 stash한다. 이것이 실사용에서
+  얼마나 자주 걸리는지는 관측 대상이며, 잦다면 답은 플래그가 아니라 **명령이
+  stash를 제안하는 것**일 수 있다. **시한 Phase 9 종료 검토.**
 - **resume과의 관계** — [ADR-0033](./0033-first-runtime-adapter-contract.md) §6
   resume이 Phase 9로 재지정돼 있고, upstream은 저장된 workspace를 resume의
   권위로 삼는다 (findings §9). 우리는 유도하므로 같은 값이 나오지만, resume을

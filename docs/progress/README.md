@@ -432,9 +432,9 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   자리다. 검출은 `generate`가 미션당 한 번이므로 **한 번**이며, upstream이
   `mechanical.toml` 파일로 얻는 idempotency를 우리는 호출 지점 하나로 얻어
   캐시 파일이 없다 (ADR-0044 미결 해소)
-- [-] worktree 격리 — **2026-08-09 조사·구현 완료, ADR 승인 대기**
+- [x] worktree 격리 — **2026-08-09 완료**
   ([WORKTREE findings](../research/WORKTREE_UPSTREAM_FINDINGS.md),
-  [ADR-0045](../adr/0045-worktree-isolation-contract.md) Proposed, 832 tests).
+  [ADR-0045](../adr/0045-worktree-isolation-contract.md) Accepted, 844 tests).
   격리 단위는 **미션 하나**다 — upstream은 병렬 AC 실행기를 가지고도 AC마다
   만들지 않는다. 브랜치 `mcx/<mission_id>`, 자리
   `<state-dir>/worktrees/<repo>/<mission_id>`.
