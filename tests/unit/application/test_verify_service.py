@@ -165,6 +165,7 @@ class ScriptedRunner:
         self.executions = executions or {}
         self.missing = missing
         self.ran_commands: list[str] = []
+        self.ran_in: list[str] = []
         self.artifact_checks: list[tuple[str, ...]] = []
 
     async def missing_artifacts(
@@ -175,6 +176,7 @@ class ScriptedRunner:
 
     async def run(self, *, command: str, workspace: str, timeout_seconds: int) -> CommandExecution:
         self.ran_commands.append(command)
+        self.ran_in.append(workspace)
         return self.executions.get(command, CommandExecution(exit_code=0, output="ok"))
 
 
@@ -295,6 +297,17 @@ class TestRunMechanical:
         }
         assert runner.ran_commands == ["pytest -k list"]
         assert verifies.states["m-1"] == state
+
+    async def test_verification_runs_where_the_execution_ran(self) -> None:
+        """Verify는 Execute가 기록한 자리를 따라간다 (ADR-0045 Consequences).
+
+        격리가 걸리면 사용자의 checkout이 아니라 worktree에 변경이 있으므로,
+        검증이 따라가지 않으면 존재하지 않는 변경을 검사하게 된다.
+        """
+        service, _, _, runner, _ = _service()
+        await service.run_mechanical(mission_id="m-1")
+
+        assert runner.ran_in == [ENVELOPE.workspace]
 
     async def test_missing_artifacts_skip_the_command(self) -> None:
         """artifacts 검사가 명령 실행보다 먼저다 (ADR-0028 §3)."""

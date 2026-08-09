@@ -23,6 +23,7 @@ def _snapshot(**overrides: object) -> StatusSnapshot:
         "mission_id": MISSION,
         "intent": INTENT,
         "workspace": "/tmp/dogfood3/workspace",
+        "isolation": None,
         "complete": False,
         "completed_at": None,
         "current_stage": Stage.VERIFY,

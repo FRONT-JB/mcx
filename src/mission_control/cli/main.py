@@ -31,6 +31,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from mission_control.adapters.workspace import worktree
 from mission_control.cancellation import cancel_when
 from mission_control.cli import backend_profile, composition, status_render, status_view
 from mission_control.cli.calls import CallCounter
@@ -320,6 +321,24 @@ async def _require_workspace(layout: StateLayout, mission_id: str) -> str:
     return record.workspace
 
 
+@contextmanager
+def _isolated(layout: StateLayout, mission_id: str, workspace: str) -> Iterator[str]:
+    """변경을 만드는 명령의 실행 자리를 미션 전용 worktree로 옮긴다 (ADR-0045).
+
+    git 저장소가 아니면 원래 workspace가 그대로 나온다. 격리가 걸렸을 때는
+    **반드시 알린다** — 사용자의 checkout에는 아무 일도 일어나지 않으므로,
+    어디서 일어났는지 보이지 않으면 아무것도 안 한 것으로 읽힌다 (§5).
+    """
+    isolation = worktree.prepare(workspace, mission_id=mission_id, root=layout.worktrees)
+    if isolation is None:
+        yield workspace
+        return
+    _note(f"worktree: {isolation.workspace}")
+    _note(f"branch:   {isolation.branch} — 병합은 사용자가 결정한다")
+    with worktree.hold(isolation):
+        yield isolation.workspace
+
+
 async def _record_transition(
     layout: StateLayout, mission_id: str, *, stage: str, verb: str
 ) -> None:
@@ -570,11 +589,13 @@ async def _dispatch_execute(
     args: argparse.Namespace, layout: StateLayout, adapters: Adapters
 ) -> int:
     workspace = await _require_workspace(layout, args.mission)
-    service = composition.execute_service(layout, adapters, workspace=workspace)
     if args.verb == "next":
-        state = await service.dispatch_next(mission_id=args.mission)
+        with _isolated(layout, args.mission, workspace) as effective:
+            service = composition.execute_service(layout, adapters, workspace=effective)
+            state = await service.dispatch_next(mission_id=args.mission)
         show(state.attempts[-1])
     elif args.verb == "gate":
+        service = composition.execute_service(layout, adapters, workspace=workspace)
         decision = await service.decide_gate(mission_id=args.mission)
         show(decision)
         return 0 if decision.outcome == "CLEAR" else 2
@@ -609,12 +630,16 @@ async def _dispatch_recover(
     args: argparse.Namespace, layout: StateLayout, adapters: Adapters
 ) -> int:
     workspace = await _require_workspace(layout, args.mission)
+    if args.verb == "dispatch":
+        # 교정도 변경을 만든다 — Execute와 같은 worktree를 재사용한다.
+        with _isolated(layout, args.mission, workspace) as effective:
+            service = composition.recover_service(layout, adapters, workspace=effective)
+            state = await service.dispatch_correction(mission_id=args.mission)
+        show(state.attempts[-1])
+        return 0
     service = composition.recover_service(layout, adapters, workspace=workspace)
     if args.verb == "plan":
         show(await service.plan(mission_id=args.mission))
-    elif args.verb == "dispatch":
-        state = await service.dispatch_correction(mission_id=args.mission)
-        show(state.attempts[-1])
     elif args.verb == "gate":
         decision = await service.decide_gate(mission_id=args.mission)
         show(decision)

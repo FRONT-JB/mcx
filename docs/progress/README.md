@@ -432,8 +432,25 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   자리다. 검출은 `generate`가 미션당 한 번이므로 **한 번**이며, upstream이
   `mechanical.toml` 파일로 얻는 idempotency를 우리는 호출 지점 하나로 얻어
   캐시 파일이 없다 (ADR-0044 미결 해소)
-- [ ] worktree 격리 (upstream `core/worktree.py` 대조)
-- [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조)
+- [-] worktree 격리 — **2026-08-09 조사·구현 완료, ADR 승인 대기**
+  ([WORKTREE findings](../research/WORKTREE_UPSTREAM_FINDINGS.md),
+  [ADR-0045](../adr/0045-worktree-isolation-contract.md) Proposed, 832 tests).
+  격리 단위는 **미션 하나**다 — upstream은 병렬 AC 실행기를 가지고도 AC마다
+  만들지 않는다. 브랜치 `mcx/<mission_id>`, 자리
+  `<state-dir>/worktrees/<repo>/<mission_id>`.
+  **경로를 저장하지 않고 유도한다** — upstream `TaskWorkspace`(8필드) 직렬화·복원
+  계층이 우리에겐 없고, *"이 시도가 어디서 돌았는가"* 는 `ExecutionAttempt`의
+  envelope가 이미 들고 있다 (ADR-0045 §2). **Verify는 배선 없이 따라온다** —
+  `verify_service`가 그 envelope를 읽으므로(테스트로 고정), upstream이
+  `verification_working_dir`로 명시하는 것을 우리는 기록으로 얻는다.
+  새로 만들 때만 clean checkout을 요구하고(HEAD에서 분기하므로 커밋되지 않은
+  변경은 따라오지 않는다), git 저장소가 아니면 격리 없이 그대로 간다.
+  **되돌려 합치지 않으므로 위치 표시가 계약의 일부다** — `execute next`가
+  경로·브랜치를 내고 `status`가 조회 지점을 준다(upstream 대응물 없음: 그쪽은
+  한 프로세스가 떠 있어 시작 출력이면 충분하다). lock은 pid 생존만 보고 시간
+  staleness는 버렸다. **정리는 하지 않는다** (등록된 divergence, §7)
+- [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조) — **선행이 풀렸다**:
+  커밋할 브랜치가 생겼다
 - [ ] rollback 범위 (ADR-0032 보류 해제)
 - [ ] `changed_files` 수집 (ADR-0029 보류 — git 기반이라 이 자리)
 - [ ] **canonical event 층 + 스트리밍 생산자** — Phase 5 시한을 무처분 도과한
@@ -802,8 +819,15 @@ brownfield와 같은 형태의 문제), skill 6종의 근거 부재(등록), 질
 결정할 수 있는 것들이다** (0008 §3). 그래서 Phase 9는 구현 Phase가 아니라
 **관측 Phase**에 가깝다. 이 점을 놓치면 관측 없이 하나씩 발명하게 된다.
 
-다음 검증 가능한 목표 한 개: **Phase 9 진입 — brownfield 탐색과 worktree 격리.**
-그 둘이 실사용의 첫 관문이고, 나머지 6항목의 관측이 그 위에서 쌓인다.
+Phase 9의 첫 두 관문은 2026-08-09 닫혔다 — brownfield 진입(ADR-0044 ③)과
+worktree 격리(ADR-0045). 둘 다 **뒤 항목의 선행이었다는 점이 같다**: 전자는
+`context` 공백을, 후자는 checkpoint·rollback·`changed_files`가 딛고 설 git
+경계를 열었다.
+
+다음 검증 가능한 목표 한 개: **AC별 checkpoint 커밋** (upstream
+`AutoCommitPolicy` 대조). 격리로 브랜치가 생겼으므로 *"무엇을 커밋하는가"* 를
+물을 수 있게 됐고, 그 답이 정해져야 rollback 범위(ADR-0032)와 `changed_files`
+수집(ADR-0029)의 기준점이 하나로 정해진다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

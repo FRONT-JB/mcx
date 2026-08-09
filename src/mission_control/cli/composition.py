@@ -187,16 +187,23 @@ class StateLayout:
 
     ``config.toml``은 ``state/``·``outputs/``와 같은 층에 둔다 (ADR-0039 §5) —
     운용자 입력이지 mission 상태가 아니다.
+
+    ``worktrees/``도 같은 층이다 (ADR-0045 §1). upstream은 ``worktree_root``를
+    별도 config 키로 두지만 우리에겐 상태 루트가 이미 하나 있다.
     """
 
     root: Path
     state: Path
     outputs: Path
+    worktrees: Path
 
     @classmethod
     def under(cls, state_dir: Path) -> StateLayout:
         return cls(
-            root=state_dir, state=state_dir / "state", outputs=state_dir / "outputs"
+            root=state_dir,
+            state=state_dir / "state",
+            outputs=state_dir / "outputs",
+            worktrees=state_dir / "worktrees",
         )
 
 

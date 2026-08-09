@@ -21,6 +21,7 @@ from mission_control.adapters.persistence.file_blueprint_repository import (
 from mission_control.adapters.persistence.file_brief_repository import FileBriefRepository
 from mission_control.adapters.persistence.file_execute_repository import FileExecuteRepository
 from mission_control.adapters.persistence.file_verify_repository import FileVerifyRepository
+from mission_control.adapters.workspace.worktree import BRANCH_PREFIX
 from mission_control.cli import composition
 from mission_control.cli.composition import Adapters, StateLayout
 from mission_control.cli.journal import JournalEntry, MissionJournal, total_calls
@@ -92,6 +93,14 @@ class GateView:
 
 
 @dataclass(frozen=True)
+class IsolationView:
+    """실행이 사용자의 workspace 밖에서 돌았을 때 그 자리와 브랜치."""
+
+    workspace: str
+    branch: str
+
+
+@dataclass(frozen=True)
 class StageRow:
     label: str
     summary: str
@@ -112,6 +121,8 @@ class StatusSnapshot:
     mission_id: str
     intent: str
     workspace: str
+    #: 실행이 실제로 돈 자리 — 격리가 걸렸을 때만 채워진다 (ADR-0045 §5).
+    isolation: IsolationView | None
     complete: bool
     completed_at: str | None
     current_stage: Stage
@@ -178,6 +189,20 @@ def _correction_count(ac_keys: tuple[str, ...]) -> int:
         else:
             seen.add(key)
     return corrections
+
+
+def _isolation(record: MissionRecord, execute: ExecuteState | None) -> IsolationView | None:
+    """실행이 사용자의 workspace 밖에서 돌았으면 그 자리를 돌려준다.
+
+    유도하지 않고 **기록된 것**을 읽는다 — 각 시도의 envelope가 자기가 돈 자리를
+    들고 있으므로 (ADR-0045 §2), status가 worktree를 다시 계산할 이유가 없다.
+    """
+    if execute is None or not execute.attempts:
+        return None
+    used = execute.attempts[-1].envelope.workspace
+    if used == record.workspace:
+        return None
+    return IsolationView(workspace=used, branch=f"{BRANCH_PREFIX}/{record.mission_id}")
 
 
 async def build_snapshot(
@@ -275,6 +300,7 @@ async def build_snapshot(
         mission_id=mission_id,
         intent=brief.initial_intent if brief is not None else "",
         workspace=record.workspace,
+        isolation=_isolation(record, execute),
         complete=complete,
         completed_at=record.completed_at,
         current_stage=record.current_stage,

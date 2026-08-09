@@ -138,6 +138,13 @@ def _summary_lines(snapshot: StatusSnapshot, *, plain: bool) -> list[str]:
         else label
     )
     lines.append(f"- 진행: {position} · 경과 {' · '.join(facts)}")
+    if snapshot.isolation is not None:
+        # 사용자의 checkout에는 아무 일도 일어나지 않았다 — 어디서 일어났는지
+        # 여기서 보이지 않으면 아무것도 안 한 것으로 읽힌다 (ADR-0045 §5).
+        lines.append(
+            f"- 격리: {snapshot.isolation.workspace} "
+            f"(branch {snapshot.isolation.branch} — 병합은 사용자가 결정한다)"
+        )
     if snapshot.running_command:
         lines.append(f"- 실행 중: mcx {snapshot.running_command}")
     if snapshot.blocking is not None:
@@ -175,7 +182,11 @@ def _usage_lines(snapshot: StatusSnapshot, width: int, *, plain: bool) -> list[s
         lines.append(f"{mark} {snapshot.correction_count}회 — 실패를 교정하고 재검증")
     artifacts = " · ".join(dict.fromkeys(snapshot.artifacts))
     mark = "산출물:" if plain else "💡 산출물:"
-    lines.append(f"{mark} {artifacts or '선언된 artifact 없음'} ({snapshot.workspace})")
+    # 격리가 걸렸으면 산출물은 사용자의 checkout이 아니라 worktree에 있다.
+    lines.append(
+        f"{mark} {artifacts or '선언된 artifact 없음'} "
+        f"({snapshot.workspace if snapshot.isolation is None else snapshot.isolation.workspace})"
+    )
     return lines
 
 
