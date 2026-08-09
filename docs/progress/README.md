@@ -387,9 +387,15 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   이 검사가 유일한 강제다. 실제로 작성 중 오류 3건을 잡았다(QA 액션 어휘를
   upstream 것으로 씀, `revise`의 `--draft-file` 누락, 임계 미달 승인의
   `--accept-below-threshold` 누락)
-- [ ] 설치·발견·설정 UX ([Open Questions §8](../research/OPEN_QUESTIONS.md)) —
-  매니페스트는 있고 **설치 경로의 실물 검증이 없다**(`uvx --from
-  mission-control[mcp] mcx-mcp`는 배포된 패키지를 전제한다)
+- [-] 설치·발견·설정 UX ([Open Questions §8](../research/OPEN_QUESTIONS.md)) —
+  **2026-08-09 확정·검증, 배포만 잔여.** 발견은 양쪽 매니페스트, 설정은
+  `config.toml` 하나. 설치 경로 셋을 [README](../../README.md)에 표로 적었고
+  **로컬 체크아웃 경로를 실물로 확인했다**: `uvx --from '<repo>[mcp]' mcx-mcp`가
+  wheel 빌드→진입점 실행까지 통과하고(tool 29), `claude mcp add`로 등록하면
+  **`✔ Connected`** 다. 즉 포장·extras·진입점은 정상이며 남은 것은 **이름
+  해석**뿐이다. git·배포판 경로는 push/배포가 선행이고 **둘 다 사용자 승인
+  사항**이라 여기서 닫지 않는다 — `.mcp.json`의 배포판 명령은 현재 동작하지
+  않는 **목표 형태**임을 README가 명시한다
 
 ### Phase 9 — 실사용 진입: brownfield + 되돌리기 (사용자 결정 2026-08-09)
 
@@ -750,9 +756,16 @@ skill/Core 경계는 2026-08-09 조사·초안 작성했다
 **병합이라 효과가 없었다**(`codex mcp list`로 확인). Fact Resolver는 폐기했다
 (ADR-0011 §3 근거가 Phase 8의 host 도입으로 만료 — 미구현이라 비용 0).
 
-다음 검증 가능한 목표 한 개: **Phase 8 구현** — skill 작성 + plugin manifest
-(Claude·Codex 양쪽). Codex host 등록은 이제 열려 있다(실행 lane이 상속하지
-않으므로 `mcx-mcp`를 등록해도 worker에게 보이지 않는다).
+Phase 8은 2026-08-09 구현했다 — skill 6종 + 양쪽 host 매니페스트(df38159),
+결정적 품질 하한(ADR-0043, cc5f3f8), 설치 경로 확정·실물 검증. 같은 날 외부
+지적 6건을 서브에이전트로 대조해 4건 거짓·2건 부분사실로 처분하고, 그 과정에서
+**검토 셋을 통과한 시한 도과 1건**(telemetry event 층)과 **시한이 아예 없던
+항목 1건**(spec-gap 분류)을 찾아 Phase 9로 제안 등록했다.
+
+다음 검증 가능한 목표 한 개: **Phase 8 종료 검토(일곱 질문).** 질문 7의 대상은
+Phase 8을 시한으로 쓴 항목들이며, 이번 Phase에서 새로 생긴 미결
+(ADR-0042 §4 부분 커버리지 처분, ADR-0043 Proposed 상태, 배포 승인)도 함께
+처분한다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

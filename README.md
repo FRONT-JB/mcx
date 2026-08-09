@@ -14,9 +14,55 @@ Brief → Blueprint → Execute → Verify
 
 ## 현재 상태
 
-Phase 1 (Brief)은 완료했고 Phase 2 (Blueprint vertical slice)를 진행 중이다.
-검증된 현재 상태는
-[docs/progress/README.md](docs/progress/README.md)에 있다.
+Phase 7 (MCP control surface)까지 완료했고 Phase 8 (plugin = 합성 계층)을
+진행 중이다. 다섯 Stage 전부가 실제 AI로 구동되며 실 AI 도그푸딩 3회로
+`MISSION COMPLETE`까지 완주했다. 검증된 현재 상태와 알려진 한계는
+[docs/progress/README.md](docs/progress/README.md)에 있다 — 이 README가 아니라
+그 문서가 상태의 소유자다.
+
+## 설치
+
+**아직 배포하지 않았다.** 아래 세 경로 중 지금 동작하는 것은 로컬 체크아웃
+하나이며, 나머지 둘은 각각 PyPI 배포와 원격 push가 선행 조건이다.
+
+| 경로 | 명령 | 상태 |
+|---|---|---|
+| 로컬 체크아웃 | `uvx --from '<repo>[mcp]' mcx-mcp` | **동작 확인됨** (2026-08-09) |
+| git | `uvx --from 'git+https://github.com/FRONT-JB/mcx.git' mcx-mcp` | push 전까지 불가 |
+| 배포판 | `uvx --from 'mission-control[mcp]' mcx-mcp` | 배포 전까지 불가 |
+
+`.mcp.json`에 적힌 것은 **배포판 경로**다 — 그것이 최종 형태이고, 그때까지는
+아래 개발 설치를 쓴다.
+
+```bash
+uv sync                      # 개발 환경
+uv run mcx --help            # CLI
+uv run mcx-mcp tools         # MCP tool 목록 (29개)
+```
+
+MCP 서버를 host에 직접 등록하려면 로컬 경로를 가리킨다.
+
+```bash
+claude mcp add mcx -- uvx --from "$PWD[mcp]" mcx-mcp
+```
+
+## 설정
+
+`<state-dir>/config.toml` 하나다 (기본 `~/.mcx/config.toml`). CLI 플래그로는
+받지 않는다.
+
+```toml
+[stages.execute]
+execution = "codex_cli"      # Stage별 backend (없으면 기본 조립)
+
+[backends.codex_cli]
+model = "gpt-5.6-sol"        # 없으면 현재 codex 설정을 읽어 채택하고 여기 적는다
+reasoning_effort = "xhigh"
+```
+
+실행 worker는 사용자 codex 설정을 **상속하지 않는다** — worker가 Mission
+Control을 되부르는 경로를 막기 위해서다
+([ADR-0042](docs/adr/0042-skill-and-core-ownership-boundary.md) §6).
 
 ## 문서
 

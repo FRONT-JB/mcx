@@ -385,8 +385,19 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       **호출 수는 실측이다** — 명령 수 근사가 아니라 port 호출을 센다
       (upstream `tui/events.py:594-599` "never a character proxy"). 토큰·비용
       계측은 port 반환형 변경이 선행이라 ADR-0038 §7 보류로 등록했다.
-- [ ] plugin 설치·발견·설정 UX를 결정한다. → **시한 지정 (2026-08-09, 사용자
-      결정): Phase 8** — MCP(Phase 7) 직후, 실사용 진입(Phase 9) 앞.
+- [-] plugin 설치·발견·설정 UX를 결정한다. → **2026-08-09 확정, 배포만
+      잔여.** 발견은 양쪽 host 매니페스트(`.claude-plugin/`·`.codex-plugin/`)가
+      같은 `./skills/`와 같은 `./.mcp.json`을 가리키는 형태로 확정했고, 설정은
+      `<state-dir>/config.toml` 하나다(라우팅 + backend 모델, CLI 플래그 없음).
+      설치는 경로 셋을 문서화했다([README](../../README.md)) — **로컬
+      체크아웃만 동작하며 실물로 확인했다**: `uvx --from '<repo>[mcp]' mcx-mcp`가
+      wheel을 빌드해 진입점을 띄우고, `claude mcp add`로 등록하면
+      **`✔ Connected`** 다 (2026-08-09, Verified by execution). git 경로는 push,
+      배포판 경로는 PyPI 배포가 선행이며 **둘 다 사용자 승인 사항**이라 여기서
+      닫지 않는다. 즉 `.mcp.json`에 적힌 배포판 명령은 **현재 동작하지 않는
+      목표 형태**다.
+      원래 시한 지정 (2026-08-09, 사용자 결정): Phase 8 — MCP(Phase 7) 직후,
+      실사용 진입(Phase 9) 앞.
       upstream의 배포 실물은 **plugin = skills + MCP server + CLI 3층**이며
       skill이 MCP tool을 orchestrate한다 (`skills/seed/SKILL.md` frontmatter
       `mcp_tool: ouroboros_generate_seed`,
