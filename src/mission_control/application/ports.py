@@ -31,7 +31,7 @@ from mission_control.domain.brief.requirement import (
 )
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.execute.state import ExecuteState
-from mission_control.domain.mechanical import ProposedCommands
+from mission_control.domain.mechanical import MechanicalCommands
 from mission_control.domain.recover.packet import PreviousFailure
 from mission_control.domain.verify.evidence import (
     CommandExecution,
@@ -555,17 +555,19 @@ class MechanicalDetectionRequest(BaseModel):
 
 
 class MechanicalCommandDetector(Protocol):
-    """기존 저장소의 확인 명령을 제안하는 제한된 역할.
+    """기존 저장소의 확인 명령을 찾아내는 제한된 역할.
 
-    **제안일 뿐이다.** 반환 타입이 :class:`ProposedCommands`인 것이 그 사실을
-    드러낸다 — 디스크 대조를 지나야 쓸 수 있는 명령이 되며, 그 대조는 모델이
-    아니라 계산이 한다 (``adapters/verification/entry_points.py``).
+    반환 타입이 :class:`MechanicalCommands`인 것이 계약이다 — **디스크 대조를
+    통과한 것만** 나온다. 모델의 제안(:class:`ProposedCommands`)은 이 경계
+    안쪽에 있고 밖으로 새지 않는다. 제안과 검증을 갈라 두는 이유는 검증을
+    건너뛴 명령이 AC에 박히면 Verify가 없는 진입점을 실행하고, 그 실패가 코드의
+    문제로 보이기 때문이다 (upstream *"phantom failure"* 금지).
 
-    검출 실패는 예외가 아니라 **빈 제안**이다. 확인 명령을 못 찾은 것이 미션을
+    검출 실패는 예외가 아니라 **빈 결과**다. 확인 명령을 못 찾은 것이 미션을
     죽여서는 안 된다 — upstream도 같다(`ensure_mechanical_toml`은 실패 시
     ``False``를 돌려주고 끝난다).
     """
 
-    async def propose(self, request: MechanicalDetectionRequest) -> ProposedCommands:
-        """manifest에서 확인 명령 후보를 제안한다. 검증하지 않는다."""
+    async def detect(self, workspace: str) -> MechanicalCommands:
+        """확인된 명령만 반환한다. 제안 단계는 이 경계 안쪽에 있다."""
         ...

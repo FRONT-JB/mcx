@@ -162,6 +162,16 @@ brownfield 미션이 Gate에서 멈추고, 그때 floor를 낮추는 것은 근�
   실행 권한 축이므로 [ADR-0033](./0033-first-runtime-adapter-contract.md)의
   sandbox 경계와 함께 봐야 한다. **시한 Phase 9 종료 검토.**
 - **① 네 번째 축의 도입 여부** — ③ 도입 후 실사용 관측에 달렸다 (§4).
-- **검출 결과의 보존 위치** — upstream은 `.ouroboros/mechanical.toml`을
-  workspace에 쓴다. 우리는 workspace를 오염시키지 않는 편(state-dir)이 맞아
-  보이지만, 그러면 사용자가 손으로 고칠 수 없다. **구현 시 결정.**
+- ~~**검출 결과의 보존 위치**~~ → **보존하지 않는다 (2026-08-09 구현에서 해소).**
+  upstream은 `.ouroboros/mechanical.toml`을 파일로 남겨 idempotency를 얻지만,
+  우리는 그것이 필요 없다 — 검출은 `BlueprintService.generate` 안에서만
+  일어나고 그 메서드는 **미션당 한 번**이다(이미 있으면 거부한다). 즉 upstream이
+  파일로 얻는 성질을 우리는 **호출 지점 하나**로 얻는다. 결과는 생성기의
+  `context`로 흘러 Blueprint의 `verify_command`에 흡수되므로, 틀렸다면 사용자는
+  `blueprint revise`라는 기존 경로로 고친다. 캐시 파일도, workspace 오염도
+  없다.
+- **버려진 제안이 사용자에게 보이지 않는다** (2026-08-09 등록). `dropped`는
+  타입이 들고 있지만 CLI 출력에 나오지 않는다. 지금 그 정보가 진단용인 이유는
+  **실질 신호가 따로 있기 때문**이다 — 제안이 버려지면 그 AC에 확인 수단이
+  없고, 그러면 `NO_VERIFIABLE_CRITERION`이 Gate에서 잡는다. 표시 필요 여부는
+  실사용에서 판단한다. **시한 Phase 9 종료 검토.**

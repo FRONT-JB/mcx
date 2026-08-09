@@ -426,7 +426,12 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   Makefile target·PATH), `adapters/text/mechanical_detector.py`(여덟 번째 위임
   port). **제안 타입과 검증된 타입을 나눠 검증을 건너뛸 수 없게 했다** —
   `ProposedCommands`를 그대로 쓰면 이름이 그 사실을 드러낸다. 버린 제안은
-  이유와 함께 남는다(조용한 누락 금지)
+  이유와 함께 남는다(조용한 누락 금지). **배선 완료** — 검출 결과가
+  `BlueprintGenerationRequest.context`로 흘러 생성기가 AC의 확인 명령을 쓸 때
+  쓴다. 이것이 오래된 한계 *"`context`를 채우는 장치가 없다"*(B-004)를 닫는
+  자리다. 검출은 `generate`가 미션당 한 번이므로 **한 번**이며, upstream이
+  `mechanical.toml` 파일로 얻는 idempotency를 우리는 호출 지점 하나로 얻어
+  캐시 파일이 없다 (ADR-0044 미결 해소)
 - [ ] worktree 격리 (upstream `core/worktree.py` 대조)
 - [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조)
 - [ ] rollback 범위 (ADR-0032 보류 해제)

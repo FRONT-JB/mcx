@@ -28,6 +28,7 @@ from mission_control.application.ports import (
     BlueprintQaJudge,
     BlueprintRepository,
     BriefRepository,
+    MechanicalCommandDetector,
     QaIteration,
     QaRequest,
 )
@@ -105,6 +106,10 @@ class BlueprintService:
     generator: BlueprintGenerator
     qa_judge: BlueprintQaJudge
     qa_policy: QaPolicy
+    #: 기존 저장소의 확인 명령을 찾아 생성기의 ``context``에 얹는다 (ADR-0044 §3).
+    #: 둘 다 있어야 동작한다 — 없으면 greenfield처럼 handoff의 context만 간다.
+    detector: MechanicalCommandDetector | None = None
+    workspace: str | None = None
 
     async def generate(self, *, mission_id: str) -> BlueprintState:
         """``CLEAR``된 Brief의 handoff에서 첫 Blueprint revision을 만들고 저장한다.
@@ -117,7 +122,11 @@ class BlueprintService:
             raise BlueprintAlreadyExistsError(mission_id)
 
         handoff = await self._handoff(mission_id)
-        draft = await self.generator.generate(self._generation_request(handoff))
+        request = self._generation_request(handoff)
+        detected = await self._detect_mechanical()
+        if detected:
+            request = request.model_copy(update={"context": request.context + detected})
+        draft = await self.generator.generate(request)
         blueprint = assemble_blueprint(draft=draft, handoff=handoff, revision=1)
         state = BlueprintState.start(blueprint=blueprint)
         await self.repository.save(state)
@@ -235,6 +244,30 @@ class BlueprintService:
             non_goals=handoff.non_goals,
             success_criteria=handoff.success_criteria,
             context=handoff.context,
+        )
+
+    async def _detect_mechanical(self) -> tuple[str, ...]:
+        """기존 저장소의 확인 명령을 찾아 context 줄로 만든다 (ADR-0044 §3).
+
+        **한 번만 부른다** — ``generate``는 미션당 한 번이고(이미 있으면
+        거부한다) 검출은 그 안에서만 일어난다. upstream이 파일로 얻는
+        idempotency를 우리는 호출 지점 하나로 얻으므로 캐시 파일이 없다.
+
+        검출 실패는 예외가 아니라 빈 결과다. 확인 명령을 못 찾은 것이 Blueprint
+        생성을 막아서는 안 된다 — 못 찾으면 greenfield처럼 진행하고, 그래도
+        확인 수단이 하나도 없으면 Gate가 막는다
+        (``NO_VERIFIABLE_CRITERION``, ADR-0043 §3).
+
+        **버려진 제안은 생성기에 가지 않는다.** 검증되지 않은 명령이 AC에
+        박히면 Verify가 없는 진입점을 실행하고, 그 실패는 코드의 문제로 보인다.
+        """
+        if self.detector is None or self.workspace is None:
+            return ()
+
+        verified = await self.detector.detect(self.workspace)
+        return tuple(
+            f"the project's {kind.value} command is `{command}`"
+            for kind, command in sorted(verified.commands.items())
         )
 
     def _qa_request(self, state: BlueprintState) -> QaRequest:

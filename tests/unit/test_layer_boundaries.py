@@ -57,3 +57,20 @@ def test_the_domain_does_not_depend_on_the_adapters() -> None:
     }
 
     assert offenders == set()
+
+
+def test_the_application_layer_does_not_depend_on_the_adapters() -> None:
+    """application은 port만 안다 — 규칙에 이 항목이 없었다.
+
+    ADR-0044 §3 구현 중 드러났다. ``BlueprintService``가 디스크 대조 함수를
+    직접 import했고 어떤 검사도 막지 않았다. 그렇게 두면 use case가 vendor·
+    파일시스템 세부를 알게 되고, 그 순간 port를 둔 이유가 사라진다 —
+    fake로 바꿔 끼울 수 있는 것이 port의 값이기 때문이다.
+    """
+    offenders = {
+        path.relative_to(_SRC).as_posix()
+        for path in sorted((_SRC / "application").rglob("*.py"))
+        if any("mission_control.adapters" in name for name in _imported_modules(path))
+    }
+
+    assert offenders == set()

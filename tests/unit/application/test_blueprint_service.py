@@ -50,6 +50,7 @@ from mission_control.domain.brief.requirement import (
     RequirementSection,
 )
 from mission_control.domain.brief.state import BriefState
+from mission_control.domain.mechanical import CommandKind, MechanicalCommands
 
 BRIEF_POLICY = ClarityPolicy.greenfield_v1()
 QA_POLICY = QaPolicy.blueprint_v1()
@@ -212,6 +213,8 @@ def _service(
     generator: EchoGenerator | None = None,
     judge: ScriptedJudge | None = None,
     with_brief: bool = True,
+    detector: object | None = None,
+    workspace: str | None = None,
 ) -> tuple[BlueprintService, InMemoryBriefRepository, InMemoryBlueprintRepository]:
     briefs = InMemoryBriefRepository()
     if with_brief:
@@ -224,6 +227,8 @@ def _service(
         generator=generator or EchoGenerator(),
         qa_judge=judge or ScriptedJudge(),
         qa_policy=QA_POLICY,
+        detector=detector,  # type: ignore[arg-type]
+        workspace=workspace,
     )
     return service, briefs, blueprints
 
@@ -481,3 +486,80 @@ class TestApproveAndGate:
         service, _, _ = _service()
         with pytest.raises(BlueprintNotFoundError):
             await service.decide_gate(mission_id="m-1")
+
+
+class _CountingDetector:
+    """검출 결과를 고정해 배선만 보는 detector."""
+
+    def __init__(self, commands: dict[CommandKind, str] | None = None) -> None:
+        self.calls = 0
+        self.seen: list[str] = []
+        self._commands = commands or {}
+
+    async def detect(self, workspace: str) -> MechanicalCommands:
+        self.calls += 1
+        self.seen.append(workspace)
+        return MechanicalCommands(commands=self._commands)
+
+
+class TestMechanicalContext:
+    """검출된 확인 명령이 생성기에 닿는다 (ADR-0044 §3).
+
+    배선이 없으면 검출기는 만들어 두고 아무도 부르지 않는 코드가 된다.
+    """
+
+    async def test_detected_commands_reach_the_generator(self) -> None:
+        generator = EchoGenerator()
+        detector = _CountingDetector({CommandKind.TEST: "pytest -q"})
+        service, _, _ = _service(generator=generator, detector=detector, workspace="/w")
+
+        await service.generate(mission_id="m-1")
+
+        assert "the project's test command is `pytest -q`" in generator.requests[0].context
+        assert detector.seen == ["/w"]
+
+    async def test_the_handoff_context_is_kept_not_replaced(self) -> None:
+        """검출은 덧붙이는 것이지 사용자가 기록한 사실을 밀어내지 않는다."""
+        plain = EchoGenerator()
+        service, _, _ = _service(generator=plain)
+        await service.generate(mission_id="m-1")
+        baseline = plain.requests[0].context
+
+        augmented = EchoGenerator()
+        service, _, _ = _service(
+            generator=augmented,
+            detector=_CountingDetector({CommandKind.LINT: "ruff check ."}),
+            workspace="/w",
+        )
+        await service.generate(mission_id="m-1")
+
+        context = augmented.requests[0].context
+        assert context[: len(baseline)] == baseline
+        assert any("lint command" in line for line in context)
+
+    async def test_without_a_workspace_the_detector_is_not_called(self) -> None:
+        detector = _CountingDetector({CommandKind.TEST: "pytest"})
+        service, _, _ = _service(detector=detector, workspace=None)
+
+        await service.generate(mission_id="m-1")
+
+        assert detector.calls == 0
+
+    async def test_detection_happens_once_because_generation_does(self) -> None:
+        """upstream이 파일로 얻는 idempotency를 우리는 호출 지점 하나로 얻는다."""
+        detector = _CountingDetector({CommandKind.TEST: "pytest"})
+        service, _, _ = _service(detector=detector, workspace="/w")
+
+        await service.generate(mission_id="m-1")
+        with pytest.raises(BlueprintAlreadyExistsError):
+            await service.generate(mission_id="m-1")
+
+        assert detector.calls == 1
+
+    async def test_an_empty_detection_changes_nothing(self) -> None:
+        generator = EchoGenerator()
+        service, _, _ = _service(generator=generator, detector=_CountingDetector(), workspace="/w")
+
+        await service.generate(mission_id="m-1")
+
+        assert not any("command is" in line for line in generator.requests[0].context)

@@ -515,9 +515,12 @@ async def _dispatch_brief(
 async def _dispatch_blueprint(
     args: argparse.Namespace, layout: StateLayout, adapters: Adapters
 ) -> int:
-    service = composition.blueprint_service(layout, adapters)
     mission: str = args.mission
     verb: str = args.verb
+    # 생성만 workspace를 필요로 한다 — 확인 명령 검출의 대상이다 (ADR-0044 §3).
+    # 나머지 verb에서 요구하면 workspace 없는 mission의 채점·승인이 막힌다.
+    workspace = await _require_workspace(layout, mission) if verb == "generate" else None
+    service = composition.blueprint_service(layout, adapters, workspace=workspace)
 
     if verb == "generate":
         state = await service.generate(mission_id=mission)

@@ -44,9 +44,13 @@ from mission_control.adapters.text.brief_backends import (
 from mission_control.adapters.text.claude_completion import ClaudeCompletion
 from mission_control.adapters.text.codex_completion import CodexCompletion
 from mission_control.adapters.text.completion_engine import CompletionEngine
+from mission_control.adapters.text.mechanical_detector import PromptedMechanicalDetector
 from mission_control.adapters.text.semantic_evaluator import PromptedSemanticEvaluator
 from mission_control.adapters.verification.local_mechanical_runner import (
     LocalMechanicalRunner,
+)
+from mission_control.adapters.verification.mechanical_detection import (
+    VerifiedMechanicalDetector,
 )
 from mission_control.application.blueprint_service import BlueprintService
 from mission_control.application.brief_service import BriefService
@@ -214,16 +218,23 @@ def brief_service(layout: StateLayout, adapters: Adapters) -> BriefService:
     )
 
 
-def blueprint_service(layout: StateLayout, adapters: Adapters) -> BlueprintService:
+def blueprint_service(
+    layout: StateLayout, adapters: Adapters, *, workspace: str | None = None
+) -> BlueprintService:
+    completion = adapters.completion_for(Stage.BLUEPRINT)
     return BlueprintService(
         briefs=FileBriefRepository(root=layout.state),
         brief_policy=BRIEF_POLICY,
         repository=FileBlueprintRepository(root=layout.state),
-        generator=PromptedBlueprintGenerator(
-            completion=adapters.completion_for(Stage.BLUEPRINT)
-        ),
-        qa_judge=PromptedBlueprintQaJudge(completion=adapters.completion_for(Stage.BLUEPRINT)),
+        generator=PromptedBlueprintGenerator(completion=completion),
+        qa_judge=PromptedBlueprintQaJudge(completion=completion),
         qa_policy=QA_POLICY,
+        # 검증을 건너뛸 수 없게 조립한다 — 제안기를 직접 주지 않고, 디스크
+        # 대조를 품은 detector를 준다 (ADR-0044 §3).
+        detector=VerifiedMechanicalDetector(
+            proposer=PromptedMechanicalDetector(completion=completion)
+        ),
+        workspace=workspace,
     )
 
 

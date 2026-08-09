@@ -53,7 +53,9 @@ async def test_stage_entry_records_transition(
         async def generate(self, *, mission_id: str) -> SimpleNamespace:
             return SimpleNamespace(current=None)
 
-    monkeypatch.setattr(composition, "blueprint_service", lambda layout, adapters: StubService())
+    monkeypatch.setattr(
+        composition, "blueprint_service", lambda layout, adapters, **_: StubService()
+    )
     adapters = default_adapters()
 
     assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
