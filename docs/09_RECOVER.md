@@ -92,6 +92,10 @@ Recover에 진입하려면 다음이 필요하다.
 거부된다(`NothingToRecoverError`·`NoRetryableFailureError`). directive의 저장이
 필요해지는 시점(장기 실행 job의 승인 기록 — Phase 7 MCP)에 재평가한다.
 
+> **2026-08-09 재평가 수행, 결론 무변경** (Phase 7 종료 검토). 장기 실행 job은
+> 생겼지만 승인은 여전히 별도 동기 명령(`approve`)이고 job이 승인을 만들지
+> 않는다 — 재평가를 촉발할 조건이 성립하지 않았다.
+
 ---
 
 ## 4. Failure taxonomy

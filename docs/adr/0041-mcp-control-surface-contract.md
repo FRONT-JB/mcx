@@ -78,14 +78,24 @@ host가 두 mission을 오가는 동안 서버가 "현재"를 기억하면 잘�
 
 ### 4. 비동기는 장기 명령 둘에만 두고, job 기록은 **원장을 재사용한다**
 
-장기 명령은 둘이다 — `execute next`(`codex exec`, 침묵 900초까지)와
-`verify semantic`(AC 수만큼의 완성 호출). 이 둘에만 비동기 짝을 둔다:
+장기 명령은 셋이다 — `execute next`(`codex exec`, 침묵 900초까지),
+`recover dispatch`(**같은 `codex exec`**), `verify semantic`(AC 수만큼의 완성
+호출). 이 셋에만 비동기 짝을 둔다:
 
 ```
 mcx_execute_next     /  mcx_start_execute_next
+mcx_recover_dispatch /  mcx_start_recover_dispatch
 mcx_verify_semantic  /  mcx_start_verify_semantic
 mcx_job_status  ·  mcx_cancel_job
 ```
+
+> **2026-08-09 정정 (Phase 7 종료 검토).** 초안과 첫 구현은 "장기 명령은
+> 둘"이라고 적었다. 사실이 아니다 — `recover dispatch`는
+> `RecoverService.dispatch_correction` → `ExecuteService.dispatch_correction`
+> 으로 **`execute next`와 같은 실행 runtime**을 돈다. 짝이 없는 동안 host는
+> 침묵 900초까지 블로킹된 채 job id를 받지 못해 취소할 수단도 없었다. 길이는
+> 명령 이름이 아니라 실행 경로가 정한다는 것을 검사로 고정했다
+> (`test_every_command_that_drives_the_execution_runtime_has_a_start_pair`).
 
 **새 JobManager를 만들지 않는다.** 명령 원장이 이미 job 기록이다 — 짝 없는
 `start`가 "진행 중"이고 `end`가 결과다 (ADR-0038 §6.1 a). `job_id`는
@@ -168,7 +178,7 @@ SDK가 없어도 `mcx` CLI와 tool 표면 테스트가 그대로 선다. **인�
 
 ### Cost
 
-- tool 24개 + 비동기·job 4개가 host 도구 목록에 올라간다. upstream도 비슷한 규모라
+- tool 24개 + 비동기 3개·job 2개가 host 도구 목록에 올라간다. upstream도 비슷한 규모라
   (약 35) 이례적이지 않지만, host의 컨텍스트를 그만큼 쓴다.
 - 원장 재사용은 job 개념을 mission에 묶는다 — mission 없는 작업은 job이 될 수
   없다. 현재 그런 작업은 없다.
@@ -210,3 +220,12 @@ SDK가 없어도 `mcx` CLI와 tool 표면 테스트가 그대로 선다. **인�
 - **고아 attempt(`DISPATCHED` 잔해) 해소 경로** — Open Questions §7의 잔여이며
   이 ADR이 덮지 않는다. 취소는 "실행 중"을 끝내지만, 이미 고아가 된 attempt는
   별도 진입점이 필요하다.
+- **취소된 attempt가 실패와 구분되지 않는다** (Phase 7 종료 검토에서 확인).
+  이 ADR은 프로세스 종료까지만 정의하고 attempt 상태 어휘를 건드리지 않았다.
+  결과는 §5의 job 어휘(`cancel_requested`)와 도메인 attempt 상태가 어긋나는
+  것이다 — 상세와 시한은 [ADR-0025](./0025-execute-deliberate-divergences.md)·
+  [ADR-0032](./0032-recover-deliberate-divergences.md)의 `cancelled` 행.
+- **worker의 재귀 호출을 막는 경계가 실행 lane에 없다** — 이 ADR은 host→Core
+  방향만 정의하고 Core→worker→Core 방향을 다루지 않았다.
+  [Open Questions §8](../research/OPEN_QUESTIONS.md)에 등록했고 시한은 Phase 8
+  이다(그 Phase가 `mcx-mcp`를 host·worker 설정에 등록해 경로를 실제로 연다).

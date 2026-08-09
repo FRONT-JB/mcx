@@ -151,8 +151,12 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       [ADR-0019](../adr/0019-blueprint-qa-loop.md) §8)로 확정. CLI 표면은
       결정 — 승인 주체는 명령을 실행한 로컬 사용자이고 actor 식별자는
       미도입 ([ADR-0038](../adr/0038-mcx-cli-surface-contract.md) §7,
-      upstream도 CLI에 user identity 없음). MCP(Phase 7)의 host 대리 승인
-      경로만 잔여.
+      upstream도 CLI에 user identity 없음). **host 대리 승인 경로만 잔여 —
+      시한 재지정 (2026-08-09, Phase 7 종료 검토): Phase 8.** MCP가 승인
+      tool을 열어 host 에이전트가 `mcx_blueprint_approve`를 부를 수 있게
+      됐고, 그 승인은 기록상 사용자 승인과 구분되지 않는다. 결정 대상은
+      "Core가 actor를 기록할 것인가, skill이 사용자 확인을 보증할 것인가"다
+      ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §1.7).
 - [ ] user-edited YAML을 지원할지 결정한다.
 - [ ] **결정적 품질 gate(upstream `GradeGate`)의 대응물을 도입한다.** →
       **시한 지정 (2026-08-09, 사용자 결정): Phase 8 합성 계층.**
@@ -396,6 +400,41 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       ([SEED_UPSTREAM_FINDINGS §12.3](./SEED_UPSTREAM_FINDINGS.md)).
       [ADR-0004](../adr/0004-stage-scoped-minimum-capability.md)는 worker가
       위로 탈출하는 것만 막고 이 방향을 덮지 않는다.
+      → **무처분 도과 → Phase 8 (2026-08-09, Phase 7 종료 검토).** 원래 시한은
+      [ADR-0023](../adr/0023-execute-entry-and-provenance.md) §8과
+      [ADR-0026](../adr/0026-verify-entry-requires-lineage.md)이 건 *"Phase 7
+      전"* 이었다 — 시작 전에 결정했어야 할 항목이 시작도 끝도 지나갔다. Phase
+      8이 host를 실제로 운전시키는 층이므로 그 경계 ADR의 항목이다.
+- [ ] **worker가 Mission Control을 재귀 호출하는 것을 무엇이 막는지 결정한다
+      (2026-08-09 등록, Phase 7 종료 검토).** 로드맵이 Phase 7에 배치한
+      `recursion/security tests`가 미이행이고, 실측 결과 방어가 lane마다 다르다 —
+      텍스트 lane(Claude)은 `--strict-mcp-config --setting-sources ""`로 MCP
+      재발견과 설정 상속을 끊지만(ADR-0036), **실행 lane(`codex exec`)에는
+      대응물이 없어** `~/.codex/config.toml`을 그대로 상속한다. 거기에
+      `mcx-mcp`가 등록되면 worker가 Core를 호출할 수 있고
+      [ADR-0004](../adr/0004-stage-scoped-minimum-capability.md)가 깨진다 —
+      **그 등록을 하는 것이 정확히 Phase 8**이라 지금 도달 불가인 이유는
+      방어가 아니라 우연이다. upstream 대조(baseline `9486c78`): upstream의
+      `codex exec` 명령에도 MCP 차단 플래그는 없고, 대신 `--profile`을 *"the
+      worker-isolation boundary"* 로 명시해 쓴다
+      (`orchestrator/codex_cli_runtime.py`) — 우리에게 없는 축이다. 결정 대상은
+      **"profile 축을 들여올 것인가, `codex exec --ignore-user-config`로 끊을
+      것인가"** 이며, 후자는 사용자 모델·프로필 설정까지 함께 떨어뜨린다.
+      [ADR-0033](../adr/0033-first-runtime-adapter-contract.md) adapter 계약
+      변경이자 실행 모델 축이라 구현 편의로 확정하지 않는다. **시한 Phase 8**
+      ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §2.2).
+- [ ] **tool description을 무엇으로 채울지 결정한다 (2026-08-09 등록).** 현재는
+      `f"mcx {stage} {verb}"`, 즉 도구 이름의 반복이라 host LLM이 29개 중
+      무엇을 부를지 고를 근거가 없다. 원인은 파생 원천인 CLI 하위 파서에
+      `help=`가 없는 것이므로 고치는 자리도 파서다. **시한 Phase 8** — 그
+      Phase가 "host가 순서를 스스로 안다"를 목표로 하므로 그때 1급 장애가 된다.
+- [ ] **차단 질문을 서버가 사람에게 직접 묻지 않는 결정의 upstream 대응물을
+      확인한다 (`upstream 미확인`, 2026-08-09 등록).** 우리는 `HOLD`의
+      `blocking_reasons`를 데이터로 돌려주고 host가 사람에게 중계하기를
+      기다린다. 근거는 [04_MCP §1-4](../04_MCP.md)(*"host 대화 session은
+      durable Mission의 identity나 저장소가 아니다"*)이며 우리 쪽 문서다 —
+      서버가 직접 물으면 그 답이 어느 mission의 것인지 서버가 기억해야 한다.
+      upstream이 같은 자리를 어떻게 두는지는 대조하지 않았다.
 - [x] **upstream이 CLI를 얇게 둔 이유를 조사한다 (Phase 6 시작 전).**
       → 의도다 — 조사가 전제도 정정했다
       ([CLI_UPSTREAM_FINDINGS](./CLI_UPSTREAM_FINDINGS.md)): `ooo seed`는
@@ -450,12 +489,15 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
       해소됐다. 조사에서 `state/current_mission`만 0644였음이 드러나 함께
       고쳤다 — "0600이 유일한 방어"라는 기존 기술은 전부 참이 아니었다.
       **retention(원장 보존·회전)은 열려 있다** (ADR-0038 §7 보류, 미조사).
-- [ ] Mission replay와 resume의 최소 보장 수준을 결정한다. → **시한 재지정
-      (2026-08-09, 사용자 결정): Phase 7** — 장기 실행 job 계약·취소와 한
-      묶음 (ADR-0033 §6 이연분 합류). 현 수준을 명시해 둔다: 명령 단위
-      재개는 파일 상태로 이미 보장되고(도그푸딩 3회 실증 — 매 명령이 독립
-      프로세스), 미보장은 명령 도중 중단의 뒷정리(DISPATCHED 잔해)와 장기
-      명령 취소다.
+- [-] Mission replay와 resume의 최소 보장 수준을 결정한다. → **부분 이행
+      (2026-08-09, Phase 7).** 장기 명령 **취소**는 닫혔다
+      ([ADR-0041](../adr/0041-mcp-control-surface-contract.md) §5 — 디스크
+      마커 + runtime 관측, 실물 프로세스 종료 테스트). 명령 단위 재개는 파일
+      상태로 이미 보장된다(도그푸딩 3회 실증 — 매 명령이 독립 프로세스).
+      **남은 둘은 Phase 9로 재지정** (Phase 7 종료 검토): 명령 도중 중단의
+      뒷정리(`DISPATCHED` 잔해)와 runtime resume. 둘 다 "무엇으로 되돌아가는가"를
+      요구하므로 worktree·checkpoint·rollback과 같은 자리다
+      ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §1.7).
 
 ---
 

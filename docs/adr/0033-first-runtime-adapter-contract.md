@@ -93,9 +93,9 @@ upstream의 대응 블록(선언 계약 제시 + "Prior failure classification" 
 | 항목 | upstream | 시점 |
 |---|---|---|
 | 스트리밍 이벤트(`AgentMessage`)와 event 층 | `execute_task` async generator | ADR-0027 §3과 함께 |
-| resume (`codex exec resume` + 정합 검증) | thread id, 바이너리 해시·모델 고정, 재시도 3 | **Phase 7** (2026-08-09 사용자 결정 — MCP 장기 실행 job 계약과 한 묶음) — 도입 시 §5 대조 |
+| resume (`codex exec resume` + 정합 검증) | thread id, 바이너리 해시·모델 고정, 재시도 3 | **Phase 9로 재지정** (2026-08-09, Phase 7 종료 검토 — Phase 7 시한 무처분 도과). Phase 7은 취소만 닫았다: 중단 지점 복구는 worktree·checkpoint와 같은 자리여야 "무엇으로 돌아가는가"가 정의된다 — 도입 시 §5 대조 |
 | 도구 단위 allowlist 차단 | Codex에 없음 (sandbox 수준) | 그것을 지원하는 runtime 도입 시 |
-| cancel | 존재 | **Phase 7** (2026-08-09 사용자 결정 — 장기 실행 job 계약과 함께). 스트리밍은 별개 축(event 층)으로 분리 |
+| cancel | 존재 | **이행 (2026-08-09, [ADR-0041](./0041-mcp-control-surface-contract.md) §5).** 마커 관측을 읽기 루프에 붙여 process group을 실제로 종료하고, 실물 프로세스로 검증했다. 관측기가 없으면 폴링도 없어 기존 침묵 동작이 그대로다. **attempt 상태 어휘는 아직 취소를 구분하지 않는다** ([ADR-0025](./0025-execute-deliberate-divergences.md) `cancelled` 행 — Phase 9) |
 | capability 선언 플래그(`RuntimeCapabilities` 대응) | 3플래그 | 둘째 adapter(OpenCode) 구현과 함께 — 그 구현이 이연이므로 이 항목도 이연 (2026-08-09, ADR-0003 note 3) |
 | `--output-schema` 구조화 출력 | 존재 | text backend adapter에서 |
 

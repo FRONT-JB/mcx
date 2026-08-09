@@ -90,8 +90,16 @@ Divergence 2로 **승인을 정확한 revision에 바인딩**했다. 그 조건�
 `StaleWriteError`를 올리고 application 계층은 이를 잡지 않는다.
 
 이 상태를 계약 미달로 명시한다. 재확인 경로는 동시 writer가 실제로 존재하는
-시점, 즉 MCP surface(Phase 7) 도입과 함께 구현한다. 조용한 유실 대신 큰 실패를
-내는 것은 부분적 이득이지만 §15가 약속한 동작은 아니다.
+시점에 구현한다. 조용한 유실 대신 큰 실패를 내는 것은 부분적 이득이지만 §15가
+약속한 동작은 아니다.
+
+> **2026-08-09 (Phase 7 종료 검토) — 조건은 성립했고 구현은 없다.** Phase 7이
+> 동시 writer를 실제로 만들었다: `mcx_start_*`가 백그라운드 task로 도는 동안
+> host는 다른 tool을 부를 수 있고, 둘 다 같은 `dispatch`와 같은 저장소를 지난다.
+> 현재 동작은 `StaleWriteError`가 MCP envelope에서 `is_error=true`로 나가는
+> 것까지다 — 덮어쓰기 금지는 지켜지고, 미달인 것은 *"최신 question과 revision을
+> 제시해 재확인"* 이다. **새 시한 Phase 8** — host가 그 재확인을 사람에게
+> 중계하는 층이다 ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §2.4).
 
 ### 4. 내용 지문(fingerprint)은 도입하지 않는다
 
@@ -141,5 +149,6 @@ upstream은 캐시 무효화에 카운터와 SHA-256 지문을 함께 쓴다
   ([Brief Guide](../05_BRIEF.md) §17의 B-017).
 - 질문 제시가 저장되면서 `revision`을 올리지 않는다 (B-014와 함께).
 - 승인 이후 답변이 들어오면 승인이 stale 처리된다 (B-014).
-- §15의 재확인 경로는 Phase 7에서 구현하며 그 전까지 미달로 기록한다
-  ([Project Progress](../progress/README.md)).
+- §15의 재확인 경로는 **Phase 8**에서 구현하며 그 전까지 미달로 기록한다
+  (2026-08-09 재지정 — Phase 7이 전제조건을 만들고도 이행하지 않았다.
+  [Project Progress](../progress/README.md)).

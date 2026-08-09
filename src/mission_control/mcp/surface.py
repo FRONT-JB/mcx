@@ -198,7 +198,14 @@ async def call_tool(
 
 #: 비동기 짝을 두는 명령. 짧은 명령까지 두 벌이 되면 host가 매번 어느 쪽을
 #: 쓸지 판단해야 한다 (ADR-0041 §4 Rejected alternatives).
-LONG_RUNNING: frozenset[str] = frozenset({"mcx_execute_next", "mcx_verify_semantic"})
+#:
+#: ``recover dispatch``는 ``ExecuteService.dispatch_correction``을 거쳐 **같은
+#: ``codex exec``** 를 돌린다 — ``execute next``와 길이가 같다. 초안이 둘로 적은
+#: 것은 실행 경로를 따라가지 않은 오류였고, Phase 7 종료 검토가 잡았다
+#: (progress 0007 §1.2).
+LONG_RUNNING: frozenset[str] = frozenset(
+    {"mcx_execute_next", "mcx_verify_semantic", "mcx_recover_dispatch"}
+)
 
 
 async def start_tool(

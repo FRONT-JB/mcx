@@ -1221,7 +1221,7 @@ migration 계획 없이 즉시 교체하지 않는다.
 | Persistence는 mission당 단일 JSON 문서의 파일 저장이다 (SQLite·event sourcing 아님). | Confirmed (ADR-0013, ADR-0024 §4) |
 | Blueprint QA는 통과 0.90 / FAIL 0.40 / 최대 5회이며, 승인 기록이 QA 근거를 보존한다. | Confirmed (ADR-0019) |
 | Recover 재시도 예산은 AC당 2회(새 revision이 리셋)이고, 동일 오류 해시 3회면 중단한다. | Confirmed (ADR-0031) |
-| Runtime protocol은 단발 실행(`backend` + `execute`)이다. 스트리밍·resume·cancel은 보류(Phase 7). | Confirmed (ADR-0033) |
+| Runtime protocol은 단발 실행(`backend` + `execute`)이다. **cancel은 이행**(ADR-0041 §5), resume은 Phase 9, 스트리밍은 event 층과 함께(시한 미배치). | Confirmed (ADR-0033) |
 | 텍스트 lane의 기본 vendor는 Claude, 실행은 Codex다. | Confirmed (ADR-0036) |
 | `mcx` CLI 표면은 비대화형 단발 명령이고 exit code는 0(성공/CLEAR)·1(오류)·2(판정 부정)다. | Confirmed (ADR-0038) |
 | 병렬 실행과 조건부 consensus는 v1에 포함하지 않는다 — 병렬은 Phase 11(독립 항목), consensus 부재의 출구는 escalation `HOLD`다. | Confirmed (ADR-0024 §3, ADR-0030 §5) |
@@ -1237,7 +1237,8 @@ migration 계획 없이 즉시 교체하지 않는다.
 | Telemetry event·bundle 층 schema와 보존·redaction 정책 | Open Questions §9 — report 층은 ADR-0027로 확정. redaction은 Phase 7 진입 조건 |
 | OpenCode adapter의 클래스명과 호출 방식 | 실물 구현 이연 (ADR-0003 note 3) — Execute backend 교체 **구조**는 Phase 6 라우팅 테이블이 연다 |
 | reflect(자가개선) 단계의 mcx 대응물과 Hermes 취급 | Phase 10 (Open Questions §10) |
-| MCP tool 목록과 transport 세부사항 | Phase 7 / MCP 문서 |
+| ~~MCP tool 목록과 transport 세부사항~~ | **확정 (2026-08-09, ADR-0041)** — tool은 `build_parser()`에서 파생(CLI 24 + 비동기 3 + job 2), transport는 stdio 하나, SDK는 optional extra |
+| worker가 Mission Control을 재귀 호출하는 것을 무엇이 막는가 | Phase 8 (Open Questions §8) — 텍스트 lane에는 격리가 있고 **실행 lane에는 없다** |
 
 미확정 항목을 구현 편의로 사실상 고정하지 않는다. 반대로, **확정된 항목을
 미확정으로 방치하지도 않는다** — Phase 종료 검토 질문 7이 이 표의 갱신

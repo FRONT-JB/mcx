@@ -253,9 +253,12 @@ upstream 대응물은 있다 (`ACTokenAttribution`, `run_total_tokens`,
   설정 파일 `<state-dir>/config.toml`은 도입했고 **CLI 플래그는 여전히 없다** —
   라우팅은 설정 파일로만 들어온다.
 - **approve actor 식별자** — v1 승인 주체는 명령을 실행한 로컬 사용자이고
-  evidence는 `--statement`다 (upstream도 CLI에 user identity 없음). MCP
-  (Phase 7)에서 host가 대리 승인하는 경로가 생길 때 재평가
-  (OPEN_QUESTIONS §3 잔여).
+  evidence는 `--statement`다 (upstream도 CLI에 user identity 없음).
+  → **재평가 시점 도래, 미처분 → Phase 8로 재지정 (2026-08-09, Phase 7 종료
+  검토).** MCP가 승인 tool을 열었으므로 host 에이전트가 `mcx_blueprint_approve`를
+  부를 수 있고, 그 승인은 기록상 사용자 승인과 구분되지 않는다. 결정은
+  "Core가 actor를 기록할 것인가, skill이 사용자 확인을 보증할 것인가"이며
+  Phase 8 경계 ADR의 항목이다 (OPEN_QUESTIONS §3 잔여).
 - ~~**status 스냅샷의 사람용 렌더**~~ → **개정 2로 도입 완료 (2026-08-09)** —
   §6.1. `--json`이 기존 구조화 출력을 그대로 유지한다.
 - **토큰·비용 계측** — 우리 완성 port는 usage envelope를 버리므로 반환형

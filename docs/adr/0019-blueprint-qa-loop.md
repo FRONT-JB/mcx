@@ -154,9 +154,15 @@ upstream의 "No candidate is accepted by default"와 같다. 자동 적용하면
 뒤집는** 경우를 사용자가 모르고 지나친다.
 
 이 ADR은 적용 절차의 **경계**만 정한다. 후보를 어떻게 제시하고 선택받을지는
-**Phase 7 MCP surface**가 다룬다 — host 에이전트가 QA 지적으로부터 revision
-초안을 제안하고 채택은 사용자다 (2026-08-09 사용자 결정. Phase 6 CLI는
-비대화형 단발이라 제시 표면을 갖지 않는다 — ADR-0038 §2).
+host 에이전트가 다룬다 — QA 지적으로부터 revision 초안을 제안하고 채택은
+사용자다 (2026-08-09 사용자 결정. Phase 6 CLI는 비대화형 단발이라 제시 표면을
+갖지 않는다 — ADR-0038 §2).
+
+> **2026-08-09 재지정 → Phase 8** (Phase 7 종료 검토). Phase 7이 **재료는**
+> 이행했다 — `mcx_blueprint_qa`가 지적을, `mcx_blueprint_revise`가 채택
+> 진입점을 준다. 없는 것은 *"host가 그것을 하라"* 는 지시이며, 그것은 tool이
+> 아니라 skill 계층의 내용이다
+> ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §1.7).
 
 ### 8. QA 결과는 승인 기록이 들고 있다
 

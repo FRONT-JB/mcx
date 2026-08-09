@@ -36,6 +36,7 @@ class TestToolCatalogue:
             "mcx_cancel_job",
             "mcx_start_execute_next",
             "mcx_start_verify_semantic",
+            "mcx_start_recover_dispatch",
         }
 
     def test_a_start_tool_mirrors_its_synchronous_schema(self) -> None:
@@ -51,7 +52,27 @@ class TestToolCatalogue:
         """짧은 명령까지 두 벌이면 host가 매번 어느 쪽을 쓸지 판단해야 한다."""
         starts = {t.name for t in server.definitions() if t.name.startswith("mcx_start_")}
 
-        assert starts == {"mcx_start_execute_next", "mcx_start_verify_semantic"}
+        assert starts == {
+            "mcx_start_execute_next",
+            "mcx_start_verify_semantic",
+            "mcx_start_recover_dispatch",
+        }
+
+    def test_every_command_that_drives_the_execution_runtime_has_a_start_pair(self) -> None:
+        """길이는 명령 이름이 아니라 **실행 경로**가 정한다.
+
+        ``recover dispatch``는 ``ExecuteService.dispatch_correction``을 거쳐
+        ``execute next``와 같은 ``codex exec``를 돌린다. 짝이 없으면 host가
+        900초까지 블로킹된 채 job id를 못 받아 취소할 수단도 없다 —
+        Phase 7 종료 검토가 잡은 누락이다.
+        """
+        import inspect
+
+        from mission_control.application import recover_service
+        from mission_control.mcp.surface import LONG_RUNNING
+
+        assert "self.execute.dispatch_correction" in inspect.getsource(recover_service)
+        assert "mcx_recover_dispatch" in LONG_RUNNING
 
     def test_no_tool_name_repeats(self) -> None:
         names = [tool.name for tool in server.definitions()]
@@ -131,6 +152,17 @@ class TestStartTools:
 
         receipt = await server.handle(
             "mcx_start_verify_semantic", {"mission": "m"}, state_dir=tmp_path
+        )
+
+        assert receipt.result_type is ResultType.ACCEPTED
+        assert receipt.structured_content["job"] == "m#2"
+
+    async def test_the_recover_pair_routes_to_its_synchronous_tool(self, tmp_path: Path) -> None:
+        """이름 되돌리기(``start_recover_dispatch`` → ``recover_dispatch``)가 도는지."""
+        await _start(tmp_path)
+
+        receipt = await server.handle(
+            "mcx_start_recover_dispatch", {"mission": "m"}, state_dir=tmp_path
         )
 
         assert receipt.result_type is ResultType.ACCEPTED

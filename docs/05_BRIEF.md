@@ -797,7 +797,7 @@ Brief의 오류는 구현 오류와 specification gap을 구분한다.
 | Generator가 tool 호출을 시도 | 실행을 차단하고 capability violation 기록 | 편의를 위해 권한 허용 |
 | runtime unavailable/timeout | 현재 revision 보존, 오류 Telemetry, 정책상 재시도 또는 HOLD | state 초기화 |
 | persistence 실패 | 전이·승인·CLEAR 중단 | 메모리 결과만 성공으로 응답 |
-| stale write 충돌 | 최신 question과 revision을 제시해 재확인 (`Phase 7 미구현` — Phase 1은 탐지 후 오류 전파까지) | 최신 state 덮어쓰기 |
+| stale write 충돌 | 최신 question과 revision을 제시해 재확인 (`Phase 8 미구현` — 2026-08-09 재지정. Phase 7이 동시 writer 조건을 만들었으나 재확인은 없고, 탐지 후 오류 전파까지다) | 최신 state 덮어쓰기 |
 | 동일 질문 반복 | no-progress로 기록하고 다른 gap/표현 선택 또는 HOLD | 무한 반복 |
 | code fact를 찾지 못함 | unknown과 조사 범위 기록, 권한 요청 또는 사용자 확인 | assumption을 fact로 저장 |
 | 사실과 제품 결정 충돌 | conflict로 보존하고 사용자에게 의미를 설명 | 한쪽을 자동 삭제 |
@@ -907,7 +907,7 @@ CLI는 Gate를 자체 계산하지 않고 Core application boundary의 결과를
 | B-014 | 이전 revision 승인 후 내용 변경 | 기존 approval이 stale 처리되고 재승인을 요구한다. |
 | B-015 | 현재 revision 승인 및 모든 조건 충족 | CLEAR for Blueprint와 근거 reference를 저장한다. |
 | B-016 | persistence 실패 직후 승인 | CLEAR를 기록하거나 표시하지 않는다. |
-| B-017 | 저장된 것보다 앞서지 않는 쓰기가 도착 (`upstream 대응물 없음`, [ADR-0014](./adr/0014-brief-concurrent-write-protection.md)) | 최신 state를 덮어쓰지 않는다. 재확인 요청은 Phase 7에서 구현한다. |
+| B-017 | 저장된 것보다 앞서지 않는 쓰기가 도착 (`upstream 대응물 없음`, [ADR-0014](./adr/0014-brief-concurrent-write-protection.md)) | 최신 state를 덮어쓰지 않는다. 재확인 요청은 Phase 8에서 구현한다 (2026-08-09 재지정). |
 | B-018 | 같은 질문이 반복됨 | no-progress를 감지하고 무한 루프를 막는다. |
 | B-019 | runtime timeout 후 재개 | 이전 rounds와 unresolved item을 잃지 않고 재개한다. |
 | B-020 | generator가 Mission Control MCP 재호출 시도 | 호출을 차단하고 capability violation을 기록한다. |
