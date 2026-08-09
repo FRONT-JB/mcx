@@ -460,6 +460,14 @@ know?"*로 빈틈을 찾고, Reflect가 그 위에서 다음 Seed의 AC와 ontol
 - [ ] **자가개선 결과가 다음 작업에 연결되는 경로**를 조사한다 —
       `evolution/loop.py`, `projector.py`, `parent_seed_id` lineage,
       `evolve_step` MCP tool. "무엇이 다음 세대의 입력이 되는가"의 전 구간.
+- [ ] **upstream Stage enum의 stage 내부 국면과 우리 다섯 Stage의 대응을
+      대조한다.** (2026-08-09 Phase 6 종료 검토에서 시한 재지정 —
+      [ADR-0037](../adr/0037-mission-record-and-canonical-stage.md) §5는 이
+      대조를 Phase 6 시한으로 걸었고 **무처분 도과했다**.) upstream enum은
+      `RALPH_HANDOFF`·`UNSTUCK_LATERAL` 같은 stage 내부 국면까지 포함하는데,
+      우리 `current_stage`에는 대응물도 제외 기록도 없다. 이 국면들이 진화
+      루프의 것이므로 Phase 10 조사가 같은 소스를 읽는다 — 별도 조사가 아니라
+      위 두 항목에 붙는 대조다.
 - [ ] Wonder/Reflect 출력의 mcx 대응물을 결정한다 — 우리 Brief/Blueprint의
       어디로 들어오는가. Gen 2+에서 Brief를 대체하는지, 입력으로 합류하는지가
       핵심 갈림길이다 (도그푸딩 기록이 수동으로 하던 역할의 자동화).

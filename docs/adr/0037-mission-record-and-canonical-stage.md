@@ -49,6 +49,21 @@ and stall handling", "resume later without silently duplicating execution".
    UNSTUCK_LATERAL)까지 포함하는 것과 우리 다섯 Stage 축의 대응은 그때
    대조한다.
 
+   > **2026-08-09 처분 (Phase 6 종료 검토) — 부분 이행.**
+   >
+   > - 필드명·enum 멤버는 확정됐다: `MissionRecord`의 `mission_id`,
+   >   `workspace`, `current_stage`(Stage 5), `status`(`MissionStatus`),
+   >   `completed_at`, `sequence`, `transitions`.
+   > - **state version은 `sequence`가 그 자리다** — 쓰기 순서이자 덮어쓰기
+   >   판정 값이며(ADR-0014와 같은 축), Lifecycle §3.1이 요구하는 "state
+   >   version"을 이것이 충족한다고 여기서 확정한다. 구현은 Phase 6에
+   >   있었으나 §3.1과의 대응이 문서에 적힌 적이 없어 미이행으로 보였다.
+   > - **upstream enum 대응 대조는 수행하지 않았다.** 우리 다섯 Stage에
+   >   stage 내부 국면(RALPH_HANDOFF, UNSTUCK_LATERAL)의 대응물이 있는지
+   >   확인되지 않았다. 새 시한은 **Phase 10 (Reflect/Evolve)** — 그 국면들이
+   >   upstream 진화 루프의 것이므로 Phase 10 조사가 같은 소스를 읽는다.
+   >   [Open Questions §10](../research/OPEN_QUESTIONS.md)에 등록한다.
+
 ## Consequences
 
 ### Positive
@@ -77,9 +92,18 @@ and stall handling", "resume later without silently duplicating execution".
 
 ## Verification (Phase 6에서)
 
-- mission 상태 문서에 current Stage 필드가 존재하고, 불법 전이가 예외로
-  거부된다.
+> **2026-08-09 이행 확인 (Phase 6 종료 검토).** 세 항목 모두 충족했고, 첫
+> 항목의 문장을 구현에 맞게 정정했다 — 원문 *"불법 전이가 예외로 거부된다"*는
+> **CLI 명령이 거부된다**로 오독될 수 있었다. 실제 경계는 아래와 같으며 이것이
+> §Decision 2("저장은 표시용, enforcement 아님")의 직접 귀결이다.
+
+- mission 상태 문서에 current Stage 필드가 존재하고, 불법 전이는 **도메인에서
+  예외로 거부된다** (`MissionRecord.transit` → `InvalidStageTransitionError`).
+  **CLI는 그 예외를 잡아 경고만 남기고 명령은 성공시킨다** — 기록이 진입을
+  막으면 저장된 Stage가 enforcement로 승격되기 때문이다
+  (`cli/main.py:_record_transition`, `test_illegal_transition_warns_but_command_succeeds`).
 - 저장된 Stage와 Gate 재계산이 어긋나는 시나리오에서 Gate 결과가 이기고,
-  어긋남이 표시된다.
+  어긋남이 표시된다 (`mcx status`의 경고 줄, `test_status_reports_record_and_mismatch`).
 - Stage service 코드가 mission 문서 모듈에 의존하지 않는다 (import 방향
-  검사).
+  검사). **2026-08-09까지 이 검사는 산문뿐이었고** 같은 날
+  `tests/unit/test_layer_boundaries.py`로 실검사가 됐다.

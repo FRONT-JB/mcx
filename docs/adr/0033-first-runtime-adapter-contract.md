@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-08-08
-- Constitutional basis: [ADR-0003](./0003-runtime-neutral-core.md) (Runtime-neutral Core), [ADR-0004](./0004-stage-scoped-minimum-capability.md), [ADR-0024](./0024-execute-v1-execution-model.md) §6
+- Constitutional basis: [ADR-0003](./0003-runtime-abstraction.md) (Runtime-neutral Core), [ADR-0004](./0004-stage-scoped-minimum-capability.md), [ADR-0024](./0024-execute-v1-execution-model.md) §6
 - Upstream evidence: [RUNTIME_UPSTREAM_FINDINGS.md](../research/RUNTIME_UPSTREAM_FINDINGS.md)
 
 ## Context
