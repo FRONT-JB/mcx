@@ -1,6 +1,6 @@
 # ADR 0047 — 되돌리기: 마지막 입증 지점에서 다시 시작한다
 
-- Status: **Proposed**
+- Status: **Accepted** (사용자 승인 2026-08-10 — 태그 미도입·upstream 구조 반영)
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0008](./0008-bounded-recovery.md) (bounded recovery),
   [ADR-0045](./0045-worktree-isolation-contract.md) (미션 전용 worktree),

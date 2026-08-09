@@ -410,7 +410,7 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 > 커버리지 처분, setup/config skill 필요 여부. **한 묶음으로 다루지 않으면
 > 관측 없이 하나씩 발명하게 된다** ([progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) §3).
 
-- [-] brownfield 탐색·기존 제약 등록 (ADR-0011 유예 해제) — **2026-08-09
+- [x] brownfield 탐색·기존 제약 등록 (ADR-0011 유예 해제) — **2026-08-09
   조사 완료, 결정 대기** ([BROWNFIELD findings](../research/BROWNFIELD_UPSTREAM_FINDINGS.md),
   [ADR-0044](../adr/0044-brownfield-entry-contract.md) Proposed). 조사가 전제를
   갈랐다: `brownfield`는 **한 기능이 아니라 세 역할**이고 ADR-0011 §6은 그중
@@ -455,9 +455,9 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   기각됐다** — 검증 통과와 사용자 수용은 다른 판단이다 (ADR-0042 §5).
   `cleanup`은 mission에 속하지 않는 유일한 명령이라 MCP 표면에 올리지 않으며,
   이것이 ADR-0041 §1 1:1 규칙의 **유일한 예외**임을 테스트가 고정한다
-- [-] AC별 checkpoint 커밋 — **2026-08-09 조사·구현 완료, ADR 승인 대기**
+- [x] AC별 checkpoint 커밋 — **2026-08-10 완료**
   ([CHECKPOINT findings](../research/CHECKPOINT_UPSTREAM_FINDINGS.md),
-  [ADR-0046](../adr/0046-verified-checkpoint-commits.md) Proposed, 867 tests).
+  [ADR-0046](../adr/0046-verified-checkpoint-commits.md) Accepted, 867 tests).
   **조사가 항목 이름을 정정했다**: upstream의 호출 지점은 실행 뒤가 아니라
   **평가 이후 하나뿐**이고 조건은 `authoritative_pass`(통과 + 권위 있는 판정)다.
   그리고 *"AC별"* 은 분할이 아니라 **라벨**이다 — upstream도 AC의 파일 목록을
@@ -470,9 +470,9 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   커밋 후 트리가 깨끗하므로 상태를 만들지 않는다(ADR-0045 §2와 같은 판단).
   정책 스위치는 만들지 않았다: upstream이 `none` 기본값으로 막는 위험(사용자
   checkout 오염)을 ADR-0045가 **구조로** 막았다
-- [-] rollback 범위 — **2026-08-09 조사·구현 완료, ADR 승인 대기**
+- [x] rollback 범위 — **2026-08-10 완료**
   ([ROLLBACK findings](../research/ROLLBACK_UPSTREAM_FINDINGS.md),
-  [ADR-0047](../adr/0047-rollback-to-the-last-proven-point.md) Proposed,
+  [ADR-0047](../adr/0047-rollback-to-the-last-proven-point.md) Accepted,
   878 tests). **조사가 ADR-0032의 근거 포인터를 정정했다** — `core/worktree.py`에
   되돌리기는 없고, 파일 되돌리기는 Core가 아니라 `scripts/ralph.sh`에 있다.
   범위는 **마지막 입증 지점**이고 시점은 **재투입 직전**이다(잔해 위에서
@@ -485,9 +485,9 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   영원히 발동하지 않으며, 그 가드가 지키려던 것(사용자 미커밋 변경 보호)을
   격리(0045)와 checkpoint(0046)가 이미 지킨다. **둘 중 하나가 무너지면 이
   divergence의 근거가 사라진다**
-- [-] `changed_files` 수집 — **2026-08-09 조사·구현 완료, ADR 승인 대기**
+- [x] `changed_files` 수집 — **2026-08-10 완료**
   ([CHANGED_FILES findings](../research/CHANGED_FILES_UPSTREAM_FINDINGS.md),
-  [ADR-0048](../adr/0048-changed-files-collection.md) Proposed, 892 tests).
+  [ADR-0048](../adr/0048-changed-files-collection.md) Accepted, 892 tests).
   **보류의 실질 이유는 비교 기준점 부재였고** checkpoint·rollback이 그것을
   만들었다 — 기준선 HEAD가 곧 마지막 입증 지점이라 목록이 **rollback이 지울
   집합과 같다**. 수집은 **검증 명령 실행 전**이다: 뒤로 미루면 명령이 만든

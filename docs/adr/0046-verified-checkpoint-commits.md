@@ -1,6 +1,6 @@
 # ADR 0046 — checkpoint 커밋: 입증된 것만 고정한다
 
-- Status: **Proposed**
+- Status: **Accepted** (사용자 승인 2026-08-10)
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0005](./0005-evidence-over-reasoning.md)
   (Evidence over reasoning), [ADR-0045](./0045-worktree-isolation-contract.md)

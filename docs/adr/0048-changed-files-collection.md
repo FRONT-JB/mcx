@@ -1,6 +1,6 @@
 # ADR 0048 — `changed_files` 수집: 마지막 입증 지점 이후 무엇을 손댔는가
 
-- Status: **Proposed**
+- Status: **Accepted** (사용자 승인 2026-08-10)
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0005](./0005-evidence-over-reasoning.md),
   [ADR-0028](./0028-verify-v1-mechanical-contract.md) §4 (증거 필드)
