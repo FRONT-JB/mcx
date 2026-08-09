@@ -40,6 +40,7 @@ from mission_control.domain.verify.evidence import (
     VerifyState,
 )
 from mission_control.domain.verify.verdict import CriterionVerdict
+from mission_control.domain.workspace import WorkspaceChanges
 
 
 class BriefRepository(Protocol):
@@ -553,6 +554,16 @@ class MechanicalDetectionRequest(BaseModel):
     workspace: str
     #: (파일 이름, 발췌) 쌍. 비어 있으면 호출 자체를 하지 않는다.
     manifests: tuple[tuple[str, str], ...]
+
+
+class WorkspaceChangeCollector(Protocol):
+    """작업 트리에서 무엇이 바뀌었는지 모으는 제한된 역할 (ADR-0048).
+
+    실패는 예외가 아니라 결과의 ``error``다 — 목록을 못 만든 것이 검증을 막지
+    않는다. 다만 **빈 목록과 수집 실패는 구분된다**.
+    """
+
+    def collect(self, workspace: str) -> WorkspaceChanges: ...
 
 
 class WorkspaceRollback(Protocol):

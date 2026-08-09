@@ -32,6 +32,7 @@ from mission_control.application.ports import (
     SemanticEvaluator,
     VerificationOutputStore,
     VerifyRepository,
+    WorkspaceChangeCollector,
 )
 from mission_control.domain.blueprint.gate import evaluate_blueprint_gate
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
@@ -57,6 +58,7 @@ from mission_control.domain.verify.verdict import (
     SemanticAssessment,
     SemanticPolicy,
 )
+from mission_control.domain.workspace import WorkspaceChanges
 
 
 class VerdictMismatchError(MissionControlError):
@@ -100,6 +102,9 @@ class VerifyService:
     #: 입증된 변경을 미션 브랜치에 고정한다 (ADR-0046). 주입되지 않으면
     #: checkpoint를 남기지 않는다 — 테스트와 대체 조립이 git을 요구받지 않는다.
     checkpoints: CheckpointRecorder | None = None
+    #: 무엇이 바뀌었는지 모으는 수단 (ADR-0048). 주입되지 않으면 목록이 비고
+    #: 사유가 남는다 — 조용히 "변경 없음"이 되지 않는다.
+    changes: WorkspaceChangeCollector | None = None
 
     async def run_mechanical(self, *, mission_id: str) -> VerifyState:
         """성공 계약이 있는 모든 AC를 검증하고 기록된 상태를 반환한다.
@@ -111,6 +116,9 @@ class VerifyService:
         blueprint, execute_state = await self._cleared_pipeline(mission_id)
         workspace = execute_state.attempts[-1].envelope.workspace
         state = await self._state(mission_id)
+        # **검증 명령을 돌리기 전에** 찍는다 (ADR-0048 §2). 뒤로 미루면 명령이
+        # 만든 캐시·커버리지 파일이 에이전트의 변경으로 섞인다.
+        changed = self._collect_changes(workspace)
 
         runs: list[VerificationRun] = []
         for criterion in blueprint.acceptance_criteria:
@@ -150,6 +158,8 @@ class VerifyService:
                 execute_state, blueprint.revision
             ),
             runs=tuple(runs),
+            changed_files=changed.paths,
+            changed_files_error=changed.error,
         )
         recorded = state.record(evidence)
         await self.repository.save(recorded)
@@ -206,6 +216,12 @@ class VerifyService:
         recorded = state.record_verdicts(assessment)
         await self.repository.save(recorded)
         return recorded
+
+    def _collect_changes(self, workspace: str) -> WorkspaceChanges:
+        """수집기가 없으면 빈 목록이 아니라 **사유**를 남긴다."""
+        if self.changes is None:
+            return WorkspaceChanges(error="변경 수집기가 조립되지 않았다")
+        return self.changes.collect(workspace)
 
     async def checkpoint(self, *, mission_id: str) -> Checkpoint | None:
         """이번 라운드에서 증거로 입증된 것을 되돌릴 수 있는 지점으로 고정한다.

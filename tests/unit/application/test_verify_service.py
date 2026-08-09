@@ -40,6 +40,7 @@ from mission_control.domain.verify.evidence import (
 )
 from mission_control.domain.verify.gate import VerifyGateBlockingCondition
 from mission_control.domain.verify.verdict import CriterionVerdict, SemanticPolicy
+from mission_control.domain.workspace import WorkspaceChanges
 
 BRIEF_POLICY = ClarityPolicy.greenfield_v1()
 QA_POLICY = QaPolicy.blueprint_v1()
@@ -239,6 +240,7 @@ def _service(
     executed: ExecuteState | None = None,
     with_blueprint: bool = True,
     checkpoints: RecordingCheckpoints | None = None,
+    changes: object | None = None,
 ) -> tuple[
     VerifyService,
     InMemoryBriefRepository,
@@ -270,6 +272,7 @@ def _service(
         evaluator=the_evaluator,
         policy=SemanticPolicy.verify_v1(),
         checkpoints=checkpoints,
+        changes=changes,
     )
     return service, briefs, verifies, the_runner, the_evaluator
 
@@ -509,3 +512,76 @@ class TestCheckpoint:
 
         assert result is not None and not result.committed
         assert result.ac_keys == ()
+
+
+class StubChanges:
+    """수집 요청을 기록하고 정해진 결과를 돌려준다."""
+
+    def __init__(self, result: WorkspaceChanges) -> None:
+        self.result = result
+        self.calls: list[str] = []
+
+    def collect(self, workspace: str) -> WorkspaceChanges:
+        self.calls.append(workspace)
+        return self.result
+
+
+class TestChangedFiles:
+    """무엇이 바뀌었는지는 증거의 일부다 (ADR-0048)."""
+
+    async def test_the_paths_land_in_the_evidence(self) -> None:
+        changes = StubChanges(WorkspaceChanges(paths=("mdtoc.py", "test_mdtoc.py")))
+        service, _, _, _, _ = _service(changes=changes)
+
+        state = await service.run_mechanical(mission_id="m-1")
+
+        assert state.evidence is not None
+        assert state.evidence.changed_files == ("mdtoc.py", "test_mdtoc.py")
+        assert state.evidence.changed_files_error is None
+
+    async def test_it_looks_where_the_execution_ran(self) -> None:
+        changes = StubChanges(WorkspaceChanges())
+        service, _, _, _, _ = _service(changes=changes)
+
+        await service.run_mechanical(mission_id="m-1")
+
+        assert changes.calls == [ENVELOPE.workspace]
+
+    async def test_it_collects_before_the_commands_run(self) -> None:
+        """검증 명령이 만든 캐시가 에이전트의 변경으로 섞이면 안 된다."""
+        order: list[str] = []
+
+        class OrderedChanges:
+            def collect(self, workspace: str) -> WorkspaceChanges:
+                order.append("collect")
+                return WorkspaceChanges()
+
+        class OrderedRunner(ScriptedRunner):
+            async def run(self, **kwargs: object) -> CommandExecution:
+                order.append("run")
+                return await super().run(**kwargs)  # type: ignore[arg-type]
+
+        service, _, _, _, _ = _service(runner=OrderedRunner(), changes=OrderedChanges())
+        await service.run_mechanical(mission_id="m-1")
+
+        assert order[0] == "collect"
+        assert "run" in order
+
+    async def test_a_failure_is_a_reason_not_an_empty_list(self) -> None:
+        changes = StubChanges(WorkspaceChanges(error="git 저장소가 아니다"))
+        service, _, _, _, _ = _service(changes=changes)
+
+        state = await service.run_mechanical(mission_id="m-1")
+
+        assert state.evidence is not None
+        assert state.evidence.changed_files == ()
+        assert state.evidence.changed_files_error == "git 저장소가 아니다"
+
+    async def test_no_collector_is_a_reason_too(self) -> None:
+        """조용히 "변경 없음"이 되지 않는다."""
+        service, _, _, _, _ = _service()
+
+        state = await service.run_mechanical(mission_id="m-1")
+
+        assert state.evidence is not None
+        assert state.evidence.changed_files_error is not None

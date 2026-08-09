@@ -485,7 +485,18 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   영원히 발동하지 않으며, 그 가드가 지키려던 것(사용자 미커밋 변경 보호)을
   격리(0045)와 checkpoint(0046)가 이미 지킨다. **둘 중 하나가 무너지면 이
   divergence의 근거가 사라진다**
-- [ ] `changed_files` 수집 (ADR-0029 보류 — git 기반이라 이 자리)
+- [-] `changed_files` 수집 — **2026-08-09 조사·구현 완료, ADR 승인 대기**
+  ([CHANGED_FILES findings](../research/CHANGED_FILES_UPSTREAM_FINDINGS.md),
+  [ADR-0048](../adr/0048-changed-files-collection.md) Proposed, 892 tests).
+  **보류의 실질 이유는 비교 기준점 부재였고** checkpoint·rollback이 그것을
+  만들었다 — 기준선 HEAD가 곧 마지막 입증 지점이라 목록이 **rollback이 지울
+  집합과 같다**. 수집은 **검증 명령 실행 전**이다: 뒤로 미루면 명령이 만든
+  캐시가 섞이고, checkpoint 뒤면 트리가 깨끗해 **언제나 빈 목록**이 된다.
+  rename은 두 경로 모두 싣는다(staging용 파서와 다르며 upstream도 파서가 둘).
+  **빈 목록과 수집 실패를 구분한다** — 뭉치면 "관찰 못 함"이 "변경 없음"으로
+  읽힌다. `--stat`·원문 보존·평가자 전달은 미도입(등록된 divergence):
+  upstream이 그것을 두는 이유는 QA가 workspace를 관찰할 수 없기 때문이고
+  우리 평가자는 직접 관찰한다 (ADR-0034 정정)
 - [ ] **canonical event 층 + 스트리밍 생산자** — Phase 5 시한을 무처분 도과한
   항목이다 (2026-08-09 확인, [ADR-0027](../adr/0027-telemetry-layers-and-v1-schema.md)
   §3 주석). 여기로 오는 이유: 실사용에서야 긴 실행의 진행 표시가 실수요가 되고,

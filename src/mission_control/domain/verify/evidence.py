@@ -195,6 +195,12 @@ class VerificationEvidence(BaseModel):
     blueprint_revision: int = Field(ge=1)
     execution_attempt_numbers: tuple[int, ...] = Field(min_length=1)
     runs: tuple[VerificationRun, ...] = ()
+    #: 마지막 입증 지점 이후 바뀐 경로들 (ADR-0048). 검증 **명령을 돌리기 전에**
+    #: 찍는다 — 그 뒤면 우리 도구가 만든 파일이 에이전트의 변경으로 섞인다.
+    changed_files: tuple[str, ...] = ()
+    #: 수집이 불가능했던 이유. ``None``이면 위 목록이 사실이고, 값이 있으면
+    #: **빈 목록이 "변경 없음"을 뜻하지 않는다**.
+    changed_files_error: str | None = None
 
     @model_validator(mode="after")
     def _one_run_per_criterion(self) -> VerificationEvidence:
