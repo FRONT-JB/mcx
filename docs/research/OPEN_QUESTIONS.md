@@ -482,13 +482,24 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
 - [-] atomic state transition과 crash recovery 요구를 정의한다. (Execute
       범위는 ADR-0024 §4로 확정 — 지속이 dispatch보다 먼저, 크래시 후
       `DISPATCHED`로 남음이 곧 "결과 불명". Mission 전체 수준은 미정)
-- [x] Telemetry event/report/bundle schema를 결정한다. → 층별 소유·시점 확정
+- [-] Telemetry event/report/bundle schema를 결정한다. **(2026-08-09 `[x]`에서
+      되돌림 — schema 결정은 닫혔지만 event 층은 시한을 도과했다. 아래 참조.)**
+      → 층별 소유·시점 확정
       ([ADR-0027](../adr/0027-telemetry-layers-and-v1-schema.md), upstream
       실물은 [EVALUATE_UPSTREAM_FINDINGS](./EVALUATE_UPSTREAM_FINDINGS.md)):
       report 층은 v1 스키마까지 확정(Verify가 생산·소비, Phase 4에서 최종
       필드명), attempt 시각은 Phase 4에서 Clock port와 함께, event 층은
       생산자(스트리밍 adapter)와 함께 Phase 5, bundle은 Phase 4 semantic
       설계에서.
+
+      **2026-08-09 — event 층은 Phase 5 시한을 무처분 도과했다.** Phase 5는
+      2026-08-08 종료됐고 스트리밍 생산자는 없다(`src/`에 event 타입 부재).
+      Phase 5 종료 검토는 질문 7을 수행하지 않았고, 소급 처분 7건에도 이
+      항목은 없었으며, Phase 7 종료 검토는 "시한 미배치"로만 적고 재지정하지
+      않았다 — **검토 셋을 통과한 도과**다. 발견 경로는 외부 지적의 검증이었다.
+      **새 시한 Phase 9 (제안)**: 실사용에서야 진행 표시가 실수요가 되고 같은
+      Phase의 `changed_files`가 같은 생산자를 요구한다. bundle 층은 여전히
+      미도입이며 시한이 없다 — 그 사실을 여기 남긴다.
 - [-] retention, redaction, output-size 정책을 결정한다. → 발췌·출력 한도는
       report 층 구현 시 upstream 상수와 대조(ADR-0027 §5). **secret
       redaction은 닫혔다 (2026-08-09 —

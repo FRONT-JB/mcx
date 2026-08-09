@@ -393,6 +393,14 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 - [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조)
 - [ ] rollback 범위 (ADR-0032 보류 해제)
 - [ ] `changed_files` 수집 (ADR-0029 보류 — git 기반이라 이 자리)
+- [ ] **canonical event 층 + 스트리밍 생산자** — Phase 5 시한을 무처분 도과한
+  항목이다 (2026-08-09 확인, [ADR-0027](../adr/0027-telemetry-layers-and-v1-schema.md)
+  §3 주석). 여기로 오는 이유: 실사용에서야 긴 실행의 진행 표시가 실수요가 되고,
+  바로 위 `changed_files`가 같은 생산자를 요구한다
+- [ ] **spec-gap 분류와 `RecoveryDirective`** — [Recover Guide](../09_RECOVER.md)
+  §4.1의 계약이 코드 없이 있었고 **시한도 없었다** (2026-08-09 확인). 실패가
+  코드가 아니라 명세의 문제일 때 Brief/Blueprint로 route한다. upstream 대응물이
+  없으므로 발명 위험은 우리 몫이다
 - [ ] secret redaction 정책의 실물 재대조 (Phase 7 진입 조건으로 쓴 ADR을
   실 레포 사례로 검증 — 조사 기반 정책의 첫 실물 대조)
 
@@ -829,7 +837,15 @@ verdict(충족·score·불확신·게이밍)다. 나머지는 **계약 미달**�
 
 - **spec-gap 분류가 없다.** 제품 결정 누락·AC 모순의 Brief/Blueprint routing은
   사용자가 기존 경로(Brief 재개, Blueprint revise)로 직접 수행한다 — 자동
-  분류·route는 미도입 (09 §14 해당 행 대상 없음).
+  분류·route는 미도입 (09 §14 해당 행 대상 없음). **계약은 있고 코드가 없다** —
+  [Recover Guide](../09_RECOVER.md) §4.1이 `RecoveryDirective`로 Brief/Blueprint에
+  route하라고 규정한다. **2026-08-09: 시한이 아예 없었음을 확인하고 Phase 9로
+  제안 등록했다** (외부 지적의 검증에서 드러났다. 시한 없는 항목은 도과를 탐지할
+  수 없다 — [progress 0006](./0006_MCX_CLI.md) §1.7이 같은 문제를 지적했다).
+  주의: upstream 대응물은 **없다** — upstream의 `FailureClass → RecoveryAction`은
+  전부 실행 계층 동작이고, 스펙 품질 원인(`BounceCause`)을 실패 분류와 **의도적으로
+  분리**한다 ([REPAIR findings](../research/REPAIR_UPSTREAM_FINDINGS.md)). 이
+  항목은 우리 쪽이 더 나아간 자리이며 그래서 발명 위험도 우리 몫이다.
 - **progress 기록이 없다.** 실패 수 감소 같은 신호를 기록하지 않으며, 유일한
   결정적 신호는 동일 오류 해시의 제거다 (ADR-0031).
 - **`previous_failure`의 프롬프트 렌더링은 Phase 5 소관.** v1은 구조화 필드의

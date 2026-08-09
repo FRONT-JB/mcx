@@ -76,6 +76,23 @@ upstream과 우리의 공통 배치다(agent 요약이 아니라 직접 실행�
 
 ### 3. canonical event 층 — 생산자(스트리밍 adapter)와 함께 Phase 5에서 확정한다
 
+> **2026-08-09 — 이 시한은 무처분 도과했다.** Phase 5는 2026-08-08에 종료됐고
+> 스트리밍 adapter는 만들어지지 않았다. Codex adapter는 JSONL을 읽지만 **event를
+> 생산하지 않는다**(`src/`에 event 타입이 없다). Phase 5 종료 검토는 질문 7을
+> 수행하지 않았고, 2026-08-09 소급 처분이 다룬 7건에도 이 항목은 **없었다**.
+> Phase 7 종료 검토도 *"시한 미배치"* 라고만 적고 재지정하지 않았다
+> ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §1.7).
+>
+> 검토 셋을 통과한 도과이며, 발견 경로는 외부 지적의 검증이었다.
+>
+> **새 시한 Phase 9 (제안).** 근거는 수요가 그때 생긴다는 것이다 — 실사용에서야
+> 긴 실행의 진행 표시가 실수요가 되고, 같은 Phase의 `changed_files`
+> ([ADR-0029](./0029-verify-deliberate-divergences.md) 보류)가 같은 생산자를
+> 요구한다. 아래 Cost의 *"event 층이 Phase 5까지 비므로 실행 중 관찰은
+> 불가능"* 은 **부분적으로 해소됐다**: Phase 6의 명령 원장이 "어느 명령이
+> 도는가"를 덮는다. 덮지 못한 것은 **한 번의 긴 실행 안에서 무슨 일이
+> 일어나는가**이며, 그것이 이 층에 남은 몫이다.
+
 event의 존재 이유는 실행 **중** 관찰(진행 표시, stall 탐지, resume)이고, 그
 생산자는 스트리밍 concrete adapter다. 동기 fake에는 발생 경로가 없다. Phase
 5에서 upstream lifecycle payload(EVALUATE_UPSTREAM_FINDINGS §3에 기록)와
