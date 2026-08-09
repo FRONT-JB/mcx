@@ -16,6 +16,7 @@
 - [VERIFY_UPSTREAM_FINDINGS.md](./VERIFY_UPSTREAM_FINDINGS.md) — mechanical 발견·allowlist·semantic verdict 조사
 - [REPAIR_UPSTREAM_FINDINGS.md](./REPAIR_UPSTREAM_FINDINGS.md) — failure taxonomy·retry budget·progress signal 조사
 - [MCP_UPSTREAM_FINDINGS.md](./MCP_UPSTREAM_FINDINGS.md) — MCP server 구조(SDK는 adapter 뒤), transport 3종, tool은 CLI와 1:1이 아님(CLI가 MCP 핸들러를 부름), 동기·비동기 tool 쌍과 job 상태 7종, 응답 envelope (Phase 7 설계 재료)
+- [BROWNFIELD_UPSTREAM_FINDINGS.md](./BROWNFIELD_UPSTREAM_FINDINGS.md) — `brownfield`는 한 기능이 아니라 세 역할(모호함 4번째 축 `context_clarity`, 저장소 레지스트리, mechanical 명령 자동 검출). 검출은 AI 1회 제안 + 디스크 대조 검증 + 실패 시 버림(*"phantom failure"* 금지). ①은 혼자 켜면 미션이 Gate에서 막힌다 (Phase 9 재료)
 - [SKILLS_UPSTREAM_FINDINGS.md](./SKILLS_UPSTREAM_FINDINGS.md) — plugin은 3층이고 host가 둘(Claude Code·Codex), skill이 선언하는 capability 계약, QA 루프·User Adoption Gate·감사 기록·Core 판정 재감사가 전부 skill 소유, 취소는 CLI 직접, 동시 쓰기 재확인은 대응물 없음, worker 재귀 차단은 미확인 (Phase 8 경계 ADR 재료)
 - [SECURITY_UPSTREAM_FINDINGS.md](./SECURITY_UPSTREAM_FINDINGS.md) — secret redaction의 네 지점(입력 한도·로깅·저장 거부·MCP 출력 마스킹), replay-unsafe 키 목록, 우리 노출 표면 실측 (Phase 7 진입 조건)
 - [RUNTIME_UPSTREAM_FINDINGS.md](./RUNTIME_UPSTREAM_FINDINGS.md) — LLMAdapter/AgentRuntime 분리, codex·claude·opencode 실행 계약 조사 (§10 Claude, §11 OpenCode 사용 시점, §12 runtime×backend 두 축과 MCP 구동 worker — §6 정정)

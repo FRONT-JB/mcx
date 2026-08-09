@@ -410,8 +410,16 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 > 커버리지 처분, setup/config skill 필요 여부. **한 묶음으로 다루지 않으면
 > 관측 없이 하나씩 발명하게 된다** ([progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) §3).
 
-- [ ] brownfield 탐색·기존 제약 등록 (ADR-0011 유예 해제, upstream
-  `ooo brownfield` 대조)
+- [-] brownfield 탐색·기존 제약 등록 (ADR-0011 유예 해제) — **2026-08-09
+  조사 완료, 결정 대기** ([BROWNFIELD findings](../research/BROWNFIELD_UPSTREAM_FINDINGS.md),
+  [ADR-0044](../adr/0044-brownfield-entry-contract.md) Proposed). 조사가 전제를
+  갈랐다: `brownfield`는 **한 기능이 아니라 세 역할**이고 ADR-0011 §6은 그중
+  하나만 기록하고 있었다 — ① 모호함 4번째 축(`context_clarity`, weight 0.15,
+  floor 0.60), ② 저장소 레지스트리(홈 스캔 + 기본 repo, SQLite), ③ mechanical
+  명령 자동 검출(`.ouroboros/mechanical.toml`). 제안: ②는 **미도입**(우리 CLI는
+  mission당 workspace 하나), ③은 **도입**하되 축을 AC 수준으로 바꾼다,
+  ①은 **순서 제약** 때문에 ③ 뒤 관측 후 결정. **①을 혼자 켜면 brownfield
+  미션이 Gate에서 영원히 막힌다** — 자리가 예약돼 있어 값싸 보이는 것이 함정이다
 - [ ] worktree 격리 (upstream `core/worktree.py` 대조)
 - [ ] AC별 checkpoint 커밋 (upstream `AutoCommitPolicy` 대조)
 - [ ] rollback 범위 (ADR-0032 보류 해제)
