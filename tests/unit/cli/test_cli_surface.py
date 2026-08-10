@@ -1,5 +1,6 @@
 """mcx CLI 표면 — 명령 목록, exit code, 오류 수렴 (ADR-0038 §1~§3)."""
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -7,7 +8,7 @@ import pytest
 
 from mission_control.cli import composition
 from mission_control.cli.composition import default_adapters
-from mission_control.cli.main import amain, build_parser
+from mission_control.cli.main import _load_draft, amain, build_parser
 
 #: ADR-0038 §1의 명령 표면 전체. 여기 없는 명령이 생기거나 여기 있는 명령이
 #: 사라지면 ADR 개정이 먼저다.
@@ -47,6 +48,38 @@ def test_surface_is_fixed(argv: list[str], stage: str, verb: str) -> None:
     args = build_parser().parse_args([*argv, *_COMMON])
     assert args.stage == stage
     assert args.verb == verb
+
+
+def test_blueprint_revision_draft_loads_a_complete_ontology(tmp_path: Path) -> None:
+    draft_file = tmp_path / "draft.json"
+    draft_file.write_text(
+        json.dumps(
+            {
+                "goal": "429 재시도 정책",
+                "constraints": [],
+                "non_goals": [],
+                "acceptance_criteria": [{"description": "429만 재시도한다"}],
+                "ontology": {
+                    "name": "RetryPolicy",
+                    "description": "재시도 입력과 결과 경계",
+                    "fields": [
+                        {
+                            "name": "retry_after",
+                            "field_type": "str | None",
+                            "description": "Retry-After 입력",
+                            "required": True,
+                        }
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    draft = _load_draft(draft_file)
+
+    assert draft.ontology is not None
+    assert draft.ontology.fields[0].name == "retry_after"
 
 
 def test_shorthand_expands_to_brief_start() -> None:

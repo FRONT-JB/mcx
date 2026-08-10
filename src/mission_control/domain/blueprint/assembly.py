@@ -67,17 +67,21 @@ class BlueprintScopeError(MissionControlError):
 
 @dataclass(frozen=True, slots=True)
 class BlueprintDraft:
-    """생성기가 반환하는 초안. 아직 승인 대상이 아니다.
+    """생성기 또는 사용자가 채택한 수동 수정 초안. 아직 승인 대상이 아니다.
 
     lineage(mission, revision)를 담지 않는다. 그것은 생성기가 정할 것이 아니라
     조립 단계가 handoff에서 가져온다. 생성기가 revision을 정할 수 있으면 승인
     대상이 어느 Brief에서 나왔는지를 모델이 주장하게 된다.
+
+    ``ontology``는 Gen 2+ 수동 refinement에서만 쓰는 선택적 complete
+    replacement다. 생략 시 조립 호출자가 current ontology를 넘겨 보존한다.
     """
 
     goal: str
     constraints: tuple[str, ...]
     non_goals: tuple[str, ...]
     acceptance_criteria: tuple[AcceptanceCriterion, ...]
+    ontology: OntologySchema | None = None
 
 
 def check_scope(*, draft: BlueprintDraft, handoff: BriefHandoff) -> tuple[ScopeFinding, ...]:
@@ -157,5 +161,5 @@ def assemble_blueprint(
         constraints=draft.constraints,
         non_goals=draft.non_goals,
         acceptance_criteria=draft.acceptance_criteria,
-        ontology=ontology or initial_ontology(),
+        ontology=ontology or draft.ontology or initial_ontology(),
     )

@@ -7,7 +7,7 @@
 |---|---|
 | 문서 지위 | Draft implementation guide |
 | 선행 문서 | [Constitution](./00_MISSION_CONTROL.md), [Lifecycle](./02_MISSION_LIFECYCLE.md), [Brief](./05_BRIEF.md) |
-| canonical CLI 명령 | `mcx blueprint generate|qa|revise|approve|gate` (Evolve 명령은 구현 대기) |
+| canonical CLI 명령 | `mcx blueprint generate|qa|revise|approve|gate|evolve` |
 | 진입 전제 | Gen 1: `CLEAR — Clear for Blueprint` + Brief revision / Gen 2+: Verify `HOLD` + Evolve source snapshot |
 | 성공 결과 | 승인된 immutable Seed revision, `CLEAR — Clear for Execute` |
 | 실패 결과 | `HOLD`와 수정·질문·승인 요구사항 |
@@ -398,6 +398,21 @@ QA 상한은 **generation마다 5회**다. 같은 generation의 수동 revision�
 generation을 열 때만 새 예산이 시작된다. 상한 소진 뒤 최종 수동 수정 1회와
 미달 수락도 generation별 규칙이다.
 
+Gen 2+에서 사용자가 채택한 `blueprint revise --draft-file`은 Goal·Constraints·
+Non-goals·AC와 함께 **완전한 ontology replacement**를 선택적으로 담을 수 있다.
+`ontology`를 생략하면 current revision의 ontology를 그대로 보존하고, 넣으면 QA
+finding까지 반영한 전체 `OntologySchema`로 교체한다. 부분 field patch는 허용하지
+않는다. 빠진 field가 삭제인지 실수인지 구분할 수 없기 때문이다. 이 경로는
+Reflect가 revision을 직접 고치는 우회로가 아니라, QA 제안을 사용자가 채택한 새
+revision으로 만드는 기존 approval model의 일부다. Gen 1 생성은 계속 결정적인 빈
+initial ontology를 사용한다.
+
+이 계약은 pinned upstream의 interactive `skills/seed/SKILL.md`가 QA 결과에서
+사용자가 수락한 변경만 이전 Seed YAML 전체에 다시 반영하는 Restate 단계와
+대조했다. upstream Gen 2+ autonomous loop에는 이 정지점이 없으며, exact user
+approval을 유지하는 차이는 [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md)
+§6의 등록 divergence다.
+
 ### 7.5 User approval
 
 QA 통과와 사용자 승인은 별도다.
@@ -431,6 +446,8 @@ key로 바꾸어 durable patch를 저장한다.
   내용 key는 새로 계산된다.
 - `add`는 설명만 가진다. mechanical contract는 후속 QA/수동 revision에서
   명시적으로 채우며, 확인 수단이 전혀 없으면 Gate가 `HOLD`한다.
+- QA가 ontology 누락을 찾으면 사용자가 채택한 수동 revision에서 complete
+  ontology replacement로 보완한다. 생략은 current ontology 보존을 뜻한다.
 - Goal·Constraints·Non-goals 변경 proposal은 successor revision으로 적용하지
   않고 Brief 사용자 결정으로 보낸다.
 
@@ -807,6 +824,7 @@ Next action:
 | Evolve patch | explicit keep/revise/add (`upstream 관측`, 위 findings §4, focused tests 2 passed) | 모든 parent key를 한 번씩 매핑; revise는 mechanical contract 보존 + 새 key, add는 빈 contract |
 | Evolve patch | delete/reorder/unknown·duplicate parent (`upstream 관측`, 위 findings §4) | successor revision 생성 거부 |
 | Evolve scope | refined goal/constraints가 parent와 다름 (`upstream divergence`, [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §5) | proposal finding을 보존하고 Brief 사용자 결정 요구 |
+| Evolve refinement | QA가 ontology 누락을 지적하고 사용자가 보완안을 채택 (`upstream interactive Seed Restate 관측`, pinned `skills/seed/SKILL.md`; Gen 2+ 정지점은 [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §6 divergence) | manual draft의 complete ontology가 새 revision을 교체하며, 생략 시 current ontology 보존 |
 | QA budget | 같은 generation의 manual revision | 남은 5회 예산 공유; revision으로 우회 불가 |
 | QA budget | Verify `HOLD` 뒤 Evolve successor generation | 새 generation QA 예산 시작 |
 

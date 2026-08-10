@@ -183,11 +183,11 @@ def _stage_of(command: str) -> Stage | None:
         return None
 
 
-def _correction_count(ac_keys: tuple[str, ...]) -> int:
-    """같은 AC의 두 번째 이후 시도가 교정이다 — attempt에 표식이 없어 파생한다."""
-    seen: set[str] = set()
+def _correction_count(attempt_keys: tuple[tuple[int, str], ...]) -> int:
+    """같은 revision·AC의 두 번째 이후 시도가 교정이다 — attempt에서 파생한다."""
+    seen: set[tuple[int, str]] = set()
     corrections = 0
-    for key in ac_keys:
+    for key in attempt_keys:
         if key in seen:
             corrections += 1
         else:
@@ -293,7 +293,9 @@ async def build_snapshot(
     running_stage = _stage_of(running.command) if running is not None else None
 
     corrections = _correction_count(
-        tuple(attempt.ac_key for attempt in execute.attempts) if execute else ()
+        tuple((attempt.blueprint_revision, attempt.ac_key) for attempt in execute.attempts)
+        if execute
+        else ()
     )
     summaries = _summaries(
         brief=brief,
@@ -442,11 +444,34 @@ def _summaries(
         lines[Stage.BLUEPRINT] = "Brief CLEAR 대기"
 
     if execute is not None and execute.attempts:
-        attempts = execute.attempts
-        distinct = len({attempt.ac_key for attempt in attempts})
-        failed = sum(1 for attempt in attempts if attempt.error)
-        detail = f" · 실패 {failed}건" if failed else ""
-        lines[Stage.EXECUTE] = f"AC {distinct}개 실행 · 시도 {len(attempts)}회{detail} — 검증 전"
+        current_revision = blueprint.revision if blueprint is not None else None
+        attempts = tuple(
+            attempt
+            for attempt in execute.attempts
+            if current_revision is None or attempt.blueprint_revision == current_revision
+        )
+        if attempts:
+            distinct = len({attempt.ac_key for attempt in attempts})
+            failed = sum(1 for attempt in attempts if attempt.error)
+            detail = f" · 실패 {failed}건" if failed else ""
+            evidence_is_current = (
+                verify is not None
+                and verify.evidence is not None
+                and verify.evidence.blueprint_revision == current_revision
+            )
+            verify_outcome = gates.get(Stage.VERIFY, GateView()).outcome
+            verification = (
+                "검증 완료"
+                if evidence_is_current and verify_outcome == "CLEAR"
+                else "검증 중"
+                if evidence_is_current
+                else "검증 전"
+            )
+            lines[Stage.EXECUTE] = (
+                f"AC {distinct}개 실행 · 시도 {len(attempts)}회{detail} — {verification}"
+            )
+        else:
+            lines[Stage.EXECUTE] = f"Blueprint rev {current_revision} 실행 대기"
     else:
         lines[Stage.EXECUTE] = "Blueprint 승인 대기"
 

@@ -23,7 +23,11 @@ from mission_control.domain.blueprint.qa import (
     QaFinding,
     QaPolicy,
 )
-from mission_control.domain.blueprint.spec import AcceptanceCriterion
+from mission_control.domain.blueprint.spec import (
+    AcceptanceCriterion,
+    OntologyField,
+    OntologySchema,
+)
 from mission_control.domain.blueprint.state import (
     BlueprintState,
     QaAlreadyPassedError,
@@ -184,6 +188,20 @@ class RogueGenerator(EchoGenerator):
         )
 
 
+class OntologyInventingGenerator(EchoGenerator):
+    """Gen 1 생성기가 initial ontology를 바꾸려는 경우를 재현한다."""
+
+    async def generate(self, request: BlueprintGenerationRequest) -> BlueprintDraft:
+        draft = await super().generate(request)
+        return BlueprintDraft(
+            goal=draft.goal,
+            constraints=draft.constraints,
+            non_goals=draft.non_goals,
+            acceptance_criteria=draft.acceptance_criteria,
+            ontology=OntologySchema(name="Invented", description="생성기가 발명한 경계"),
+        )
+
+
 class ScriptedJudge:
     """미리 정한 점수를 순서대로 반환하고 호출을 기록한다."""
 
@@ -278,6 +296,14 @@ class TestGenerate:
         with pytest.raises(BlueprintAlreadyExistsError):
             await service.generate(mission_id="m-1")
         assert generator.call_count == 1
+
+    async def test_generation_one_ignores_a_generator_invented_ontology(self) -> None:
+        service, _, _ = _service(generator=OntologyInventingGenerator())
+
+        state = await service.generate(mission_id="m-1")
+
+        assert state.current.ontology.name == "ConfirmedRequirementContract"
+        assert state.current.ontology.fields == ()
 
     async def test_a_missing_brief_is_reported(self) -> None:
         service, _, _ = _service(with_brief=False)
@@ -391,6 +417,42 @@ class TestRevise:
         assert revised.revision == 2
         assert revised.revisions[0] == state.current
         assert blueprints.states["m-1"] == revised
+
+    async def test_omitted_ontology_preserves_the_current_revision(self) -> None:
+        service, _, _ = _service()
+        state = await service.generate(mission_id="m-1")
+
+        revised = await service.revise(mission_id="m-1", draft=_revised_draft(state))
+
+        assert revised.current.ontology == state.current.ontology
+
+    async def test_an_adopted_complete_ontology_replaces_the_current_revision(self) -> None:
+        service, _, _ = _service()
+        state = await service.generate(mission_id="m-1")
+        replacement = OntologySchema(
+            name="RetryPolicy",
+            description="사용자가 채택한 보완 경계",
+            fields=(
+                OntologyField(
+                    name="retry_after",
+                    field_type="str | None",
+                    description="Retry-After 입력",
+                    required=True,
+                ),
+            ),
+        )
+        draft = _revised_draft(state)
+        adopted = BlueprintDraft(
+            goal=draft.goal,
+            constraints=draft.constraints,
+            non_goals=draft.non_goals,
+            acceptance_criteria=draft.acceptance_criteria,
+            ontology=replacement,
+        )
+
+        revised = await service.revise(mission_id="m-1", draft=adopted)
+
+        assert revised.current.ontology == replacement
 
     async def test_an_edit_cannot_leave_the_handoff_scope(self) -> None:
         service, _, _ = _service()

@@ -38,7 +38,7 @@ def _snapshot(**overrides: object) -> StatusSnapshot:
         "rows": (
             StageRow("Brief", "질문 6 + 감사 7라운드 · 명확도 0.95/0.92/0.95", RowState.DONE),
             StageRow("Blueprint", "AC 9개 · QA 0.75→0.89 · rev 5", RowState.DONE),
-            StageRow("Execute", "AC 9개 실행 · 시도 10회 — 검증 전", RowState.DONE),
+            StageRow("Execute", "AC 9개 실행 · 시도 10회 — 검증 중", RowState.DONE),
             StageRow("Recover", "교정 1회 · 재검증 준비됨", RowState.RECOVERED),
             StageRow("Verify", "mechanical 9/9 · semantic 미판정", RowState.RUNNING),
         ),

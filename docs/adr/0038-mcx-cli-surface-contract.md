@@ -231,7 +231,17 @@ upstream 대응물은 있다 (`ACTokenAttribution`, `run_total_tokens`,
 단계의 것이면 `⏳`, 그 단계의 저장이 비었으면 `⏸`, 아니면 **Gate 재판정**
 결과가 `CLEAR`면 `✅`, `HOLD`면 `⛔`. 진입 조건 위반으로 Gate가 예외를 내면
 `⛔` + 그 이유(증거는 있는데 진입이 무효인 상태를 "대기"로 표시하지 않는다).
-`🔁`는 같은 AC의 두 번째 이후 시도가 있는 Recover 로우에 붙는다.
+`🔁`는 **같은 Blueprint revision에서** 같은 AC의 두 번째 이후 시도가 있는
+Recover 로우에 붙는다. revision이 바뀌어 다시 실행된 같은 key는 교정으로 세지
+않는다.
+
+**2026-08-10 Phase 10 도그푸딩 보정.** Execute 로우의 AC·시도 수는 Mission
+전체 누계가 아니라 **current Blueprint revision의 attempt만** 센다. 이전
+generation의 attempt를 더하면 revision 4의 AC가 3개인데 "AC 5개"로 보이는
+거짓 요약이 된다. 뒤의 검증 표시는 같은 current revision의 Verify evidence가
+없으면 `검증 전`, 있되 Verify Gate가 HOLD면 `검증 중`, Gate가 CLEAR면
+`검증 완료`다. 저장 lineage를 섞지 않고 Gate 재판정이 표시에서도 이긴다는
+기존 원칙의 적용이다 ([DOGFOODING_0006](../research/DOGFOODING_0006.md)).
 
 - **status는 Gate를 재판정한다** — 저장된 판정을 신뢰하지 않는다. 다섯
   `decide_gate`는 저장 상태만 읽는 결정적 함수이며 AI를 호출하지 않는다
@@ -317,6 +327,8 @@ upstream 대응물은 있다 (`ACTokenAttribution`, `run_total_tokens`,
   명령 수와 다른 값이 나오는 경우(semantic N-AC)가 테스트로 고정된다.
 - 렌더: 세 화면(진행 중·HOLD·MISSION COMPLETE) 레이아웃이 스냅샷으로
   고정되고, 한글 폭이 섞여도 테두리가 어긋나지 않는다.
+- Execute 요약은 current Blueprint revision의 attempt만 세며, 같은 revision의
+  Verify evidence와 Gate 재판정으로 `검증 전|중|완료`를 표시한다.
 - 상태 어휘가 다섯 개를 넘지 않는다.
 - HOLD 블록의 이유는 Gate decision의 `blocking_reasons` 원문이다 — status가
   이유를 지어내지 않는다.

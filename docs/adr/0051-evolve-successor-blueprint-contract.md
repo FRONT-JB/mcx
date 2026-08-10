@@ -181,6 +181,14 @@ Evolve 결과는 `BlueprintState.revise`와 같은 불변 revision append를 사
 3. 정확한 current revision에 대한 명시적 사용자 승인
 4. Blueprint Gate `CLEAR`
 
+QA finding을 사용자가 채택해 수동 revision을 만들 때는 기존
+`blueprint revise --draft-file`이 완전한 ontology replacement를 선택적으로 받는다.
+생략하면 current ontology를 보존하고, 제공하면 전체 schema를 교체한다. 부분 patch는
+누락과 삭제를 구분할 수 없어 받지 않는다. Reflect output이 직접 승인 대상 revision을
+덮어쓰는 것이 아니라 사용자가 채택한 exact draft가 새 revision이 되므로, 이 표면은
+기존 user adoption gate를 닫는 데 필요하다. Gen 1 생성의 결정적 initial ontology와
+Evolve mutation producer 계약은 바꾸지 않는다.
+
 upstream Gen 2+의 자율 진행과 의도적으로 다르다. Constitution §6.1과 No
 self-approval을 유지하는 차이다. Reflect, QA judge, host 에이전트의 자연어
 `approved`는 승인 근거가 아니다.
@@ -343,6 +351,8 @@ Blueprint state의 successor append와 Mission record 전이는 서로 다른 �
   요구한다.
 - Evolve 결과는 approval이 stale한 Blueprint `HOLD`이고, QA+exact user approval
   없이는 Execute할 수 없다.
+- Gen 2+ manual revision은 complete ontology replacement를 제공하면 이를 새
+  revision에 저장하고, 생략하면 current ontology를 exact 보존한다.
 - 같은 generation의 manual revision은 QA 예산을 공유하고, Evolve successor만
   다음 generation 예산을 연다.
 - 첫 Blueprint ontology가 결정적으로 만들어지고 mutation 결과가 revision과 함께

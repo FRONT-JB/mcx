@@ -38,6 +38,7 @@ from mission_control.domain.blueprint.gate import (
     evaluate_blueprint_gate,
 )
 from mission_control.domain.blueprint.qa import QaFinding, QaPolicy
+from mission_control.domain.blueprint.spec import initial_ontology
 from mission_control.domain.blueprint.state import BlueprintState
 from mission_control.domain.brief.clarity import ClarityPolicy
 from mission_control.domain.brief.gate import evaluate_brief_gate
@@ -127,7 +128,14 @@ class BlueprintService:
         if detected:
             request = request.model_copy(update={"context": request.context + detected})
         draft = await self.generator.generate(request)
-        blueprint = assemble_blueprint(draft=draft, handoff=handoff, revision=1)
+        # Gen 1 ontology는 generator output이 아니라 결정적 초기값이 소유한다
+        # (ADR-0051 §3). 수동 replacement는 Gen 2+ revise에서만 열린다.
+        blueprint = assemble_blueprint(
+            draft=draft,
+            handoff=handoff,
+            revision=1,
+            ontology=initial_ontology(),
+        )
         state = BlueprintState.start(blueprint=blueprint)
         await self.repository.save(state)
         return state
@@ -176,7 +184,7 @@ class BlueprintService:
             revision=state.revision + 1,
             generation=state.generation,
             evolved_from_revision=state.current.evolved_from_revision,
-            ontology=state.current.ontology,
+            ontology=draft.ontology or state.current.ontology,
         )
         # 상한 소진 뒤의 최종 수정은 한 번뿐이다 (ADR-0019 §6.1).
         revised = state.revise(blueprint=blueprint, policy=self.qa_policy)

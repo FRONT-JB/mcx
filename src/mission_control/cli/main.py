@@ -40,7 +40,7 @@ from mission_control.cli.journal import MissionJournal
 from mission_control.cli.progress import ProgressTail
 from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import LoopAction
-from mission_control.domain.blueprint.spec import AcceptanceCriterion
+from mission_control.domain.blueprint.spec import AcceptanceCriterion, OntologySchema
 from mission_control.domain.brief.requirement import (
     CandidateContentSource,
     CandidateResolution,
@@ -430,6 +430,7 @@ async def _record_completion(layout: StateLayout, mission_id: str) -> None:
 
 def _load_draft(path: Path) -> BlueprintDraft:
     raw = json.loads(path.read_text(encoding="utf-8"))
+    ontology = raw.get("ontology")
     return BlueprintDraft(
         goal=raw["goal"],
         constraints=tuple(raw["constraints"]),
@@ -443,6 +444,7 @@ def _load_draft(path: Path) -> BlueprintDraft:
             )
             for item in raw["acceptance_criteria"]
         ),
+        ontology=OntologySchema.model_validate(ontology) if ontology is not None else None,
     )
 
 

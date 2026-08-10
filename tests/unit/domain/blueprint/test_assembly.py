@@ -12,7 +12,11 @@ from mission_control.domain.blueprint.assembly import (
     assemble_blueprint,
     check_scope,
 )
-from mission_control.domain.blueprint.spec import AcceptanceCriterion
+from mission_control.domain.blueprint.spec import (
+    AcceptanceCriterion,
+    OntologyField,
+    OntologySchema,
+)
 from mission_control.domain.brief.handoff import BriefHandoff
 from mission_control.domain.brief.state import BriefApproval
 
@@ -168,3 +172,24 @@ class TestAssembly:
         assert blueprint.constraints == (CONSTRAINT,)
         assert blueprint.non_goals == (NON_GOAL,)
         assert blueprint.criterion_keys == (criterion.key,)
+
+    def test_manual_draft_carries_a_complete_ontology_when_no_override_is_supplied(self) -> None:
+        replacement = OntologySchema(
+            name="RetryPolicy",
+            description="사용자가 채택한 보완 경계",
+            fields=(
+                OntologyField(
+                    name="retry_after",
+                    field_type="str | None",
+                    description="Retry-After 입력",
+                    required=True,
+                ),
+            ),
+        )
+
+        blueprint = assemble_blueprint(
+            draft=_draft(ontology=replacement),
+            handoff=_handoff(),
+        )
+
+        assert blueprint.ontology == replacement
