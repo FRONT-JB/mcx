@@ -21,9 +21,9 @@ Phase 0~11 구현을 완료했다. 다섯 Stage 전부가 실제 AI로 구동되
 [docs/progress/README.md](docs/progress/README.md)에 있다 — 이 README가 아니라
 그 문서가 상태의 소유자다.
 
-v1 기술 release candidate는 plugin 새 설치, MCP 33종 handshake, Python 배포물
-격리 설치까지 통과했다. 다만 manifest의 MIT 선언과 일치할 LICENSE 소유자·표기가
-아직 확정되지 않아 Release Gate는 HOLD이며 tag·release는 만들지 않았다.
+v1 release candidate는 plugin 새 설치, MCP 33종 handshake, Python 배포물 격리
+설치와 MIT 라이선스 포함까지 통과해 Release Gate가 CLEAR다. tag·release는 별도
+사용자 승인 전까지 만들지 않는다.
 
 ## 설치
 

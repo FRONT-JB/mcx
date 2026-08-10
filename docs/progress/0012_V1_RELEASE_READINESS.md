@@ -4,7 +4,7 @@
 - 범위: `main`의 v1 공개 계약, plugin 설치, Python 산출물, CLI/MCP smoke,
   문서·버전·라이선스 일치
 - Non-goal: 새 기능, PyPI 게시, tag, GitHub release 생성
-- 현재 Gate: **HOLD — 기술 검증 완료, 라이선스 소유자·표기 결정 대기**
+- 현재 Gate: **CLEAR — ready for user-approved release**
 
 ## 1. Release Gate
 
@@ -74,13 +74,10 @@ host discovery와 routing 검증에는 충분하다.
 | Claude plugin | PASS — validate/tag dry-run, 새 로컬 설치에서 skill 6종·MCP server 1개·connected |
 | Codex plugin | PASS — skill 6종, MCP handshake 33종, 실제 `mcx_status` routing event |
 | 임시 환경 정리 | PASS — Claude/Codex plugin·marketplace 등록 제거 확인 |
-| 라이선스 일치 | **HOLD — manifest는 MIT이나 저장소에 LICENSE가 없음** |
+| 라이선스 일치 | PASS — MIT, `Copyright (c) 2026 FRONT-JB`, package metadata·wheel·sdist 일치 |
 
-기술 release candidate는 검증을 통과했다. 그러나 공개 라이선스는 구현 세부사항이
-아니며 소유자와 저작권 문구를 추측할 수 없으므로 전체 Release Gate는 HOLD다.
-사용자가 MIT 유지 여부와 저작권자 표기를 확정하면 LICENSE와 Python package
-metadata를 맞추고 최종 clean-tree 검증을 수행한다. tag와 release는 별도 승인
-전까지 만들지 않는다.
+기술 release candidate와 공개 라이선스 일치 검증을 모두 통과했다. tag와 release는
+별도 승인 전까지 만들지 않는다.
 
 ## 4. 비용 예측과 실측
 
@@ -96,7 +93,24 @@ host의 실제 tool registry를 정확히 반영하지 않아, tool 호출 event
 검증해야 했기 때문이다. 다음 검증부터는 자연어 inventory를 Gate evidence로
 사용하지 않고 protocol handshake와 tool-call event를 바로 확인한다.
 
-## 5. 다음 한 개의 검증 가능한 목표
+## 5. 라이선스 결정과 재검증
 
-사용자가 라이선스 종류와 저작권자 문구를 확정하면 LICENSE와 package metadata를
-일치시키고, clean tree에서 release-readiness Gate를 다시 판정한다.
+**2026-08-11 사용자 결정:** MIT를 유지하고 저작권자 문구를
+`Copyright (c) 2026 FRONT-JB`로 확정했다.
+
+결정 반영 후 다음을 재검증했다.
+
+- root `LICENSE`와 `[project] license = "MIT"`, `license-files = ["LICENSE"]`
+- simulated `0.1.0` wheel metadata의 `License-Expression: MIT`와
+  `License-File: LICENSE`
+- wheel의 `.dist-info/licenses/LICENSE`와 sdist root `LICENSE`
+- Python 3.12 격리 설치, dependency check, CLI, MCP tool 33종
+- 전체 `1058 passed`, lint, format, typecheck, lock check
+- 검증용 임시 디렉터리 제거 확인
+
+따라서 Release Gate를 `CLEAR — ready for user-approved release`로 판정한다.
+
+## 6. 다음 한 개의 검증 가능한 목표
+
+사용자가 tag와 release 생성을 명시적으로 승인하면 `mcx--v0.1.0` tag를 생성해
+origin 반영을 확인하고 release artifact를 게시한다.
