@@ -564,9 +564,25 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   upstream은 전사 backstop이 있어 필요가 없다. 처분: 파생 이식 + 수동 경로
   유지(실측 1/21로 파생만으론 부족) + Gate가 승격된 성공 조건 요구
   (Guide §13.1이 이미 요구하던 것 — 구현이 계약보다 얇았다)
-- [ ] **도그푸딩 0005 — Phase 9 네 층의 실물 검증** (worktree 격리·checkpoint
-  커밋·rollback·진행 표시). 이 넷은 **실물 검증 0회**다. 설계 조건: 경계 사례
-  축이 얕은 과제로 Brief를 빨리 통과할 것 — 목표가 파이프라인 완주가 아니다
+- [x] **도그푸딩 0005 — Phase 9 다섯 층 전부 실물 검증** (2026-08-10 완료,
+  [DOGFOODING_0005](../research/DOGFOODING_0005.md)). 격리·진행 표시·
+  `changed_files`·checkpoint·rollback 전부 관측됐다. checkpoint 라벨에 AC 7개 중
+  **입증된 6개만** 실린 것이 `proven_criteria`와 Gate가 같은 판정을 쓴다는
+  실물 증거다. **과제 축이 0004의 원인이었음도 고정됐다** — 같은 도구로
+  `brief audit`이 15회/24분 → **4회/6분**
+- [x] **과잉 마스킹 실사용 관측 → 수정** (957 tests). JWT 형태가
+  `unittest.defaultTestLoader.loadTestsFromModule`을 통째로 지웠다. 패턴은
+  upstream과 자간까지 같고 **거는 자리가 다르다**(upstream은 필드 값, 우리는
+  산문) — REDACTION_FIELD_TRIAL과 같은 구조의 divergence다. 라벨 없는 층에만
+  `eyJ` 접두사를 요구한다. **그 문서의 "과잉 0건"은 측정 범위가 좁았던
+  것**이며 실사용이 드러냈다
+- [ ] **QA 예산 소진 후 `revise`하면 영원히 승인할 수 없다** (미처분,
+  [DOGFOODING_0005](../research/DOGFOODING_0005.md) §4). 예산은 mission 단위
+  누적(ADR-0019 §6)인데 승인은 현재 revision의 QA 평가를 요구한다(§8) —
+  소진 뒤 "명세가 틀렸으니 고치자"를 하면 미션이 잠긴다.
+  **upstream엔 없다**: upstream QA는 `iteration`을 호출자가 넘기는
+  파라미터로 받아 예산이 상태가 아니다. 처분 후보 셋 다 ADR-0019 계약을
+  건드리므로 **ADR이 먼저다**
 
 ### Phase 10 — Reflect/Evolve: 자가개선 루프 (사용자 결정 2026-08-09)
 

@@ -28,7 +28,7 @@ class TestCredentialProfile:
             "AIzaSyA1234567890abcdefghijklmnopqrstuvw",
             "AKIAIOSFODNN7EXAMPLE",
             "xoxb-1234567890-abcdefghij",
-            "eyJhbGciOi.eyJzdWIiOiL.SflKxwRJSMeK",
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4f",
         ],
     )
     def test_high_confidence_shapes_are_removed(self, secret: str) -> None:
@@ -181,3 +181,37 @@ class TestReplayUnsafeKeys:
     def test_rejection_reaches_nested_values(self) -> None:
         with pytest.raises(RedactionError):
             reject_replay_unsafe({"details": [{"prompt": "..."}]}, where="원장")
+
+
+class TestDottedIdentifiersSurvive:
+    """도그푸딩 0005 §3 — 실사용에서 처음 관측된 과잉 마스킹.
+
+    JWT 형태(세 조각 점 구분, 각 8자 이상)가 평범한 파이썬 점 표기를 잡았다.
+    upstream의 같은 패턴은 **필드 값**에 걸리고 우리는 산문을 훑는다 — 그래서
+    라벨 없는 층에서는 실제 JWT의 `eyJ` 접두사를 요구한다.
+    """
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "unittest.defaultTestLoader.loadTestsFromModule(test_roman)",
+            "concurrent.futures.ProcessPoolExecutor",
+            "importlib.metadata.PackageNotFoundError",
+        ],
+    )
+    def test_a_dotted_identifier_is_not_a_credential(self, text: str) -> None:
+        assert redact_credentials(text) == text
+
+    def test_a_real_jwt_is_still_removed_without_a_label(self) -> None:
+        token = (
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0."
+            "dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+        )
+
+        assert token not in redact_credentials(f"request failed with {token} in header")
+
+    def test_a_labelled_token_does_not_need_the_prefix(self) -> None:
+        """접두사 요구는 라벨 없는 층에만 걸린다."""
+        opaque = "abcdefgh.ijklmnopq.rstuvwxyz"
+
+        assert opaque not in redact_credentials(f"api_key={opaque}")

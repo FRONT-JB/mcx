@@ -131,7 +131,13 @@ _HIGH_CONFIDENCE = re.compile(
     # 길이를 상한 없이 둔다 — 한 글자 길다고 통째로 놓치는 것보다 낫다.
     r"|AIza[A-Za-z0-9_-]{35,}"
     r"|A[KS]IA[0-9A-Z]{16}"
-    r"|[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"
+    # JWT는 **`eyJ` 접두사를 요구한다.** upstream의 같은 형태는 접두사가 없지만
+    # upstream이 그것을 거는 자리는 **필드 값**이고(`is_credential_shaped`),
+    # 우리는 산문을 훑는다. 도그푸딩 0005에서 실물 관측된 오탐:
+    # `unittest.defaultTestLoader.loadTestsFromModule`이 세 조각 모두 8자 이상이라
+    # 통째로 지워졌다. 실제 JWT의 헤더는 언제나 JSON이므로 base64가 `eyJ`로
+    # 시작한다. 라벨이 붙은 JWT는 접두사와 무관하게 `_LABEL`·`_BEARER`가 잡는다.
+    r"|eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"
     r")\b"
 )
 
