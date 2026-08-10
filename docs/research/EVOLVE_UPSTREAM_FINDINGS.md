@@ -136,8 +136,11 @@ branch from there"*. 즉 **되돌리기는 진화 루프의 일부**이며, 잘�
    요구가 여기서 나온다.
 
 6. `orchestrator_stage.py`의 아키텍처 설명은 Hermes를 reflect에 배치하지만 실제
-   runtime 선택은 3단 fallback이다. **Hermes 고정 여부와 실물 품질은 이 조사에서
-   확인하지 않았다.** 별도 A/B 전까지 `upstream 미확인`으로 남긴다.
+   runtime 선택은 3단 fallback이다. 이 source 조사에서는 실물을 확인하지
+   않았고, 후속 [backend A/B](./EVOLVE_BACKEND_AB.md)에서 Hermes·Claude를 각각
+   Wonder/Reflect 1회씩 실행했다. Hermes 품질은 충분했지만 hard no-tool 격리와
+   telemetry 계약이 약해 **mcx 기본값은 Claude 유지, Hermes는 최초 범위 제외**로
+   처분했다.
 
 ---
 

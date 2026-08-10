@@ -37,7 +37,7 @@
 | `00_MISSION_CONTROL.md` | Active Draft | 구현 evidence로 검증 (사용자 검토 완료) |
 | `01_ARCHITECTURE.md` | Draft | Phase 1~9 경계는 구현 evidence로 검증; Phase 10 세대 루프 경계 갱신 대기 |
 | `02_MISSION_LIFECYCLE.md` | Draft | 다섯 Stage 전이는 구현으로 검증; Phase 10의 세대 간 연결과 upstream 내부 국면 대조 대기 |
-| `03_RUNTIME.md` | Draft | Codex 실행·Claude/Codex 텍스트 계약 검증; OpenCode 실물 이연, Hermes는 Phase 10 실측 후 결정 |
+| `03_RUNTIME.md` | Draft | Codex 실행·Claude/Codex 텍스트 계약 검증; OpenCode 실물 이연, Hermes는 Phase 10 A/B 후 최초 범위 제외 |
 | `04_MCP.md` | Draft | tool 29종·stdio·job/cancel은 ADR-0041로 검증; worker 재귀 경계와 host 합성 책임은 ADR-0042로 검증 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
 | `06_BLUEPRINT.md` | Draft | schema·QA·revision·결정적 품질 하한을 Phase 2·8·9에서 검증; Gen 2+ Brief 없는 생성 경로 결정 대기 |
@@ -617,8 +617,8 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
   `VALID_RUNTIME_BACKENDS`에 `hermes`/`hermes_cli`, `hermes_cli_path` 설정
   필드). 로컬 실물도 있다 (`~/.local/bin/hermes`) — 실 검증이 가능하다.
 
-- [ ] Hermes를 reflect 단계에서 **어떻게 쓰는지** 깊이 조사 — 호출 계약,
-  프롬프트, 출력 스키마, 다른 backend와 다른 점.
+- [x] Hermes를 reflect 단계에서 **어떻게 쓰는지** 조사·실측 완료
+  (2026-08-10 — [backend A/B](../research/EVOLVE_BACKEND_AB.md)).
   **2026-08-10 정정**: 앞 문단의 *"지정된 하네스는 Hermes"* 는 과했다 —
   `orchestrator_stage.py`의 4단계 배치는 **아키텍처 문서의 의도**이고 코드는
   3단 fallback이라 설정이 없으면 Hermes로 가지 않는다
@@ -631,7 +631,15 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
   실행=Codex)은 전부 도그푸딩 실측 뒤였고 Hermes는 실측이 0회다. 기다리는
   비용은 0이다(라우팅 테이블이 이미 있어 나중 고정은 설정 한 줄).
   배포 관점도 함께 본다 — Hermes는 별도 설치물이라 필수로 만들면 설치
-  의존이 claude+codex+hermes 셋이 된다
+  의존이 claude+codex+hermes 셋이 된다.
+  **실측 결론: Hermes를 기본값으로 고정하지 않는다.** 동일 입력 4회
+  (backend별 Wonder·Reflect 각 1회, retry 0)에서 Hermes는 품질이 충분하고
+  Claude보다 짧고 빨랐지만, upstream adapter가 hard no-tool 봉투를 지원하지
+  않아 plugin 41개를 로드하고 MCP 2개에 연결을 시도했다. model·usage도 adapter
+  경계에서 소실한다. Stage별 capability 격리와 기존 설치 범위를 지키기 위해
+  ADR-0036의 Claude text lane을 유지하고 Phase 10 최초 구현에서 Hermes adapter는
+  제외한다 (실물 4 primary turn·retry 0, pinned upstream 집중 테스트
+  205 passed·1 skipped, mcx 967 passed)
 - [x] **자가개선 결과가 다음 작업에 연결되는 경로 — 2026-08-10 완료**
   ([EVOLVE findings](../research/EVOLVE_UPSTREAM_FINDINGS.md) §7~§10, pinned
   source focused tests 11 passed). 완료된 부모 Seed·실행 산출물·Evaluate 결과가
@@ -661,8 +669,8 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
   넷: (1) Brief 없는 Blueprint 생성 경로, (2) `revise`의 두 번째(자동) 생산자,
   (3) Gen 2+의 승인 주체(upstream은 자율, 우리는 사람+QA 근거 필수 — ADR-0021),
   (4) AC 식별 모델 차이(우리는 내용 식별 ADR-0017, upstream은 위치로 권위 이관)
-- [ ] 구현 + Hermes adapter (필요 시 — 텍스트 lane 축이므로 `CompletionEngine`
-  추가로 끝날 수 있다)
+- [ ] 구현 — 기존 vendor-neutral `CompletionEngine` + `ClaudeCompletion`을
+  재사용한다. Hermes adapter는 A/B 결과에 따라 최초 범위에서 제외
 - [ ] **spec-gap 분류 필요 여부 재평가** (Phase 9에서 이관, 2026-08-10). 두
   갈래다: upstream처럼 루프가 매 세대 스펙을 다시 만들면 분류는 **불필요**하고,
   루프가 `HOLD`를 읽어 스펙 문제일 때만 Brief로 가면 **필요**하다. 어느 쪽인지는
@@ -997,10 +1005,11 @@ worktree 격리(ADR-0045). 둘 다 **뒤 항목의 선행이었다는 점이 같
 `context` 공백을, 후자는 checkpoint·rollback·`changed_files`가 딛고 설 git
 경계를 열었다.
 
-다음 검증 가능한 목표 한 개: **동일한 Wonder/Reflect 계약을 Hermes와 Claude로
-각각 1회 실행해 품질·호출 수·비용·지연을 비교한다.** 호출 입력과 JSON 출력
-스키마, backend별 전처리 차이, 설치 의존까지 함께 기록한다. 이 실측 전에는
-Hermes를 reflect 기본값으로 고정하거나 adapter를 구현하지 않는다.
+다음 검증 가능한 목표 한 개: **Wonder/Reflect 출력의 mcx 대응물 설계 ADR을
+작성한다.** 결정할 것은 (1) Brief 없는 Blueprint 생성 경로, (2) 자동
+`revise` 생산자, (3) Gen 2+ 승인 권위, (4) 내용 기반 AC identity와 upstream
+위치 patch의 reconcile이다. backend는 [A/B 실측](../research/EVOLVE_BACKEND_AB.md)으로
+Claude 유지·Hermes 최초 범위 제외까지 확정됐으므로 다시 열지 않는다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -1267,7 +1276,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 7 — MCP control surface | **충족 (2026-08-09)** — 로드맵 체크리스트 9항목이 이행 5·부분 2·미이행 2였음을 드러냈다. 미조립 부품 1건 수정(Recover 비동기 짝 — `recover dispatch`가 같은 `codex exec`를 돈다), 무처분 도과 3건 재지정(host 자기 도구 경로·승인 actor→Phase 8, cancelled 상태·resume→Phase 9), 미표시 보류 2건 등재(취소된 attempt, 재귀 경계), 미등록 이탈 1건 등록(서버가 사람에게 직접 묻지 않음, `upstream 미확인`) | [progress 0007](./0007_MCP_CONTROL_SURFACE.md) |
 | Phase 8 — plugin 패키징 (합성 계층) | **충족 (2026-08-09)** — tool description이 이름의 반복이던 것을 검토에서 이행(CLI `help=` 파생, 24명령). 미이행 2건 재지정(stale write 재확인·host 자기 도구 경로 → Phase 9, 전자는 **발동 조건과 종료 조건을 함께 걸어** 무한 연기를 끊었다), 표시 없던 보류 1건 등록(skill 6종의 근거), 산문 강제 1건 확인(질문 형태 규칙) | [progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | **충족 (2026-08-10)** — 두 번의 도그푸딩이 결함 6건을 잡았고 전부 조사·테스트로는 드러나지 않았다. 가장 큰 소득은 개별 결함이 아니라 **셋이 같은 뿌리를 갖는다는 것** — *"upstream과 같다"고 적어 놓고 원문과 대조하지 않았다*(§1.3). ADR README에 절차 한 줄을 넣었다. 검토가 직접 잡은 것 1건 수정(`changed_files`를 만들어 놓고 표시하지 않았다), 미결 11건 처분(닫음 6·재지정 3·구현 1·해소 1, **무처분 통과 0**). Phase 5를 시한으로 쓴 마지막 항목(telemetry event 층)도 종결됐다 | [progress 0009](./0009_RECOVERY_LAYERS.md) |
-| Phase 10 — Reflect/Evolve | **진행 중** — Reflect가 Brief를 대체함을 확인; 다음은 Gen 2+ 전체 연결 경로와 Hermes 사용 방식 조사 | — |
+| Phase 10 — Reflect/Evolve | **진행 중** — Gen 2+ 전체 연결과 backend A/B 완료; Claude 유지·Hermes 최초 범위 제외. 다음은 Wonder/Reflect→Blueprint 설계 ADR | — |
 | Phase 11 — 병렬 실행 | 대기 | — |
 
 ## Update protocol

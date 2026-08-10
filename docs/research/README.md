@@ -28,6 +28,7 @@
 - [EVENT_LAYER_UPSTREAM_FINDINGS.md](./EVENT_LAYER_UPSTREAM_FINDINGS.md) — Runtime 정규화와 canonical event store의 소비자·경계 조사
 - [REDACTION_FIELD_TRIAL.md](./REDACTION_FIELD_TRIAL.md) — 실제 입력 형태로 secret redaction 누락·과잉을 대조한 실물 기록
 - [EVOLVE_UPSTREAM_FINDINGS.md](./EVOLVE_UPSTREAM_FINDINGS.md) — Reflect가 Gen 2+에서 Brief를 대체하는 방식과 다음 Seed 생성 충돌 조사
+- [EVOLVE_BACKEND_AB.md](./EVOLVE_BACKEND_AB.md) — 같은 Wonder/Reflect 계약을 Hermes·Claude로 각 1회 실행한 품질·호출 수·token·지연·격리 비교와 Claude 기본값 유지 처분
 - [DOGFOODING_0001.md](./DOGFOODING_0001.md) — 실 AI 도그푸딩 1차 (전부 codex) 관측 기록
 - [DOGFOODING_0002.md](./DOGFOODING_0002.md) — 실 AI 도그푸딩 2차 (claude+codex, Recover 경로) 관측 기록
 - [DOGFOODING_0003.md](./DOGFOODING_0003.md) — 실 AI 도그푸딩 3차 (설치된 mcx CLI 실물, QA EXHAUSTED·자연 Recover 첫 관측) 기록
@@ -39,6 +40,7 @@
 | 등급 | 의미 |
 |---|---|
 | Verified | 기록한 upstream commit의 코드 또는 공식 문서에서 직접 확인 |
+| Observed | 실제 CLI·화면·전사·저장 record에서 직접 관측 |
 | Session-confirmed | 사용자가 대화에서 명시적으로 확정 |
 | Inferred | 여러 근거를 종합한 해석이며 재검증 필요 |
 | Proposed | Mission Control을 위한 설계 후보 |

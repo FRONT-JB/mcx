@@ -590,8 +590,14 @@ know?"*로 빈틈을 찾고, Reflect가 그 위에서 다음 Seed의 AC와 ontol
 stage 설정→profile default→orchestrator fallback 순서라 자동 고정되지 않는다.
 Hermes는 upstream 정식 backend이고 로컬 실물도 있다 (`~/.local/bin/hermes`).
 
-- [ ] **Hermes를 reflect에서 어떻게 쓰는지** 조사한다 — 호출 계약, 프롬프트,
-      출력 스키마, 다른 backend와 다르게 다루는 점.
+- [x] **Hermes를 reflect에서 어떻게 쓰는지** 조사 완료 (2026-08-10 —
+      [backend A/B](./EVOLVE_BACKEND_AB.md)). 동일 Wonder/Reflect 계약을 Hermes
+      (`gpt-5.5`)와 Claude (`claude-opus-5`)로 각 1회 실행했다. 둘 다 계약 품질은
+      충분했고 Hermes가 더 짧고 빨랐지만, upstream adapter는 무도구 봉투를
+      지원하지 않아 실제로 plugin 41개를 로드하고 MCP 2개에 연결을 시도했으며
+      model·usage telemetry도 0으로 소실했다. **Hermes를 기본값으로 고정하지
+      않고 기존 Claude text lane을 유지한다. Phase 10 최초 구현에 Hermes
+      adapter를 추가하지 않는다.**
 - [x] **자가개선 결과가 다음 작업에 연결되는 경로** 조사 완료 (2026-08-10 —
       [EVOLVE findings](./EVOLVE_UPSTREAM_FINDINGS.md) §7~§10). 완료된 부모
       Evaluate의 Seed·execution output·evaluation summary를 Wonder→Reflect에
@@ -612,8 +618,9 @@ Hermes는 upstream 정식 backend이고 로컬 실물도 있다 (`~/.local/bin/h
 - [ ] Wonder/Reflect 출력의 mcx 대응물을 결정한다 — 우리 Brief/Blueprint의
       어디로 들어오는가. Gen 2+에서 Brief를 대체하는지, 입력으로 합류하는지가
       핵심 갈림길이다 (도그푸딩 기록이 수동으로 하던 역할의 자동화).
-- [ ] 도입 ADR을 작성하고 구현한다. Hermes adapter가 필요한지는 조사 결과에
-      달렸다 — 텍스트 lane 축이면 `CompletionEngine` 추가로 끝난다.
+- [ ] 도입 ADR을 작성하고 구현한다. backend는 위 실측으로 Claude 유지가
+      확정됐으므로 기존 vendor-neutral `CompletionEngine`을 재사용하고 Hermes
+      adapter는 최초 범위에서 제외한다.
 
 ---
 

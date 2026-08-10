@@ -103,3 +103,12 @@ role의 Mission Control 재귀 금지(ADR-0004)가 플래그로 강제되는 지
   transient만 재시도 — stub CLI로 고정.
 - 프롬프트 클래스가 엔진 protocol만 요구함을 Claude/Codex 두 엔진 모두로
   고정하는 통합 테스트.
+
+## Phase 10 재검증 (2026-08-10)
+
+Wonder/Reflect 동일 계약을 Hermes와 Claude로 각각 1회 실행했다
+([EVOLVE backend A/B](../research/EVOLVE_BACKEND_AB.md)). Hermes는 품질이
+충분하고 더 짧고 빨랐지만 pinned upstream adapter가 hard no-tool 봉투와
+rules/plugin/MCP 격리를 제공하지 않았고 실제 plugin·MCP startup이 관측됐다.
+별도 설치와 telemetry 소실까지 고려해 **이 ADR을 supersede하지 않고 Claude
+text lane을 유지한다.** Phase 10 최초 구현에 Hermes adapter는 추가하지 않는다.
