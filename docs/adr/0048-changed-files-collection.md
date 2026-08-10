@@ -143,4 +143,7 @@ upstream은 세 명령을 캡처해 세 파일로 남긴다 (findings §3). 우�
   적은 것이 CLI 어디에도 없었다. 간극은 규모 정보가 아니라 표시였고 그것을
   고쳤다 (0009 §2.1). `--stat` divergence는 유지한다.
 - **되돌리기가 지운 것의 표시** — ADR-0047의 같은 항목과 함께 본다.
-  **시한 Phase 10 종료 검토** (재지정 근거는 ADR-0047 미결에 있다).
+  **Phase 10 종료 처분 (2026-08-10):** Recover가 발동하지 않아 미관측이며,
+  ADR-0047과 함께 **Phase 11 종료 전 targeted dirty-rollback fixture**로
+  재지정한다. 자연 발동이 없어도 실행해 닫는다
+  ([progress 0010](../progress/0010_REFLECT_EVOLVE.md) §2.7).

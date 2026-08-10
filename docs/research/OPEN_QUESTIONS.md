@@ -623,9 +623,12 @@ Hermes는 upstream 정식 backend이고 로컬 실물도 있다 (`~/.local/bin/h
       뒤 **같은 Mission**의 후속 Blueprint generation proposal이며 새 Stage·새
       Mission이 아니다. generation/revision 분리, ontology, explicit parent-key
       AC patch, user+QA 재승인, 세대별 QA 예산, partial phase checkpoint까지 확정.
-- [ ] 구현한다. backend는 위 실측으로 Claude 유지가 확정됐으므로 기존
+- [x] 구현 완료 (2026-08-10). backend는 위 실측으로 Claude 유지가 확정됐으므로 기존
       vendor-neutral `CompletionEngine`을 재사용하고 Hermes adapter는 최초
-      범위에서 제외한다. Gen 2 대표 경로 dogfood 전 Phase 10 COMPLETE 금지.
+      범위에서 제외했다. Core/source projection·Wonder/Reflect adapter·CLI/MCP와
+      user approval 경계를 구현했고, 대표 brownfield Gen 2 경로가
+      [DOGFOODING_0006](./DOGFOODING_0006.md)에서 `MISSION COMPLETE`에 도달했다.
+      종료 검토는 [progress 0010](../progress/0010_REFLECT_EVOLVE.md).
 
 ---
 

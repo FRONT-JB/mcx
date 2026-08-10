@@ -4,11 +4,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | **Phase 9 COMPLETE (2026-08-10)** — 실사용 진입·되돌리기·관측 층, 종료 검토 포함 ([progress 0009](./0009_RECOVERY_LAYERS.md)). **Phase 10 Reflect/Evolve Core·text adapter·CLI/MCP surface 구현, Gen 2 dogfood 대기** |
+| Project phase | **Phase 10 COMPLETE (2026-08-10)** — Reflect/Evolve 전체 연결·대표 Gen 2 도그푸딩·종료 검토 완료 ([progress 0010](./0010_REFLECT_EVOLVE.md)). 다음은 Phase 11 병렬 실행 도입 Gate |
 | Mission status | ACTIVE |
-| Gate | **Phase 0~9 COMPLETE.** Phase 10 Core + text adapter + `blueprint evolve` CLI/MCP surface 완료. 대표 Gen 2 실사용 dogfood 진입 가능 |
+| Gate | **Phase 0~10 COMPLETE. CLEAR for Phase 11 design.** |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 10종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 25 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 31종 — CLI 파서 파생 25 + 비동기 4 + job 2, stdio, entry point `mcx-mcp`) |
-| Automated tests | 1022 passed (unit + integration, 2026-08-10 실측) |
+| Automated tests | 1030 passed (unit + integration, 2026-08-10 실측) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-10 |
 
@@ -23,7 +23,7 @@
 - upstream `Q00/ouroboros`의 기준 commit을 기록했다.
 - 사용자 용어와 내부/upstream 용어 mapping을 확정했다.
 - Runtime은 Codex/OpenCode 방향이며 Gemini는 v1 범위에서 제외했다.
-- Phase 1~9와 Phase 10 설계 결정은 ADR-0009~0051과 각 Phase 기록에 연결되어 있다.
+- Phase 1~10 설계 결정은 ADR-0009~0051과 각 Phase 기록에 연결되어 있다.
 - Phase 10 source integration이 generation·ontology·content-key patch·세대별
   QA 예산·EvolutionRecord replay에 더해, 실 Blueprint·Execute·Verify 상태의
   exact attempt lineage·AC별 evidence·semantic verdict와 Verify Gate `HOLD`를
@@ -37,6 +37,11 @@
   CLI dispatch로 successor 한 세대를 연다. scope finding은 exit 2 `HOLD`로
   Verify에 남고, 정상 revision만 Verify→Blueprint를 기록한다. Evolve는 별도
   Stage·routing 축 없이 Blueprint text lane을 공유하며 원장은 정상 2회 호출을 센다.
+- 대표 brownfield Gen 2 도그푸딩이 실제 Verify `HOLD`→Wonder/Reflect→후속
+  Blueprint→QA 1.00→exact user approval→Codex Execute→mechanical 3/3 +
+  semantic 3/3→`MISSION COMPLETE`를 완주했다
+  ([DOGFOODING_0006](../research/DOGFOODING_0006.md)). 이 실행이 manual ontology
+  refinement 표면과 status의 cross-generation 집계 결함을 잡아 둘 다 수정했다.
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
@@ -48,17 +53,17 @@
 | 문서 | 상태 | 다음 Gate |
 |---|---|---|
 | `00_MISSION_CONTROL.md` | Active Draft | 구현 evidence로 검증 (사용자 검토 완료) |
-| `01_ARCHITECTURE.md` | Draft | Phase 1~9 경계 + Phase 10 Evolve domain/state·source projection·text adapter·surface 경계 검증; dogfood 대기 |
+| `01_ARCHITECTURE.md` | Draft | Phase 1~10 경계 + Evolve domain/state·source projection·text adapter·surface·대표 Gen 2 실사용 검증 |
 | `02_MISSION_LIFECYCLE.md` | Draft | 다섯 Stage 전이는 구현으로 검증; Evolve는 새 Stage 없이 Verify HOLD→후속 Blueprint generation으로 설계 확정 |
 | `03_RUNTIME.md` | Draft | Codex 실행·Claude/Codex 텍스트 계약 검증; OpenCode 실물 이연, Hermes는 Phase 10 A/B 후 최초 범위 제외 |
 | `04_MCP.md` | Draft | tool 31종·stdio·job/cancel은 ADR-0041·0051로 검증; worker 재귀 경계와 host 합성 책임은 ADR-0042로 검증 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
-| `06_BLUEPRINT.md` | Draft | Gen 1 schema·QA·revision + Gen 2 generation·ontology·patch·checkpoint·실 source projection·text adapter·surface 검증; dogfood 대기 |
+| `06_BLUEPRINT.md` | Draft | Gen 1 schema·QA·revision + Gen 2 generation·ontology·patch·checkpoint·실 source projection·text adapter·surface·dogfood 검증 |
 | `07_EXECUTE.md` | Draft | v1 실행·Runtime·worktree·checkpoint 계약을 Phase 3·5·9에서 검증; 병렬 실행은 Phase 11 |
 | `08_VERIFY.md` | Draft | 진입·mechanical·semantic·`changed_files`·MISSION COMPLETE 계약을 Phase 4·9에서 검증 |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도·rollback 계약을 Phase 4·9에서 검증; spec-gap classifier는 ADR-0051에서 미도입 확정 |
 | `adr/` | 51 Accepted ADRs | ADR-0001~0051. Phase 10 Evolve successor Blueprint 계약까지 확정 |
-| `research/` | Phase 10 baseline complete | upstream baseline·도그푸딩 0001~0005·Evolve 연결·backend A/B 보존 |
+| `research/` | Phase 10 complete | upstream baseline·도그푸딩 0001~0006·Evolve 연결·backend A/B 보존 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
 작성되었지만 사용자가 검토하고 구현 evidence로 검증하기 전이라는 뜻이다.
@@ -75,6 +80,7 @@
 - [0007 — MCP control surface 종료 검토](./0007_MCP_CONTROL_SURFACE.md)
 - [0008 — plugin 합성 계층 종료 검토](./0008_PLUGIN_COMPOSITION_LAYER.md)
 - [0009 — 되돌리기·관측 층 종료 검토](./0009_RECOVERY_LAYERS.md)
+- [0010 — Reflect/Evolve 종료 검토](./0010_REFLECT_EVOLVE.md)
 
 ## Phase roadmap
 
@@ -609,7 +615,7 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   파라미터로 받아 예산이 상태가 아니다. 처분 후보 셋 다 ADR-0019 계약을
   건드리므로 **ADR이 먼저다**
 
-### Phase 10 — Reflect/Evolve: 자가개선 루프 — IN PROGRESS (사용자 결정 2026-08-09)
+### Phase 10 — Reflect/Evolve: 자가개선 루프 — COMPLETE (2026-08-10)
 
 목표: **미션이 배운 것을 같은 Mission의 다음 Blueprint generation으로 자동
 전환한다.** "다음 미션"이라는 이전 표현은 Mission 경계를 잘못 잡았다 — Verify
@@ -708,7 +714,10 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
     `ACTIVE`를 surface에서 확인하고 단발 한 generation을 연다. 정상 successor만
     Verify→Blueprint를 기록하고 scope finding은 exit 2로 남는다. MCP 실호출 →
     파일 상태 → 호출 원장 통합 검증 포함 (`test_evolve_flow.py`, 1022 passed)
-  - [ ] Gen 2 대표 실사용 dogfood + Phase 10 종료 검토
+  - [x] Gen 2 대표 실사용 dogfood + Phase 10 종료 검토 — 실제 brownfield
+    Verify `HOLD`에서 generation 2를 열고 revision 4 QA 1.00·exact user approval·
+    Execute/Verify를 거쳐 `MISSION COMPLETE` ([DOGFOODING_0006](../research/DOGFOODING_0006.md),
+    [progress 0010](./0010_REFLECT_EVOLVE.md))
 - [x] **spec-gap 분류 불필요 확정** (ADR-0051 §9). Core는 새 분류 축을 만들지
   않는다. Evolve는 Verify `HOLD`에서 명시적으로 고르는 후속 명세 경로이고,
   Recover는 기존 Blueprint를 유지하는 bounded correction이다. 호출 순서와 사용자
@@ -1314,7 +1323,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 7 — MCP control surface | **충족 (2026-08-09)** — 로드맵 체크리스트 9항목이 이행 5·부분 2·미이행 2였음을 드러냈다. 미조립 부품 1건 수정(Recover 비동기 짝 — `recover dispatch`가 같은 `codex exec`를 돈다), 무처분 도과 3건 재지정(host 자기 도구 경로·승인 actor→Phase 8, cancelled 상태·resume→Phase 9), 미표시 보류 2건 등재(취소된 attempt, 재귀 경계), 미등록 이탈 1건 등록(서버가 사람에게 직접 묻지 않음, `upstream 미확인`) | [progress 0007](./0007_MCP_CONTROL_SURFACE.md) |
 | Phase 8 — plugin 패키징 (합성 계층) | **충족 (2026-08-09)** — tool description이 이름의 반복이던 것을 검토에서 이행(CLI `help=` 파생, 24명령). 미이행 2건 재지정(stale write 재확인·host 자기 도구 경로 → Phase 9, 전자는 **발동 조건과 종료 조건을 함께 걸어** 무한 연기를 끊었다), 표시 없던 보류 1건 등록(skill 6종의 근거), 산문 강제 1건 확인(질문 형태 규칙) | [progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | **충족 (2026-08-10)** — 두 번의 도그푸딩이 결함 6건을 잡았고 전부 조사·테스트로는 드러나지 않았다. 가장 큰 소득은 개별 결함이 아니라 **셋이 같은 뿌리를 갖는다는 것** — *"upstream과 같다"고 적어 놓고 원문과 대조하지 않았다*(§1.3). ADR README에 절차 한 줄을 넣었다. 검토가 직접 잡은 것 1건 수정(`changed_files`를 만들어 놓고 표시하지 않았다), 미결 11건 처분(닫음 6·재지정 3·구현 1·해소 1, **무처분 통과 0**). Phase 5를 시한으로 쓴 마지막 항목(telemetry event 층)도 종결됐다 | [progress 0009](./0009_RECOVERY_LAYERS.md) |
-| Phase 10 — Reflect/Evolve | **진행 중** — Gen 2+ 전체 연결·backend A/B·ADR-0051 + Core/source + Wonder/Reflect adapter + CLI/MCP surface 완료(1022 tests). 다음은 대표 Gen 2 dogfood와 종료 검토 | — |
+| Phase 10 — Reflect/Evolve | **충족 (2026-08-10)** — 대표 brownfield Gen 2 경로가 real Claude/Codex로 Verify HOLD→Evolve→QA·exact approval→Execute→Verify→MISSION COMPLETE 완주. manual ontology refinement와 status cross-generation 표시 결함 2건 수정. Phase 10 시한 항목 전수 처분, 미관측 3건은 Phase 11 종료 전 강제 fixture로 재지정 | [progress 0010](./0010_REFLECT_EVOLVE.md) |
 | Phase 11 — 병렬 실행 | 대기 | — |
 
 ## Update protocol

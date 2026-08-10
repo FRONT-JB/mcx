@@ -169,6 +169,11 @@ upstream 대응물 없음 — upstream의 답변 경로는 CLI 위치 인자가 
 
 - **파생 후보의 굵기** (§Cost). 답변 하나가 여러 결정을 담으면 후보 하나가
   그것을 통째로 갖는다. 쪼개는 것은 LLM을 사이에 넣는 일이라 upstream이 피한
-  자리다. 실사용 관측이 있어야 판단한다. **시한 Phase 10 종료 검토.**
+  자리다. 실사용 관측이 있어야 판단한다. **Phase 10 종료 처분 (2026-08-10):**
+  대표 Evolve 도그푸딩은 controlled Brief에서 시작해 이 경로를 관측하지 못했다.
+  **Phase 11 종료 전 실제 Brief candidate trace audit**로 재지정하며, 자연
+  관측이 없어도 fixture를 실행해 채택/기각하고 닫는다
+  ([progress 0010](../progress/0010_REFLECT_EVOLVE.md) §2.7).
 - **파생·수동 중복** (§Cost). 실제로 겹치는 것이 관측되면 그때 본다.
-  **시한 Phase 10 종료 검토.**
+  **Phase 10 종료 처분 (2026-08-10):** 위와 같은 trace audit에서 함께 측정하고
+  **Phase 11 종료 전** 닫는다.

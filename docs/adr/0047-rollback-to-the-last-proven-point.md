@@ -193,7 +193,12 @@ ADR-0045 §2·ADR-0046 §5와 같은 판단이다: 유도되는 것을 저장하
   남지 않는다. → **재지정** ([Phase 9 종료 검토](../progress/0009_RECOVERY_LAYERS.md) §3-8, 2026-08-10): 도그푸딩 0005에서 rollback이
   발동한 시점의 트리가 checkpoint 직후라 **지운 것이 없었다** — 관측이 아직
   없다. 표시 경로는 생겼으므로(0009 §2.1) 실패한 시도가 남은 채 rollback이
-  도는 경우를 본다. **시한 Phase 10 종료 검토.**
+  도는 경우를 본다. **Phase 10 종료 처분 (2026-08-10):**
+  [DOGFOODING_0006](../research/DOGFOODING_0006.md)은 Recover가 발동하지 않아
+  여전히 미관측이다. **Phase 11 종료 전 targeted dirty-rollback fixture**로
+  재지정한다. 자연 발동이 없어도 fixture를 실행해 실제 삭제 목록 표시의 필요를
+  채택 또는 기각하고 닫는다 ([progress 0010](../progress/0010_REFLECT_EVOLVE.md)
+  §2.7).
 - **§4 divergence의 근거 유지 여부** — 격리(ADR-0045)나 checkpoint(ADR-0046)의
   전제가 바뀌면 dirty 가드가 다시 필요해진다. 두 ADR을 고칠 때 이 절을 함께
   본다.
