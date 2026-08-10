@@ -106,7 +106,7 @@ def test_the_hold_screen_quotes_the_blocking_question_verbatim() -> None:
     )
     assert f'"{question}"' in output
     assert "⛔ 차단 질문 (closure 감사) — 사용자 결정이 필요합니다" in output
-    assert '💡 다음 행동:' in output
+    assert "💡 다음 행동:" in output
     assert 'mcx brief answer "<답변>" --question "<질문>"' in output
 
 
@@ -183,9 +183,7 @@ def test_full_mode_appends_the_command_ledger() -> None:
             exit_code=0,
             calls={"claude": 1},
         ),
-        JournalEntry(
-            sequence=2, command="verify semantic", started_at="2026-08-09T00:05:00+00:00"
-        ),
+        JournalEntry(sequence=2, command="verify semantic", started_at="2026-08-09T00:05:00+00:00"),
     )
     output = render(_snapshot(journal=entries), full=True)
     assert "명령 원장:" in output

@@ -404,9 +404,7 @@ class FakeDependencyAnalyzer:
         self.dependencies = dependencies
         self.calls = 0
 
-    async def analyze(
-        self, request: DependencyAnalysisRequest
-    ) -> tuple[CriterionDependency, ...]:
+    async def analyze(self, request: DependencyAnalysisRequest) -> tuple[CriterionDependency, ...]:
         self.calls += 1
         return self.dependencies or tuple(
             CriterionDependency(ac_key=item.key) for item in request.acceptance_criteria
@@ -488,9 +486,7 @@ class PassingRunner:
     ) -> tuple[str, ...]:
         return ()
 
-    async def run(
-        self, *, command: str, workspace: str, timeout_seconds: int
-    ) -> CommandExecution:
+    async def run(self, *, command: str, workspace: str, timeout_seconds: int) -> CommandExecution:
         self.commands.append(command)
         return CommandExecution(exit_code=self.exit_code, output=self.output)
 

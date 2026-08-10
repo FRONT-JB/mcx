@@ -947,6 +947,21 @@ MCP create
 host별 정확한 설정 예시는 현재 공식 문서를 확인한 뒤 작성한다. 추측한 config를
 설치 가이드로 배포하지 않는다.
 
+**2026-08-11 release-readiness amendment.** 구현과 실측으로 다음 계약을
+확정했다([ADR-0042](./adr/0042-skill-and-core-ownership-boundary.md) §1.1).
+
+- Claude manifest는 `./.mcp.json`을 읽고 `${CLAUDE_PLUGIN_ROOT}[mcp]`에서
+  `mcx-mcp`를 시작한다.
+- Codex manifest는 `./.mcp.codex.json`을 읽고 plugin root인 `cwd: "."`에서
+  `.[mcp]`를 빌드해 같은 `mcx-mcp`를 시작한다.
+- `./skills/`와 MCP server 구현은 공유한다. host별 차이는 bootstrap 경로뿐이다.
+- 설치 검증은 inventory만으로 끝내지 않는다. 새 host session에서 skill 6종과
+  `mcx_*` tool을 모두 관측해야 한다.
+
+실패 장면은 구체적이다. Codex에 plugin `0.1.0`을 설치해도 Claude 전용 root
+placeholder가 인자에 그대로 남으면 skill은 보이지만 MCP tool은 `NONE`이 된다.
+host는 명령 순서를 설명할 수 있어도 실제 Mission state를 읽거나 바꿀 수 없다.
+
 ### 18.4 State and artifact location
 
 - default state store 위치와 workspace-local 여부

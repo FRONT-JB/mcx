@@ -309,9 +309,9 @@ class TestReflectAdapter:
             mutations=[],
         )
 
-        result = await PromptedEvolveReflector(
-            completion=RecordingCompletion(response)
-        ).reflect(request)
+        result = await PromptedEvolveReflector(completion=RecordingCompletion(response)).reflect(
+            request
+        )
 
         assert result.ac_patches[0].operation is AcPatchOperation.KEEP
         assert result.ac_patches[0].parent_ac_key == request.acceptance_criteria[0].key
@@ -364,9 +364,7 @@ class TestReflectAdapter:
             "required": False,
             "reason": "필요한 개념",
         }
-        completion = RecordingCompletion(
-            _reflect_response(mutations=[mutation, mutation])
-        )
+        completion = RecordingCompletion(_reflect_response(mutations=[mutation, mutation]))
 
         with pytest.raises(EvolveAdapterError, match="두 번 바꿀 수 없다"):
             await PromptedEvolveReflector(completion=completion).reflect(_reflect_request())

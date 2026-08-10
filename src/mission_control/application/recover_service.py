@@ -142,9 +142,7 @@ class RecoverService:
         """
         if self.rollback is None:
             return None
-        return self.rollback.to_last_proven(
-            self.execute.envelope.workspace, mission_id=mission_id
-        )
+        return self.rollback.to_last_proven(self.execute.envelope.workspace, mission_id=mission_id)
 
     async def decide_gate(self, *, mission_id: str) -> RecoverGateDecision:
         """남은 실패들로 재검증 준비 여부를 판정한다."""

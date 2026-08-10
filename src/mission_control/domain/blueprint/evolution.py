@@ -105,8 +105,7 @@ def _evolve_criteria(
     unknown_settled = set(reflect.settled_ac_keys) - set(parent_keys)
     if unknown_settled:
         raise EvolvePatchError(
-            "Reflect가 알 수 없는 AC를 settled로 표시했다: "
-            + ", ".join(sorted(unknown_settled))
+            "Reflect가 알 수 없는 AC를 settled로 표시했다: " + ", ".join(sorted(unknown_settled))
         )
 
     evolved: list[AcceptanceCriterion] = []
@@ -140,9 +139,7 @@ def _evolve_criteria(
     return tuple(evolved)
 
 
-def apply_ontology_mutations(
-    *, ontology: OntologySchema, reflect: ReflectOutput
-) -> OntologySchema:
+def apply_ontology_mutations(*, ontology: OntologySchema, reflect: ReflectOutput) -> OntologySchema:
     """기존 field 순서를 유지하고 add만 꼬리에 붙인다."""
 
     fields = list(ontology.fields)

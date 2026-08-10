@@ -223,8 +223,7 @@ def _record_mismatch(
     """stored Stage와 artifact lineage가 어긋나는 표면 진단 (ADR-0037)."""
     if not stored:
         return (
-            f"record는 {stage.value}라고 하는데 그 Stage 저장소가 비어 있다; "
-            "Gate 재계산이 이긴다"
+            f"record는 {stage.value}라고 하는데 그 Stage 저장소가 비어 있다; Gate 재계산이 이긴다"
         )
     if (
         stage is Stage.VERIFY
@@ -278,9 +277,9 @@ async def build_snapshot(
         )
     if stored[Stage.EXECUTE]:
         gates[Stage.EXECUTE] = await _decide(
-            composition.execute_service(
-                layout, adapters, workspace=record.workspace
-            ).decide_gate(mission_id=mission_id)
+            composition.execute_service(layout, adapters, workspace=record.workspace).decide_gate(
+                mission_id=mission_id
+            )
         )
     if stored[Stage.VERIFY]:
         gates[Stage.VERIFY] = await _decide(
@@ -507,9 +506,7 @@ def _summaries(
     return lines
 
 
-def _blocking_block(
-    *, stage: Stage, gate: GateView, brief: BriefState | None
-) -> BlockingBlock:
+def _blocking_block(*, stage: Stage, gate: GateView, brief: BriefState | None) -> BlockingBlock:
     """차단 블록을 만든다 — 인용문은 저장된 원문이거나 Gate의 이유다."""
     if gate.unavailable is not None:
         return BlockingBlock(

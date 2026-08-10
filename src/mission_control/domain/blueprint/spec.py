@@ -165,10 +165,7 @@ class Blueprint(BaseModel):
             raise ValueError("generation 1은 evolved_from_revision을 가질 수 없다")
         if self.generation > 1 and self.evolved_from_revision is None:
             raise ValueError("generation 2+에는 evolved_from_revision이 필요하다")
-        if (
-            self.evolved_from_revision is not None
-            and self.evolved_from_revision >= self.revision
-        ):
+        if self.evolved_from_revision is not None and self.evolved_from_revision >= self.revision:
             raise ValueError("evolved_from_revision은 현재 revision보다 앞서야 한다")
         return self
 

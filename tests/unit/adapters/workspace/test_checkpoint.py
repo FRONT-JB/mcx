@@ -94,9 +94,7 @@ class TestCommitting:
         result = record(repo)
 
         assert result.committed, result.skipped
-        assert "__pycache__/mod.pyc" in git(
-            "show", "--name-only", "--format=", "HEAD", cwd=repo
-        )
+        assert "__pycache__/mod.pyc" in git("show", "--name-only", "--format=", "HEAD", cwd=repo)
 
 
 class TestRefusals:

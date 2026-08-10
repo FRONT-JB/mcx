@@ -85,9 +85,7 @@ def _reflect() -> ReflectOutput:
 class TestSourceSnapshot:
     def test_only_active_hold_can_be_constructed(self) -> None:
         with pytest.raises(ValidationError):
-            EvolveSourceSnapshot.model_validate(
-                _source().model_dump() | {"verify_gate": "CLEAR"}
-            )
+            EvolveSourceSnapshot.model_validate(_source().model_dump() | {"verify_gate": "CLEAR"})
 
         with pytest.raises(ValidationError):
             EvolveSourceSnapshot.model_validate(

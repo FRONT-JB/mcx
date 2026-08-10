@@ -53,10 +53,7 @@ class UnverifiableCriterionError(MissionControlError):
     """
 
     def __init__(self, *, ac_key: str) -> None:
-        super().__init__(
-            f"{ac_key}에 성공 계약이 없다; mechanical 검증 기록을 "
-            "만들 수 없다"
-        )
+        super().__init__(f"{ac_key}에 성공 계약이 없다; mechanical 검증 기록을 만들 수 없다")
         self.ac_key = ac_key
 
 
@@ -161,9 +158,7 @@ def judge_run(
         return VerificationRun(ac_key=criterion.key, passed=True)
 
     if execution is None:
-        raise ValueError(
-            f"{criterion.key}에 확인 명령이 있는데 실행 결과가 오지 않았다"
-        )
+        raise ValueError(f"{criterion.key}에 확인 명령이 있는데 실행 결과가 오지 않았다")
 
     asserted = criterion.output_assertion
     passed = (
@@ -244,8 +239,7 @@ class VerifyState(BaseModel):
         """
         if evidence.mission_id != self.mission_id:
             raise ValueError(
-                f"mission {evidence.mission_id}의 증거를 "
-                f"mission {self.mission_id}에 기록할 수 없다"
+                f"mission {evidence.mission_id}의 증거를 mission {self.mission_id}에 기록할 수 없다"
             )
         return self.model_copy(
             update={"sequence": self.sequence + 1, "evidence": evidence, "verdicts": None}

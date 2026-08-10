@@ -179,9 +179,7 @@ class CodexCompletion:
                 reason=f"구조화 출력이 올바른 JSON이 아니다 ({error}): {raw[:200]!r}"
             ) from error
         if not isinstance(parsed, dict):
-            raise CodexCompletionError(
-                reason=f"구조화 출력이 JSON 객체가 아니다: {raw[:200]!r}"
-            )
+            raise CodexCompletionError(reason=f"구조화 출력이 JSON 객체가 아니다: {raw[:200]!r}")
         return parsed
 
     @staticmethod

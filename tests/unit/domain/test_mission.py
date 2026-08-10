@@ -71,13 +71,9 @@ def test_lifecycle_table_is_mirrored_exactly() -> None:
     assert ALLOWED_TRANSITIONS == {
         Stage.BRIEF: frozenset({Stage.BLUEPRINT}),
         Stage.BLUEPRINT: frozenset({Stage.EXECUTE}),
-        Stage.EXECUTE: frozenset(
-            {Stage.VERIFY, Stage.RECOVER, Stage.BRIEF, Stage.BLUEPRINT}
-        ),
+        Stage.EXECUTE: frozenset({Stage.VERIFY, Stage.RECOVER, Stage.BRIEF, Stage.BLUEPRINT}),
         Stage.VERIFY: frozenset({Stage.RECOVER, Stage.BRIEF, Stage.BLUEPRINT}),
-        Stage.RECOVER: frozenset(
-            {Stage.VERIFY, Stage.EXECUTE, Stage.BRIEF, Stage.BLUEPRINT}
-        ),
+        Stage.RECOVER: frozenset({Stage.VERIFY, Stage.EXECUTE, Stage.BRIEF, Stage.BLUEPRINT}),
     }
 
 

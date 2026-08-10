@@ -279,8 +279,7 @@ class ExecuteState(BaseModel):
         for index, item in enumerate(self.attempts):
             if item.number != index + 1:
                 raise ValueError(
-                    f"시도 번호는 1부터 연속이어야 한다: "
-                    f"{index}번 자리에 번호 {item.number}이 있다"
+                    f"시도 번호는 1부터 연속이어야 한다: {index}번 자리에 번호 {item.number}이 있다"
                 )
             if item.status is AttemptStatus.DISPATCHED:
                 open_ids.add(item.execution_id)
@@ -292,10 +291,7 @@ class ExecuteState(BaseModel):
                 if run.status in {StageRunStatus.WORKERS_DISPATCHED, StageRunStatus.HOLD}
                 and open_ids.issubset(set(run.attempt_execution_ids))
             ]
-            only_last = (
-                len(open_ids) == 1
-                and self.attempts[-1].status is AttemptStatus.DISPATCHED
-            )
+            only_last = len(open_ids) == 1 and self.attempts[-1].status is AttemptStatus.DISPATCHED
             if not only_last and len(owners) != 1:
                 raise ValueError(
                     "dispatch 상태로 남을 수 있는 것은 마지막 시도뿐이거나 "
@@ -465,9 +461,7 @@ class ExecuteState(BaseModel):
     ) -> ExecuteState:
         """한 stage의 attempt 전체와 owner를 한 상태 전이로 연다."""
         if self.open_attempts:
-            raise OpenAttemptError(
-                mission_id=self.mission_id, ac_key=self.open_attempts[-1].ac_key
-            )
+            raise OpenAttemptError(mission_id=self.mission_id, ac_key=self.open_attempts[-1].ac_key)
         if not ac_keys:
             raise ValueError("빈 stage는 dispatch할 수 없다")
         if plan not in self.plans:
@@ -601,9 +595,7 @@ class ExecuteState(BaseModel):
         updated = StageRun.model_validate(
             run.model_copy(
                 update={
-                    "status": (
-                        StageRunStatus.REVALIDATING if succeeded else StageRunStatus.HOLD
-                    ),
+                    "status": (StageRunStatus.REVALIDATING if succeeded else StageRunStatus.HOLD),
                     "coordinator_native_session_id": native_session_id,
                     "coordinator_changed_files": changed_files,
                     "coordinator_error": error,
@@ -654,7 +646,5 @@ class ExecuteState(BaseModel):
     def _replace_stage_run(self, updated: StageRun) -> ExecuteState:
         runs = tuple(updated if item.run_id == updated.run_id else item for item in self.stage_runs)
         return ExecuteState.model_validate(
-            self.model_copy(
-                update={"sequence": self.sequence + 1, "stage_runs": runs}
-            ).model_dump()
+            self.model_copy(update={"sequence": self.sequence + 1, "stage_runs": runs}).model_dump()
         )

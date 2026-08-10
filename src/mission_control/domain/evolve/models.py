@@ -115,9 +115,7 @@ class WonderOutput(BaseModel):
     @property
     def challenged_keys(self) -> frozenset[str]:
         return frozenset(
-            item.parent_ac_key
-            for item in self.challenges
-            if item.parent_ac_key is not None
+            item.parent_ac_key for item in self.challenges if item.parent_ac_key is not None
         )
 
 
@@ -203,9 +201,7 @@ class ReflectOutput(BaseModel):
     @model_validator(mode="after")
     def _declared_identities_are_unique(self) -> ReflectOutput:
         parent_keys = [
-            item.parent_ac_key
-            for item in self.ac_patches
-            if item.parent_ac_key is not None
+            item.parent_ac_key for item in self.ac_patches if item.parent_ac_key is not None
         ]
         if len(parent_keys) != len(set(parent_keys)):
             raise ValueError("Reflect patch는 parent AC를 중복 참조할 수 없다")

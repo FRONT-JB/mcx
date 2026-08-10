@@ -50,9 +50,7 @@ class DuplicateRequirementCandidateError(MissionControlError):
     """같은 section과 exact 원문인 후보가 이미 있다."""
 
     def __init__(self, *, existing_number: int, section: RequirementSection) -> None:
-        super().__init__(
-            f"{section.value}의 같은 요구사항 후보가 이미 {existing_number}번에 있다"
-        )
+        super().__init__(f"{section.value}의 같은 요구사항 후보가 이미 {existing_number}번에 있다")
         self.existing_number = existing_number
         self.section = section
 
@@ -136,9 +134,7 @@ class BriefState(BaseModel):
         derived = derive_from_intent(initial_intent)
         if derived is None:
             return state
-        return state.model_copy(
-            update={"candidates": (_as_candidate(derived, number=1),)}
-        )
+        return state.model_copy(update={"candidates": (_as_candidate(derived, number=1),)})
 
     @property
     def has_current_approval(self) -> bool:

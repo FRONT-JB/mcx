@@ -68,9 +68,7 @@ class TestCollecting:
 
 
 class TestUnavailable:
-    def test_a_non_git_directory_reports_an_error_not_an_empty_list(
-        self, tmp_path: Path
-    ) -> None:
+    def test_a_non_git_directory_reports_an_error_not_an_empty_list(self, tmp_path: Path) -> None:
         """빈 목록과 수집 실패는 다르다 — 뭉치면 '변경 없음'으로 읽힌다."""
         plain = tmp_path / "plain"
         plain.mkdir()

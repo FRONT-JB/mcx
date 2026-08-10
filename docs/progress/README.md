@@ -6,11 +6,11 @@
 |---|---|
 | Project phase | **Phase 0~11 COMPLETE (2026-08-10)** — upstream Coordinator 경로의 병렬 Execute와 대표 brownfield dogfood 완료 ([progress 0011](./0011_PARALLEL_EXECUTION_GATE.md), [ADR-0053](../adr/0053-parallel-coordinator-execution-contract.md), [DOGFOODING_0007](../research/DOGFOODING_0007.md)). 순차 Execute도 정상 경로로 유지 |
 | Mission status | ACTIVE |
-| Gate | **Phase 0~11 COMPLETE** — immutable plan·grouped attempts·worker write Telemetry·Coordinator·resume·bounded concurrency·settled revalidation·대표 실경로 충족 |
+| Gate | **v1 release HOLD** — 기술 감사 통과, manifest의 MIT 선언과 맞출 LICENSE 소유자·표기 결정 대기 ([progress 0012](./0012_V1_RELEASE_READINESS.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, immutable plan, grouped stage run, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (Codex worker+Coordinator), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 11종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 26 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 33종 — CLI 파서 파생 26 + 비동기 5 + job 2, stdio, entry point `mcx-mcp`) |
-| Automated tests | **1056 passed** (unit + integration, 2026-08-10 최종 실측) |
+| Automated tests | **1058 passed** (unit + integration, 2026-08-11 release audit 실측) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
-| Updated | 2026-08-10 |
+| Updated | 2026-08-11 |
 
 ## Current facts
 
@@ -50,6 +50,10 @@
   통과했다 ([DOGFOODING_0007](../research/DOGFOODING_0007.md)).
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
+- v1 기술 release candidate는 host별 plugin 설치, MCP 33종 handshake, simulated
+  `0.1.0` sdist/wheel, 격리 설치까지 통과했다. 공개 manifest는 MIT를 선언하지만
+  LICENSE 파일이 없어 소유자·표기 결정 전까지 Release Gate는 HOLD다
+  ([progress 0012](./0012_V1_RELEASE_READINESS.md)).
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
   ([progress 0000](./0000_DOCUMENTATION_FOUNDATION.md) Gate 참조).
 - 루트에 에이전트 온보딩 지침 `AGENTS.md`와 `CLAUDE.md` symlink가 추가되었다.
@@ -62,7 +66,7 @@
 | `01_ARCHITECTURE.md` | Draft | Phase 1~10 경계 + Evolve domain/state·source projection·text adapter·surface·대표 Gen 2 실사용 검증 |
 | `02_MISSION_LIFECYCLE.md` | Draft | 다섯 Stage 전이는 구현으로 검증; Evolve는 새 Stage 없이 Verify HOLD→후속 Blueprint generation으로 설계 확정 |
 | `03_RUNTIME.md` | Draft | Codex 실행·Claude/Codex 텍스트 계약 검증; OpenCode 실물 이연, Hermes는 Phase 10 A/B 후 최초 범위 제외 |
-| `04_MCP.md` | Draft | tool 33종·stdio·job/cancel은 ADR-0041·0051·0053으로 검증; worker 재귀 경계와 host 합성 책임은 ADR-0042로 검증 |
+| `04_MCP.md` | Draft | tool 33종·stdio·job/cancel은 ADR-0041·0051·0053으로 검증; worker 재귀 경계와 Claude/Codex별 bootstrap은 ADR-0042로 검증 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
 | `06_BLUEPRINT.md` | Draft | Gen 1 schema·QA·revision + Gen 2 generation·ontology·patch·checkpoint·실 source projection·text adapter·surface·dogfood 검증 |
 | `07_EXECUTE.md` | Verified contract | 순차 실행과 Phase 11 immutable plan·grouped fan-out·Coordinator·settled revalidation·대표 실경로 검증 |
@@ -88,6 +92,7 @@
 - [0009 — 되돌리기·관측 층 종료 검토](./0009_RECOVERY_LAYERS.md)
 - [0010 — Reflect/Evolve 종료 검토](./0010_REFLECT_EVOLVE.md)
 - [0011 — 병렬 실행 도입 Gate](./0011_PARALLEL_EXECUTION_GATE.md)
+- [0012 — v1 release-readiness audit](./0012_V1_RELEASE_READINESS.md)
 
 ## Phase roadmap
 
@@ -404,9 +409,9 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   사용자 결정이 확정됐다(ADR-0043 §4)
 - [x] skill 작성 + plugin manifest (Claude·Codex 양쪽 MCP 클라이언트) —
   2026-08-09. skill 6종(`mcx` 우산 + Stage 5종), `.claude-plugin/plugin.json`·
-  `.codex-plugin/plugin.json`이 **같은 `./skills/`와 같은 `./.mcp.json`**을
-  가리킨다(upstream은 server가 runtime 플래그를 받아 둘로 나누지만 우리 라우팅은
-  `config.toml` 소유라 나눌 이유가 없다 — 등록된 divergence).
+  `.codex-plugin/plugin.json`은 같은 `./skills/`를 가리킨다. **2026-08-11
+  release audit 수정:** server 구현은 공유하지만 plugin-root bootstrap은
+  Claude `./.mcp.json`과 Codex `./.mcp.codex.json`으로 나눈다(ADR-0042 §1.1).
   `tests/unit/skills/test_skill_artifacts.py` 23건이 **skill이 존재하지 않는
   tool·인자를 부르지 못하게** 묶는다 — skill은 산문이라 컴파일되지 않으므로
   이 검사가 유일한 강제다. 실제로 작성 중 오류 3건을 잡았다(QA 액션 어휘를

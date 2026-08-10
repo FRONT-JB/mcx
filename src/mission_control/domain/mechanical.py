@@ -125,9 +125,7 @@ def required_entry_point(command: str) -> EntryPointRequirement | None:
 
     if head in _PACKAGE_MANAGERS:
         script = rest[1] if rest and rest[0] == "run" else (rest[0] if rest else None)
-        return (
-            EntryPointRequirement(EntryPointKind.PACKAGE_SCRIPT, script) if script else None
-        )
+        return EntryPointRequirement(EntryPointKind.PACKAGE_SCRIPT, script) if script else None
 
     if head in _RUNNERS:
         # `uv run pytest` → pytest가 실행 대상이다. `uv run` 뒤가 비면 판정 불가.

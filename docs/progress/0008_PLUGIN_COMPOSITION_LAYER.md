@@ -19,7 +19,7 @@
 | skill이 부르는 tool 이름을 검사 | CLI에서 명령을 빼면 tool은 파서 파생이라 따라 사라지지만 **부르는 skill 문장은 남아** host가 런타임에 실패한다 |
 | skill이 쓰는 `--flag`를 파서와 대조 | 같은 결함의 인자판. 실제로 3건을 잡았다 (§1.5) |
 | `Required Skill Capabilities` 선언 강제 | host가 무엇을 제공해야 하는지 모른 채 skill이 반쯤 돈다 |
-| 양쪽 매니페스트가 같은 `./skills/`·같은 `./.mcp.json` | host별로 skill 본문이 갈린다 |
+| 양쪽 매니페스트가 같은 `./skills/`를 가리킴 | host별로 skill 본문이 갈린다 |
 | 자기참조 MCP 등록을 테스트로 고정 | 배포판 이름으로 되돌리면 **배포 전까지 플러그인이 조용히 죽는다** |
 | `version` 필드 | `claude plugin validate`가 경고하고 marketplace 항목과 어긋난다 |
 | `--ignore-user-config` | worker가 사용자 codex 설정의 MCP를 보고 Mission Control을 되부른다 (ADR-0004 위반) |
@@ -51,7 +51,7 @@ always-on ~189 tok. 검증 후 제거했다.
 | 이탈 | 등록 위치 |
 |---|---|
 | 자기참조 MCP 등록 (upstream은 PyPI, `${CLAUDE_PLUGIN_ROOT}`는 hooks에만) | Open Questions §8, 테스트 |
-| 매니페스트 둘이 같은 `.mcp.json` (upstream은 둘로 나눔) | ADR-0042 §1, 테스트 |
+| ~~매니페스트 둘이 같은 `.mcp.json` (upstream은 둘로 나눔)~~ | **2026-08-11 폐기** — Codex 실측에서 skill만 보이고 MCP가 누락되어 ADR-0042 §1.1의 host별 bootstrap으로 교체 |
 | 결정적 품질 gate 위치가 Core (upstream은 `auto/`) | ADR-0043 §2 |
 | 등급·점수 사전 미이식 | ADR-0043 §1 |
 | `NO_VERIFIABLE_CRITERION` — **upstream 대응물 없는 발명** | ADR-0043 §3 |

@@ -21,20 +21,33 @@ Phase 0~11 구현을 완료했다. 다섯 Stage 전부가 실제 AI로 구동되
 [docs/progress/README.md](docs/progress/README.md)에 있다 — 이 README가 아니라
 그 문서가 상태의 소유자다.
 
+v1 기술 release candidate는 plugin 새 설치, MCP 33종 handshake, Python 배포물
+격리 설치까지 통과했다. 다만 manifest의 MIT 선언과 일치할 LICENSE 소유자·표기가
+아직 확정되지 않아 Release Gate는 HOLD이며 tag·release는 만들지 않았다.
+
 ## 설치
 
-**PyPI 배포가 필요 없다.** 플러그인이 자기 소스로 자기 MCP 서버를 띄운다 —
-`.mcp.json`이 `${CLAUDE_PLUGIN_ROOT}`를 가리키므로 설치된 플러그인 디렉토리에서
-`uvx`가 직접 빌드한다.
+**PyPI 배포가 필요 없다.** 플러그인이 자기 소스로 자기 MCP 서버를 띄운다.
+Claude는 `.mcp.json`의 `${CLAUDE_PLUGIN_ROOT}`를, Codex는
+`.mcp.codex.json`의 plugin-root `cwd`를 사용해 같은 `mcx-mcp`를 `uvx`로 직접
+빌드한다.
 
 ```bash
 claude plugin marketplace add https://github.com/FRONT-JB/mcx   # 또는 로컬 경로
 claude plugin install mcx@mcx
 ```
 
-**실물 확인 (2026-08-09)**: 로컬 경로로 등록·설치해 skill 6종 인식,
-`plugin:mcx:mcx ... ✔ Connected`, always-on 비용 ~189 tok. git 경로는 저장소를
-push하면 같은 방식으로 동작한다.
+Codex에서도 같은 marketplace를 설치할 수 있다.
+
+```bash
+codex plugin marketplace add FRONT-JB/mcx
+codex plugin add mcx@mcx
+```
+
+**실물 확인 (2026-08-11)**: Claude와 Codex에 각각 로컬 경로로 새로 등록·설치해
+skill 6종을 인식했다. Claude는 `plugin:mcx:mcx ... ✔ Connected`, Codex는 MCP
+protocol handshake에서 tool 33종과 실제 `mcx_status` routing event를 확인했다.
+검증용 plugin·marketplace 등록은 모두 제거했다.
 
 개발 중에는 MCP 서버만 따로 붙일 수도 있다.
 
@@ -99,7 +112,7 @@ Control을 되부르는 경로를 막기 위해서다
 ```bash
 uv sync
 uv run pytest
-uv run mypy src tests
+uv run mypy src
 uv run ruff check .
 uv run ruff format --check src tests
 ```

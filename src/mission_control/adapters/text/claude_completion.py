@@ -87,9 +87,7 @@ class ClaudeCompletion:
             command.extend(["--model", self._model])
         command.extend(["--json-schema", schema_json])
         if workspace is None:
-            command.extend(
-                ["--tools", "", "--allowedTools", "", "--max-turns", _NO_TOOL_MAX_TURNS]
-            )
+            command.extend(["--tools", "", "--allowedTools", "", "--max-turns", _NO_TOOL_MAX_TURNS])
         else:
             command.extend(
                 [

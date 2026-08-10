@@ -28,9 +28,7 @@ class _Engine:
 
 
 def _request(**manifests: str) -> MechanicalDetectionRequest:
-    return MechanicalDetectionRequest(
-        workspace="/w", manifests=tuple(manifests.items())
-    )
+    return MechanicalDetectionRequest(workspace="/w", manifests=tuple(manifests.items()))
 
 
 class TestOneCallAtMost:

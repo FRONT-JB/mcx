@@ -179,8 +179,7 @@ def jsonable(value: object) -> Any:
         return value.model_dump(mode="json")
     if dataclasses.is_dataclass(value) and not isinstance(value, type):
         return {
-            field.name: jsonable(getattr(value, field.name))
-            for field in dataclasses.fields(value)
+            field.name: jsonable(getattr(value, field.name)) for field in dataclasses.fields(value)
         }
     if isinstance(value, Enum):
         return value.value
@@ -530,17 +529,16 @@ async def _status_json(layout: StateLayout, record: MissionRecord, mission_id: s
                 "verify": verify is not None,
             },
             "mismatch": mismatch,
-            "journal": [jsonable(entry) for entry in MissionJournal(
-                root=layout.state, mission_id=mission_id
-            ).entries()],
+            "journal": [
+                jsonable(entry)
+                for entry in MissionJournal(root=layout.state, mission_id=mission_id).entries()
+            ],
         }
     )
     return 0
 
 
-async def _dispatch_brief(
-    args: argparse.Namespace, layout: StateLayout, adapters: Adapters
-) -> int:
+async def _dispatch_brief(args: argparse.Namespace, layout: StateLayout, adapters: Adapters) -> int:
     service = composition.brief_service(layout, adapters)
     mission: str = args.mission
     verb: str = args.verb
@@ -617,9 +615,7 @@ async def _dispatch_blueprint(
     verb: str = args.verb
     if verb == "evolve":
         await _require_active_record(layout, mission)
-        state = await composition.evolve_service(layout, adapters).propose(
-            mission_id=mission
-        )
+        state = await composition.evolve_service(layout, adapters).propose(mission_id=mission)
         if not state.evolutions:
             raise AssertionError("Evolve command가 EvolutionRecord를 만들지 않았다")
         evolution = state.evolutions[-1]
@@ -736,8 +732,10 @@ async def _dispatch_verify(
         if state.evidence.changed_files_error is not None:
             _note(f"변경 목록 없음: {state.evidence.changed_files_error}")
         elif state.evidence.changed_files:
-            _note(f"변경 {len(state.evidence.changed_files)}건: "
-                  f"{', '.join(state.evidence.changed_files)}")
+            _note(
+                f"변경 {len(state.evidence.changed_files)}건: "
+                f"{', '.join(state.evidence.changed_files)}"
+            )
     elif args.verb == "semantic":
         state = await service.assess_semantics(mission_id=mission)
         assert state.verdicts is not None
@@ -810,9 +808,7 @@ async def dispatch(
     if args.stage == "cleanup":
         # mission에 속하지 않는 운용 명령이다 — mission을 해석하지도, 원장을
         # 늘리지도 않는다 (ADR-0045 §7).
-        show(
-            worktree.sweep(layout.worktrees, force=args.force, dry_run=args.dry_run)
-        )
+        show(worktree.sweep(layout.worktrees, force=args.force, dry_run=args.dry_run))
         return 0
 
     args.mission = _resolve_mission(args, layout)

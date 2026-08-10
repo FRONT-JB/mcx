@@ -382,9 +382,7 @@ class TestExecute:
         assert outcome.changed_files == ("src/auth.py",)
         assert outcome.write_telemetry is WriteTelemetryStatus.COMPLETE
 
-    async def test_a_command_event_makes_write_attribution_incomplete(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_a_command_event_makes_write_attribution_incomplete(self, tmp_path: Path) -> None:
         workspace = tmp_path / "workspace"
         workspace.mkdir()
         runtime = CodexExecutionRuntime(

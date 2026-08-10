@@ -88,9 +88,7 @@ def _branch_name(root: Path, mission_id: str) -> str:
 def _registered(root: Path) -> set[str]:
     """``git worktree list``가 아는 경로들."""
     output = _git_output(["worktree", "list", "--porcelain"], root)
-    return {
-        line.split(" ", 1)[1] for line in output.splitlines() if line.startswith("worktree ")
-    }
+    return {line.split(" ", 1)[1] for line in output.splitlines() if line.startswith("worktree ")}
 
 
 def _require_clean(root: Path) -> None:

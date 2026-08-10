@@ -259,9 +259,7 @@ class CodexExecutionRuntime:
     async def _run_prompt(
         self, *, prompt: str, workspace: str, last_message_path: Path
     ) -> ExecutionOutcome:
-        command = self.build_command(
-            workspace=workspace, last_message_path=str(last_message_path)
-        )
+        command = self.build_command(workspace=workspace, last_message_path=str(last_message_path))
         process = await asyncio.create_subprocess_exec(
             *command,
             stdin=asyncio.subprocess.PIPE,
@@ -394,9 +392,7 @@ class CodexExecutionRuntime:
         )
 
     @staticmethod
-    def _normalize_changed_paths(
-        paths: list[str], workspace: str
-    ) -> tuple[tuple[str, ...], bool]:
+    def _normalize_changed_paths(paths: list[str], workspace: str) -> tuple[tuple[str, ...], bool]:
         """vendor 절대경로를 workspace 상대경로로 바꾸고 scope drift를 표시한다."""
         root = Path(workspace).resolve()
         normalized: list[str] = []

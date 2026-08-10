@@ -210,8 +210,7 @@ def _criteria_lines(request: WonderRequest | ReflectRequest) -> list[str]:
             lines.append("  immutable verify_command: " + criterion.verify_command)
         if criterion.expected_artifacts:
             lines.append(
-                "  immutable expected_artifacts: "
-                + json.dumps(criterion.expected_artifacts)
+                "  immutable expected_artifacts: " + json.dumps(criterion.expected_artifacts)
             )
         if criterion.output_assertion:
             lines.append("  immutable output_assertion: " + criterion.output_assertion)
@@ -242,8 +241,7 @@ def _source_lines(request: WonderRequest | ReflectRequest) -> list[str]:
         f"generation: {request.source.blueprint_generation}",
         f"blueprint_revision: {request.source.blueprint_revision}",
         f"verify_sequence: {request.source.verify_sequence}",
-        "execution_attempt_numbers: "
-        + json.dumps(request.source.execution_attempt_numbers),
+        "execution_attempt_numbers: " + json.dumps(request.source.execution_attempt_numbers),
         "gate_blockers:",
         *(f"- {item}" for item in request.source.gate_blockers),
     ]
@@ -280,9 +278,7 @@ def render_wonder_prompt(request: WonderRequest) -> str:
 
 
 def render_reflect_prompt(request: ReflectRequest) -> str:
-    unknown = request.wonder.challenged_keys - {
-        item.key for item in request.acceptance_criteria
-    }
+    unknown = request.wonder.challenged_keys - {item.key for item in request.acceptance_criteria}
     if unknown:
         _reject("Reflect", "Wonder가 current parent에 없는 AC key를 challenge했다")
 
@@ -338,9 +334,7 @@ def _parse_wonder(request: WonderRequest, data: dict[str, object]) -> WonderOutp
         if not isinstance(item, dict):
             _reject("Wonder", "questions의 각 항목은 object여야 한다")
         detail = _strict_text(item.get("question"), role="Wonder", field="question")
-        raw_kind = _strict_text(
-            item.get("kind"), role="Wonder", field="question kind"
-        )
+        raw_kind = _strict_text(item.get("kind"), role="Wonder", field="question kind")
         try:
             kind = ChallengeKind(raw_kind)
         except (TypeError, ValueError):
@@ -411,9 +405,7 @@ def _parse_reflect(request: ReflectRequest, data: dict[str, object]) -> ReflectO
                 _reject("Reflect", "add patch index는 transport sentinel -1이어야 한다")
             if not content:
                 _reject("Reflect", "add patch에는 새 AC content가 필요하다")
-            patches.append(
-                AcceptanceCriterionPatch(operation=patch_operation, description=content)
-            )
+            patches.append(AcceptanceCriterionPatch(operation=patch_operation, description=content))
             continue
 
         if add_started:
@@ -470,9 +462,7 @@ def _parse_reflect(request: ReflectRequest, data: dict[str, object]) -> ReflectO
     for item in raw_mutations:
         if not isinstance(item, dict):
             _reject("Reflect", "ontology_mutations의 각 항목은 object여야 한다")
-        raw_action = _strict_text(
-            item.get("action"), role="Reflect", field="ontology action"
-        )
+        raw_action = _strict_text(item.get("action"), role="Reflect", field="ontology action")
         try:
             mutation_operation = OntologyMutationOperation(raw_action)
         except (TypeError, ValueError):
@@ -527,15 +517,12 @@ def _parse_reflect(request: ReflectRequest, data: dict[str, object]) -> ReflectO
             )
         )
 
-    refined_goal = _strict_text(
-        data.get("refined_goal"), role="Reflect", field="refined_goal"
-    )
+    refined_goal = _strict_text(data.get("refined_goal"), role="Reflect", field="refined_goal")
     raw_constraints = data.get("refined_constraints")
     if not isinstance(raw_constraints, list):
         _reject("Reflect", "refined_constraints는 array여야 한다")
     constraints = tuple(
-        _strict_text(item, role="Reflect", field="refined_constraint")
-        for item in raw_constraints
+        _strict_text(item, role="Reflect", field="refined_constraint") for item in raw_constraints
     )
     reasoning = _strict_text(data.get("reasoning"), role="Reflect", field="reasoning")
 

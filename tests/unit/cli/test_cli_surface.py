@@ -145,9 +145,7 @@ async def test_execute_without_mission_record_exits_one(tmp_path: Path) -> None:
     assert await amain(["execute", "next", *argv], default_adapters()) == 1
 
 
-async def test_gate_clear_exits_zero(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_gate_clear_exits_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     class StubService:
         async def decide_gate(self, *, mission_id: str) -> SimpleNamespace:
             return SimpleNamespace(outcome="CLEAR")
@@ -168,9 +166,7 @@ async def test_execute_stage_hold_exits_two(
         async def dispatch_stage(
             self, *, mission_id: str, max_workers: int | None
         ) -> SimpleNamespace:
-            return SimpleNamespace(
-                stage_runs=(SimpleNamespace(status=StageRunStatus.HOLD),)
-            )
+            return SimpleNamespace(stage_runs=(SimpleNamespace(status=StageRunStatus.HOLD),))
 
     monkeypatch.setattr(
         composition, "execute_service", lambda layout, adapters, *, workspace: StubService()

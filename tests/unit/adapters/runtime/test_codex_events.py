@@ -35,9 +35,7 @@ class TestToolItems:
         assert found.detail == "git status --short"
 
     def test_a_file_change_lists_its_paths(self) -> None:
-        found = activity(
-            event("file_change", changes=[{"path": "src/a.py"}, {"path": "src/b.py"}])
-        )
+        found = activity(event("file_change", changes=[{"path": "src/a.py"}, {"path": "src/b.py"}]))
 
         assert found is not None
         assert found.detail == "src/a.py src/b.py"
@@ -106,9 +104,7 @@ class TestWriteTelemetryProjection:
         assert found.paths == ("/workspace/src/a.py",)
 
     def test_command_and_terminal_events_are_distinguished(self) -> None:
-        command = json.dumps(
-            {"type": "item.completed", "item": {"type": "command_execution"}}
-        )
+        command = json.dumps({"type": "item.completed", "item": {"type": "command_execution"}})
         terminal = json.dumps({"type": "turn.completed"})
 
         assert completed_command_observed(command) is True

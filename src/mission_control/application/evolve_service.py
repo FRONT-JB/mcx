@@ -146,8 +146,7 @@ def project_evolve_source(
             raise AssertionError(f"{criterion.key}의 semantic verdict가 사라졌다")
         evidence_refs = tuple(
             dict.fromkeys(
-                ((run.output_ref,) if run is not None and run.output_ref else ())
-                + verdict.evidence
+                ((run.output_ref,) if run is not None and run.output_ref else ()) + verdict.evidence
             )
         )
         criteria.append(
@@ -216,9 +215,7 @@ class EvolveService:
                     ontology=parent.ontology,
                     source=record.source,
                     previous_wonders=tuple(
-                        item.wonder
-                        for item in state.evolutions[:-1]
-                        if item.wonder is not None
+                        item.wonder for item in state.evolutions[:-1] if item.wonder is not None
                     ),
                 )
             )

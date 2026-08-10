@@ -53,9 +53,7 @@ class TestSkillsExist:
         assert fields.get("description"), path
 
     def test_no_two_skills_claim_the_same_name(self) -> None:
-        names = [
-            _frontmatter(path.read_text(encoding="utf-8"))["name"] for path in _skill_files()
-        ]
+        names = [_frontmatter(path.read_text(encoding="utf-8"))["name"] for path in _skill_files()]
 
         assert len(names) == len(set(names))
 
@@ -133,21 +131,24 @@ class TestManifests:
         assert (REPO / ".codex-plugin" / "plugin.json").is_file()
 
     @pytest.mark.parametrize("directory", [".claude-plugin", ".codex-plugin"])
-    def test_a_manifest_points_at_the_shared_skills_and_server(self, directory: str) -> None:
+    def test_a_manifest_points_at_the_shared_skills(self, directory: str) -> None:
         """skill 본문은 host별로 갈라지지 않는다 — upstream 정렬."""
         manifest = json.loads((REPO / directory / "plugin.json").read_text(encoding="utf-8"))
 
         assert manifest["skills"] == "./skills/"
-        assert manifest["mcpServers"] == "./.mcp.json"
         assert manifest["name"] == "mcx"
 
-    def test_one_server_file_serves_both_hosts(self) -> None:
-        """upstream은 둘로 나눈다 — server가 runtime 플래그를 받기 때문이다.
+    def test_each_host_points_at_its_bootstrap(self) -> None:
+        """공유 server와 host별 plugin-root 해석을 혼동하지 않는다 (ADR-0042 §1.1)."""
+        claude = json.loads((REPO / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        codex = json.loads((REPO / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
 
-        우리 라우팅은 ``config.toml`` 소유라 host가 그것을 정하지 않는다.
-        등록된 divergence다 (ADR-0042 §1).
-        """
-        mcp = json.loads((REPO / ".mcp.json").read_text(encoding="utf-8"))
+        assert claude["mcpServers"] == "./.mcp.json"
+        assert codex["mcpServers"] == "./.mcp.codex.json"
+
+    @pytest.mark.parametrize("path", [".mcp.json", ".mcp.codex.json"])
+    def test_both_bootstraps_start_the_same_server(self, path: str) -> None:
+        mcp = json.loads((REPO / path).read_text(encoding="utf-8"))
         entry = mcp["mcpServers"]["mcx"]
 
         assert entry["command"] == "uvx"
@@ -164,10 +165,12 @@ class TestManifests:
         이 검사가 지키는 것: 배포판 이름으로 되돌리면 배포 전까지 플러그인이
         조용히 죽는다.
         """
-        mcp = json.loads((REPO / ".mcp.json").read_text(encoding="utf-8"))
-        source = mcp["mcpServers"]["mcx"]["args"][1]
+        claude = json.loads((REPO / ".mcp.json").read_text(encoding="utf-8"))
+        codex = json.loads((REPO / ".mcp.codex.json").read_text(encoding="utf-8"))
 
-        assert source == "${CLAUDE_PLUGIN_ROOT}[mcp]"
+        assert claude["mcpServers"]["mcx"]["args"][1] == "${CLAUDE_PLUGIN_ROOT}[mcp]"
+        assert codex["mcpServers"]["mcx"]["args"][1] == ".[mcp]"
+        assert codex["mcpServers"]["mcx"]["cwd"] == "."
 
     def test_the_marketplace_makes_the_repo_installable(self) -> None:
         """저장소가 곧 marketplace다 (upstream 정렬, `source: "./"`)."""

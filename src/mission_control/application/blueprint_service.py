@@ -309,9 +309,7 @@ class BlueprintService:
                     score=record.assessment.score,
                     verdict=self.qa_policy.verdict_for(record.assessment.score).value,
                 )
-                for index, record in enumerate(
-                    state.records_for_generation(state.generation)
-                )
+                for index, record in enumerate(state.records_for_generation(state.generation))
             ),
             previous_findings=self._previous_findings(state),
         )

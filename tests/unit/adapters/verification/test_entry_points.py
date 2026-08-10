@@ -89,9 +89,7 @@ class TestExecutables:
         assert result.commands[CommandKind.TEST] == "python -V"
 
     def test_a_binary_that_is_not_there_is_dropped(self, tmp_path: Path) -> None:
-        result = validate(
-            _proposed(test="totally-not-a-real-binary-xyz --run"), workspace=tmp_path
-        )
+        result = validate(_proposed(test="totally-not-a-real-binary-xyz --run"), workspace=tmp_path)
 
         assert result.commands == {}
         assert "PATH" in result.dropped[0].reason

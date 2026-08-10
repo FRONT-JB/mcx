@@ -154,9 +154,7 @@ class TestParallelPlan:
             effective_workers=2,
         )
         first_id, second_id = state.stage_runs[-1].attempt_execution_ids
-        state = state.record_result_for(
-            execution_id=first_id, succeeded=False, error="broken"
-        )
+        state = state.record_result_for(execution_id=first_id, succeeded=False, error="broken")
         state = state.record_result_for(execution_id=second_id, succeeded=True)
         state = state.finalize_stage(run_id=state.stage_runs[-1].run_id)
 

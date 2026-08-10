@@ -179,13 +179,11 @@ class DependencyAnalyzer(Protocol):
     """도구 없이 AC direct dependency만 구조화해 반환하는 역할."""
 
     @property
-    def backend(self) -> str:
-        ...
+    def backend(self) -> str: ...
 
     async def analyze(
         self, request: DependencyAnalysisRequest
-    ) -> tuple[CriterionDependency, ...]:
-        ...
+    ) -> tuple[CriterionDependency, ...]: ...
 
 
 class WorkerExecutionSummary(BaseModel):
@@ -241,11 +239,9 @@ class CoordinatorRuntime(Protocol):
     """stage conflict를 한 번 수습하는 mutating Runtime authority."""
 
     @property
-    def backend(self) -> str:
-        ...
+    def backend(self) -> str: ...
 
-    async def coordinate(self, request: CoordinatorRequest) -> CoordinatorOutcome:
-        ...
+    async def coordinate(self, request: CoordinatorRequest) -> CoordinatorOutcome: ...
 
 
 class ExecutionRuntime(Protocol):

@@ -14,7 +14,7 @@
     "verification"
   ],
   "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
+  "mcpServers": "./.mcp.codex.json",
   "interface": {
     "displayName": "Mission Control",
     "shortDescription": "Coordinates AI coding missions. Executed is not verified.",

@@ -116,10 +116,7 @@ def evaluate_execute_gate(*, state: ExecuteState, blueprint: Blueprint) -> Execu
             gate_blockers.append(
                 ExecuteGateBlocker(
                     condition=ExecuteGateBlockingCondition.CRITERION_FAILED,
-                    detail=(
-                        f"{criterion.key}가 시도 {latest.number}에서 실패했다: "
-                        f"{latest.error}"
-                    ),
+                    detail=(f"{criterion.key}가 시도 {latest.number}에서 실패했다: {latest.error}"),
                 )
             )
 

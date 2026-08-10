@@ -123,9 +123,7 @@ class TestRefusals:
         with pytest.raises(worktree.WorktreeError, match="git 브랜치 이름으로 쓸 수 없다"):
             worktree.prepare(str(repo), mission_id="has space", root=root)
 
-    def test_a_stray_directory_is_refused_rather_than_deleted(
-        self, repo: Path, root: Path
-    ) -> None:
+    def test_a_stray_directory_is_refused_rather_than_deleted(self, repo: Path, root: Path) -> None:
         stray = root / repo.name / "m1"
         stray.mkdir(parents=True)
         (stray / "someones-file.txt").write_text("do not delete me\n")
@@ -253,17 +251,18 @@ class TestSweep:
 
         assert result.removed[0].branch_deleted is False
         assert not Path(isolation.worktree_path).exists()
-        assert "mcx/m1" in subprocess.run(
-            ["git", "branch", "--list", "mcx/m1"],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
+        assert (
+            "mcx/m1"
+            in subprocess.run(
+                ["git", "branch", "--list", "mcx/m1"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout
+        )
 
-    def test_uncommitted_work_is_never_swept_even_with_force(
-        self, repo: Path, root: Path
-    ) -> None:
+    def test_uncommitted_work_is_never_swept_even_with_force(self, repo: Path, root: Path) -> None:
         isolation = worktree.prepare(str(repo), mission_id="m1", root=root)
         assert isolation is not None
         (Path(isolation.worktree_path) / "wip.py").write_text("half done\n")

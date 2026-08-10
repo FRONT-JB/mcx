@@ -40,9 +40,7 @@ class ClarityDimensionMismatchError(MissionControlError):
     """
 
     def __init__(self, *, expected: tuple[str, ...], received: tuple[str, ...]) -> None:
-        super().__init__(
-            f"{expected!r} 축을 요청했는데 평가자가 {received!r} 축을 채점했다"
-        )
+        super().__init__(f"{expected!r} 축을 요청했는데 평가자가 {received!r} 축을 채점했다")
         self.expected = expected
         self.received = received
 

@@ -168,8 +168,7 @@ def evaluate_brief_gate(*, state: BriefState, policy: ClarityPolicy) -> BriefGat
     # 결과 "CLEAR인데 만들 수 없는" 상태가 도그푸딩 0004에서 관측됐다.
     # constraints·non_goals는 사소한 미션에서 정당하게 비므로 막지 않는다.
     if not any(
-        item.section is RequirementSection.ACCEPTANCE_CRITERION
-        for item in state.promotion.promoted
+        item.section is RequirementSection.ACCEPTANCE_CRITERION for item in state.promotion.promoted
     ):
         gate_blockers.append(
             GateBlocker(

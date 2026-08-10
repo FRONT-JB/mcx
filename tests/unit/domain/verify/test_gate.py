@@ -191,9 +191,7 @@ class TestProvenCriteria:
 
     def test_an_escalating_verdict_is_not_proven(self) -> None:
         """불확실성이 임계를 넘으면 Gate가 막는다 — 커밋도 하지 않는다."""
-        verdicts = _verdicts(
-            _verdict(COMMANDED.key), _verdict(PROSE.key, uncertainty=0.99)
-        )
+        verdicts = _verdicts(_verdict(COMMANDED.key), _verdict(PROSE.key, uncertainty=0.99))
 
         assert self._proven(_evidence(), verdicts) == (COMMANDED.key,)
 

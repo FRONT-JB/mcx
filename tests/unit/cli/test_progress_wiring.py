@@ -23,9 +23,7 @@ class ReportingExecute:
 
     async def dispatch_next(self, *, mission_id: str) -> SimpleNamespace:
         assert observed() is True, "명령이 도는 동안 관측이 설치되어 있어야 한다"
-        record(
-            RuntimeActivity(kind="tool", tool="command_execution", detail="pytest tests/unit")
-        )
+        record(RuntimeActivity(kind="tool", tool="command_execution", detail="pytest tests/unit"))
         record(RuntimeActivity(kind="tool", tool="file_change", detail="src/app.py"))
         return SimpleNamespace(attempts=[SimpleNamespace(number=1)])
 

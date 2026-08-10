@@ -101,8 +101,7 @@ class UnknownCriterionError(MissionControlError):
 
     def __init__(self, *, mission_id: str, ac_key: str, blueprint_revision: int) -> None:
         super().__init__(
-            f"mission {mission_id}의 Blueprint revision {blueprint_revision}에 "
-            f"{ac_key}가 없다"
+            f"mission {mission_id}의 Blueprint revision {blueprint_revision}에 {ac_key}가 없다"
         )
         self.mission_id = mission_id
         self.ac_key = ac_key
@@ -542,9 +541,7 @@ class ExecuteService:
         )
 
     @staticmethod
-    def _attempts_for(
-        state: ExecuteState, run: StageRun
-    ) -> tuple[ExecutionAttempt, ...]:
+    def _attempts_for(state: ExecuteState, run: StageRun) -> tuple[ExecutionAttempt, ...]:
         attempt_ids = set(run.attempt_execution_ids)
         return tuple(item for item in state.attempts if item.execution_id in attempt_ids)
 

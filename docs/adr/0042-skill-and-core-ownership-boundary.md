@@ -39,6 +39,34 @@ Phase 8은 manifest 작업이 아니라 **합성 계층 도입**이다. 지금�
 경계선의 실제 판별 질문은 하나다 — **"같은 입력에 항상 같은 답인가?"** 그렇다면
 Core, 아니라면(사용자·맥락·반복 횟수에 따라 달라진다면) skill이다.
 
+#### 2026-08-11 amendment — 공유 skill과 host bootstrap은 같은 축이 아니다
+
+Phase 8은 Claude와 Codex manifest가 같은 `./skills/`와 같은 `./.mcp.json`을
+가리키는 것을 하나의 방어로 묶었다. release-readiness 실측이 이 결합을
+뒤집었다.
+
+- Codex local marketplace 등록·설치 뒤 새 `codex exec` 세션은 skill 6종을 모두
+  발견했다.
+- 같은 세션은 `mcx_*` MCP tool을 하나도 발견하지 못했다.
+- `codex mcp get mcx`에는 `${CLAUDE_PLUGIN_ROOT}[mcp]`가 치환되지 않은 인자로
+  남았다. Claude에서 검증된 자기참조 bootstrap을 Codex에도 그대로 공유한 것이
+  원인이다.
+
+**결정:** skill 본문은 계속 하나를 공유한다. MCP server 구현과 entry point도
+하나다. 그러나 그 서버를 설치된 plugin root에서 시작하는 bootstrap 파일은
+host별로 나눈다.
+
+| Host | manifest가 가리키는 파일 | source root 해석 |
+|---|---|---|
+| Claude | `./.mcp.json` | `${CLAUDE_PLUGIN_ROOT}[mcp]` |
+| Codex | `./.mcp.codex.json` | `cwd: "."` + `.[mcp]` |
+
+이 차이는 Workflow나 Runtime routing의 분기가 아니다. 각 host가 **같은**
+`mcx-mcp`를 어느 디렉터리에서 시작하는지에만 국한된다. upstream Ouroboros도
+Claude/Codex 등록 파일을 나누며, OpenAI의 현재 plugin 계약도 상대 경로와
+plugin-root 기준 bundled MCP를 허용한다. 검증은 manifest 정적 검사로 끝내지 않고
+각 host의 새 세션에서 skill과 MCP tool을 함께 관측해야 한다.
+
 ### 2. Core는 반복을 소유하지 않는다 — 단, 지금 있는 루프는 옮기지 않는다
 
 upstream은 QA 반복(threshold 0.90·최대 5회·최선 시도 추적)을 **skill 텍스트**에

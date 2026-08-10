@@ -63,7 +63,7 @@ def _start_definitions() -> tuple[ToolDefinition, ...]:
     by_name = {tool.name: tool for tool in tool_definitions()}
     return tuple(
         ToolDefinition(
-            name=f"{PREFIX}start_{name[len(PREFIX):]}",
+            name=f"{PREFIX}start_{name[len(PREFIX) :]}",
             description=f"{by_name[name].description} — 접수증만 돌려주고 백그라운드로 돈다",
             input_schema=by_name[name].input_schema,
         )
@@ -84,7 +84,7 @@ async def handle(name: str, arguments: dict[str, Any], *, state_dir: Path) -> To
     if name == f"{PREFIX}cancel_job":
         return _cancel(str(arguments.get("job", "")), state=state)
     if name.startswith(f"{PREFIX}start_"):
-        target = f"{PREFIX}{name[len(PREFIX) + len('start_'):]}"
+        target = f"{PREFIX}{name[len(PREFIX) + len('start_') :]}"
         receipt, task = await start_tool(target, arguments, state_dir=str(state_dir))
         _BACKGROUND.add(task)
         task.add_done_callback(_BACKGROUND.discard)
@@ -146,8 +146,7 @@ def serve(state_dir: Path) -> None:  # pragma: no cover — SDK 실물이 필요
         import mcp.types as types
     except ModuleNotFoundError as exc:
         raise SystemExit(
-            "MCP SDK가 없다. `uv pip install 'mission-control[mcp]'`로 설치한다 "
-            f"(누락: {exc.name})"
+            f"MCP SDK가 없다. `uv pip install 'mission-control[mcp]'`로 설치한다 (누락: {exc.name})"
         ) from exc
 
     server: Any = Server(SERVER_NAME)
@@ -197,9 +196,7 @@ def main() -> int:
     부르므로(ADR-0041 §1) 반대 방향 import가 생기면 두 표면이 서로를 물게 된다.
     host 설정은 어차피 실행할 명령 하나를 가리킨다.
     """
-    parser = argparse.ArgumentParser(
-        prog="mcx-mcp", description="mcx MCP control surface (stdio)"
-    )
+    parser = argparse.ArgumentParser(prog="mcx-mcp", description="mcx MCP control surface (stdio)")
     parser.add_argument("action", nargs="?", default="serve", choices=["serve", "tools"])
     parser.add_argument("--state-dir", type=Path, default=DEFAULT_STATE_DIR)
     args = parser.parse_args()

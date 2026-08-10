@@ -37,9 +37,7 @@ class PromptedDependencyAnalyzer:
             f"\n\n## Non-goals\n{non_goals}\n\n## Acceptance criteria\n{criteria}"
         )
 
-    async def analyze(
-        self, request: DependencyAnalysisRequest
-    ) -> tuple[CriterionDependency, ...]:
+    async def analyze(self, request: DependencyAnalysisRequest) -> tuple[CriterionDependency, ...]:
         schema = strict_schema(
             {
                 "criteria": {

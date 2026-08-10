@@ -96,9 +96,8 @@ class TestToolSurfaceIsDerived:
         bare = [
             tool.name
             for tool in tool_definitions()
-            if tool.description.replace("_", " ") == tool.name.replace("mcx_", "mcx ").replace(
-                "_", " "
-            )
+            if tool.description.replace("_", " ")
+            == tool.name.replace("mcx_", "mcx ").replace("_", " ")
         ]
 
         assert bare == []

@@ -68,9 +68,7 @@ def mechanical_failure_reason(ac_key: str, run: VerificationRun) -> str:
     별도 reason 필드를 두지 않는 이유다 (ADR-0028 §4).
     """
     if run.missing_artifacts:
-        return f"{ac_key}: 선언된 artifact가 없다: " + ", ".join(
-            run.missing_artifacts
-        )
+        return f"{ac_key}: 선언된 artifact가 없다: " + ", ".join(run.missing_artifacts)
     if run.timed_out:
         return f"{ac_key}: 확인 명령이 시간을 초과했다"
     if run.exit_code not in (0, None):

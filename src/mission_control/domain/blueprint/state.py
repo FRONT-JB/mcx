@@ -236,9 +236,7 @@ class BlueprintState(BaseModel):
 
         for qa_record in self.qa_records:
             if qa_record.revision < 1 or qa_record.revision > len(self.revisions):
-                raise ValueError(
-                    f"QA record가 없는 revision {qa_record.revision}을 가리킨다"
-                )
+                raise ValueError(f"QA record가 없는 revision {qa_record.revision}을 가리킨다")
 
         active_records = [
             item for item in self.evolutions if item.phase is not EvolutionPhase.COMPLETED
@@ -326,9 +324,7 @@ class BlueprintState(BaseModel):
         return tuple(item for item in self.qa_records if item.revision == revision)
 
     def records_for_generation(self, generation: int) -> tuple[BlueprintQaRecord, ...]:
-        revisions = {
-            item.revision for item in self.revisions if item.generation == generation
-        }
+        revisions = {item.revision for item in self.revisions if item.generation == generation}
         return tuple(item for item in self.qa_records if item.revision in revisions)
 
     def ensure_qa_allowed(self, *, policy: QaPolicy) -> None:
@@ -404,9 +400,7 @@ class BlueprintState(BaseModel):
         채점 없는 revision을 무한히 쌓으며 상한을 우회하게 된다.
         """
         if self.active_evolution is not None:
-            raise EvolutionNotAllowedError(
-                "Evolve 진행 중에는 parent Blueprint를 revise할 수 없다"
-            )
+            raise EvolutionNotAllowedError("Evolve 진행 중에는 parent Blueprint를 revise할 수 없다")
         if policy is not None and self.final_edit_carry(policy=policy) is not None:
             raise FinalEditAlreadyUsedError(mission_id=self.mission_id, revision=self.revision)
         if blueprint.mission_id != self.mission_id:
