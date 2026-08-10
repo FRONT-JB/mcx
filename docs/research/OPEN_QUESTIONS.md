@@ -213,11 +213,13 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       semantics를 정의한다. → 열린 attempt 1개 규칙만 확정
       ([ADR-0024](../adr/0024-execute-v1-execution-model.md) §7). exact key
       schema는 여전히 미정
-- [ ] parallel execution 도입 Gate를 정의한다. → **시한 지정 (2026-08-09,
-      사용자 결정): Phase 11** — 독립 항목이다. 2026-08-09 조사로 "OpenCode의
-      용도는 종반 병렬 부수 작업"이라는 전제가 upstream 사실이 아님이
-      드러났고(upstream은 OpenCode를 Execute 하네스로 배치), 병렬은 OpenCode와
-      분리됐다.
+- [x] parallel execution 도입 Gate를 정의한다. → **Phase 11에서 정의·적용 완료,
+      현재 implementation `HOLD`**. exact Blueprint/AC stage plan,
+      shared-worktree conflict authority, grouped attempt durability, resume,
+      backend concurrency, representative dogfood가 모두 필요하다
+      ([ADR-0052](../adr/0052-parallel-execution-introduction-gate.md),
+      [PARALLEL findings](./PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md)). 다음 결정은
+      upstream Coordinator 경로를 채택할지, v1 순차 실행으로 닫을지다.
 - [x] **Execute 진입 경로가 하나임을 무엇이 보장하는지, Telemetry가 "무엇이
       이 작업을 만들었는가"를 기록하는지 결정한다.**
       → 작업 생성은 application use case 단일 경로 + Blueprint Gate `CLEAR`

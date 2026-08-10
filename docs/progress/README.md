@@ -4,9 +4,9 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | **Phase 10 COMPLETE (2026-08-10)** — Reflect/Evolve 전체 연결·대표 Gen 2 도그푸딩·종료 검토 완료 ([progress 0010](./0010_REFLECT_EVOLVE.md)). 다음은 Phase 11 병렬 실행 도입 Gate |
+| Project phase | **Phase 11 IN PROGRESS (2026-08-10)** — 병렬 실행 도입 Gate를 정의·적용했고 현재 implementation은 `HOLD` ([progress 0011](./0011_PARALLEL_EXECUTION_GATE.md), [ADR-0052](../adr/0052-parallel-execution-introduction-gate.md)). 순차 Execute는 정상 경로로 유지 |
 | Mission status | ACTIVE |
-| Gate | **Phase 0~10 COMPLETE. CLEAR for Phase 11 design.** |
+| Gate | **Phase 0~10 COMPLETE. Phase 11 parallel implementation HOLD** — shared-worktree conflict authority·grouped attempt durability·resume·backend concurrency 미충족 |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 10종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 25 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 31종 — CLI 파서 파생 25 + 비동기 4 + job 2, stdio, entry point `mcx-mcp`) |
 | Automated tests | 1030 passed (unit + integration, 2026-08-10 실측) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
@@ -23,7 +23,8 @@
 - upstream `Q00/ouroboros`의 기준 commit을 기록했다.
 - 사용자 용어와 내부/upstream 용어 mapping을 확정했다.
 - Runtime은 Codex/OpenCode 방향이며 Gemini는 v1 범위에서 제외했다.
-- Phase 1~10 설계 결정은 ADR-0009~0051과 각 Phase 기록에 연결되어 있다.
+- Phase 1~10 설계 결정과 Phase 11 병렬 도입 Gate는 ADR-0009~0052와 각 Phase
+  기록에 연결되어 있다.
 - Phase 10 source integration이 generation·ontology·content-key patch·세대별
   QA 예산·EvolutionRecord replay에 더해, 실 Blueprint·Execute·Verify 상태의
   exact attempt lineage·AC별 evidence·semantic verdict와 Verify Gate `HOLD`를
@@ -42,6 +43,12 @@
   semantic 3/3→`MISSION COMPLETE`를 완주했다
   ([DOGFOODING_0006](../research/DOGFOODING_0006.md)). 이 실행이 manual ontology
   refinement 표면과 status의 cross-generation 집계 결함을 잡아 둘 다 수정했다.
+- pinned upstream 병렬 경로를 재대조해 dependency stage만으로는 shared worktree
+  동시 쓰기가 안전하지 않음을 확인했다. upstream은 worker별 Write/Edit
+  Telemetry와 mutating Level Coordinator·settled workspace 재검증을 함께 쓴다.
+  현재 mcx에는 이 conflict authority와 grouped attempt state가 없어 Phase 11
+  implementation Gate는 `HOLD`다
+  ([PARALLEL findings](../research/PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md)).
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
@@ -59,11 +66,11 @@
 | `04_MCP.md` | Draft | tool 31종·stdio·job/cancel은 ADR-0041·0051로 검증; worker 재귀 경계와 host 합성 책임은 ADR-0042로 검증 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
 | `06_BLUEPRINT.md` | Draft | Gen 1 schema·QA·revision + Gen 2 generation·ontology·patch·checkpoint·실 source projection·text adapter·surface·dogfood 검증 |
-| `07_EXECUTE.md` | Draft | v1 실행·Runtime·worktree·checkpoint 계약을 Phase 3·5·9에서 검증; 병렬 실행은 Phase 11 |
+| `07_EXECUTE.md` | Draft | v1 실행·Runtime·worktree·checkpoint 계약 검증; Phase 11 병렬 도입 Gate 확정, conflict authority 결정 전 implementation `HOLD` |
 | `08_VERIFY.md` | Draft | 진입·mechanical·semantic·`changed_files`·MISSION COMPLETE 계약을 Phase 4·9에서 검증 |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도·rollback 계약을 Phase 4·9에서 검증; spec-gap classifier는 ADR-0051에서 미도입 확정 |
-| `adr/` | 51 Accepted ADRs | ADR-0001~0051. Phase 10 Evolve successor Blueprint 계약까지 확정 |
-| `research/` | Phase 10 complete | upstream baseline·도그푸딩 0001~0006·Evolve 연결·backend A/B 보존 |
+| `adr/` | 52 Accepted ADRs | ADR-0001~0052. Phase 11 병렬 실행 도입 Gate까지 확정 |
+| `research/` | Phase 11 Gate complete | upstream baseline·도그푸딩 0001~0006·Evolve 연결·backend A/B·병렬 shared-worktree 안전 조사 보존 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
 작성되었지만 사용자가 검토하고 구현 evidence로 검증하기 전이라는 뜻이다.
@@ -81,6 +88,7 @@
 - [0008 — plugin 합성 계층 종료 검토](./0008_PLUGIN_COMPOSITION_LAYER.md)
 - [0009 — 되돌리기·관측 층 종료 검토](./0009_RECOVERY_LAYERS.md)
 - [0010 — Reflect/Evolve 종료 검토](./0010_REFLECT_EVOLVE.md)
+- [0011 — 병렬 실행 도입 Gate](./0011_PARALLEL_EXECUTION_GATE.md)
 
 ## Phase roadmap
 
@@ -727,8 +735,14 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
 
 목표: 여러 AC를 동시에 실행한다.
 
-- [ ] 병렬 실행 도입 Gate ([Execute Guide](../07_EXECUTE.md) §17,
-  [Open Questions §4](../research/OPEN_QUESTIONS.md))
+- [x] 병렬 실행 도입 Gate 정의·적용 — **현재 implementation `HOLD`**.
+  dependency stage 외에 worker별 write Telemetry + conflict authority, grouped
+  attempt durability, partial-stage resume, backend concurrency가 필요하다
+  ([ADR-0052](../adr/0052-parallel-execution-introduction-gate.md),
+  [progress 0011](./0011_PARALLEL_EXECUTION_GATE.md))
+- [ ] shared-worktree conflict authority 결정 — upstream Coordinator 경로를
+  채택하거나 v1 병렬 실행을 제외
+- [ ] Gate `CLEAR` 뒤 staged batch 구현·대표 brownfield dogfood
 - [ ] `REDISPATCH_ALT_HARNESS` 재평가 (ADR-0032 보류 — 다중 runtime 실물이
   생긴 뒤)
 
@@ -1324,7 +1338,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 8 — plugin 패키징 (합성 계층) | **충족 (2026-08-09)** — tool description이 이름의 반복이던 것을 검토에서 이행(CLI `help=` 파생, 24명령). 미이행 2건 재지정(stale write 재확인·host 자기 도구 경로 → Phase 9, 전자는 **발동 조건과 종료 조건을 함께 걸어** 무한 연기를 끊었다), 표시 없던 보류 1건 등록(skill 6종의 근거), 산문 강제 1건 확인(질문 형태 규칙) | [progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | **충족 (2026-08-10)** — 두 번의 도그푸딩이 결함 6건을 잡았고 전부 조사·테스트로는 드러나지 않았다. 가장 큰 소득은 개별 결함이 아니라 **셋이 같은 뿌리를 갖는다는 것** — *"upstream과 같다"고 적어 놓고 원문과 대조하지 않았다*(§1.3). ADR README에 절차 한 줄을 넣었다. 검토가 직접 잡은 것 1건 수정(`changed_files`를 만들어 놓고 표시하지 않았다), 미결 11건 처분(닫음 6·재지정 3·구현 1·해소 1, **무처분 통과 0**). Phase 5를 시한으로 쓴 마지막 항목(telemetry event 층)도 종결됐다 | [progress 0009](./0009_RECOVERY_LAYERS.md) |
 | Phase 10 — Reflect/Evolve | **충족 (2026-08-10)** — 대표 brownfield Gen 2 경로가 real Claude/Codex로 Verify HOLD→Evolve→QA·exact approval→Execute→Verify→MISSION COMPLETE 완주. manual ontology refinement와 status cross-generation 표시 결함 2건 수정. Phase 10 시한 항목 전수 처분, 미관측 3건은 Phase 11 종료 전 강제 fixture로 재지정 | [progress 0010](./0010_REFLECT_EVOLVE.md) |
-| Phase 11 — 병렬 실행 | 대기 | — |
+| Phase 11 — 병렬 실행 | **진행 중 — 도입 Gate 정의·적용, implementation `HOLD` (2026-08-10)**. upstream 22 focused tests와 DOGFOODING_0006을 대조해 dependency level만으로 shared-worktree write 안전을 보장할 수 없음을 확인. 다음 결정은 worker write Telemetry + Coordinator repair를 채택할지, v1 순차 실행으로 닫을지 | [progress 0011](./0011_PARALLEL_EXECUTION_GATE.md) |
 
 ## Update protocol
 

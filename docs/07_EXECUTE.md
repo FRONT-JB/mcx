@@ -241,6 +241,15 @@ upstream도 신호가 없으면 의존 없음으로 진행한다.
 
 이는 영구적인 제한이 아니라 검증 가능한 최소 구현 순서다.
 
+**Phase 11 Gate 판정 (2026-08-10)**: 현재 병렬 implementation은 `HOLD`다.
+pinned upstream의 shared-worktree 병렬 안전은 dependency level만이 아니라
+worker별 Write/Edit Telemetry·충돌 시 별도 Coordinator repair·settled workspace
+재검증·level checkpoint를 함께 요구한다. 현재 mcx에는 conflict authority와
+grouped attempt durability가 없으므로 단순 fan-out을 금지한다
+([ADR-0052](./adr/0052-parallel-execution-introduction-gate.md),
+[upstream findings](./research/PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md)). 순차
+baseline은 Gate가 `CLEAR`될 때까지 현재 규범이다.
+
 ---
 
 ## 7. Provisional data contracts
@@ -599,11 +608,38 @@ Execute 구현 전에 다음을 ADR 또는 Runtime/Lifecycle 문서에서 확정
   token mapping (열린 attempt 1개 규칙은
   [ADR-0024](./adr/0024-execute-v1-execution-model.md) §7 — key schema 결정을
   대체하지 않는다)
-- 병렬 실행을 도입할 Gate
+- ~~병렬 실행을 도입할 Gate~~ → [ADR-0052](./adr/0052-parallel-execution-introduction-gate.md)로
+  확정. 현재 결과는 `HOLD`; 아래 §17.1 조건이 전부 입증되기 전에는 순차 실행 유지
 - 실행 workspace 격리 방식
 - command output 크기와 계층별 exact redaction field policy
 
 미확정 항목을 특정 Runtime의 편의에 맞춰 Core contract로 굳히지 않는다.
+
+### 17.1 Parallel execution introduction Gate
+
+병렬 Execute는 다음 증거가 모두 있을 때만 `CLEAR`다.
+
+1. 현재 승인된 Blueprint revision과 AC content key 전체에 묶인 immutable stage
+   plan이 있고 누락·중복·unknown reference가 없다.
+2. dependency cycle은 `HOLD`다. 분석 실패·불완전 응답을 “모두 독립”으로
+   바꾸지 않는다.
+3. shared-worktree write conflict를 실제로 막거나 수습하는 authority가 있다.
+   허용되는 형태는 worker별 write Telemetry + bounded Coordinator repair + 최종
+   재검증, 또는 Runtime이 강제하는 disjoint write scope다. LLM 추정·prompt 지시는
+   강제가 아니다.
+4. 같은 stage의 모든 attempt와 plan이 첫 Runtime effect 전에 원자적으로 저장되고,
+   각 결과가 attempt id로 결합된다.
+5. partial stage crash에서 완료 sibling을 중복 실행하지 않는 resume authority가
+   있고, 일반 AC 실패는 이미 시작한 sibling을 취소하지 않되 실패 의존자만
+   `BLOCKED`로 만든다.
+6. backend별 effective concurrency가 명시되고 unknown backend 기본은 1이다.
+7. Execute 재개 checkpoint와 Verify 뒤 proven git checkpoint를 구분한다.
+8. 공통 파일을 건드리는 AC와 독립 AC가 함께 있는 representative brownfield
+   dogfood가 상태·파일·Verify lineage를 입증한다.
+
+현재 막는 것은 1·3·4·5·6·8번이다. exact 간극과 upstream 근거는
+[PARALLEL_EXECUTION_UPSTREAM_FINDINGS](./research/PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md)에
+있다.
 
 ---
 

@@ -29,11 +29,13 @@
 - [REDACTION_FIELD_TRIAL.md](./REDACTION_FIELD_TRIAL.md) — 실제 입력 형태로 secret redaction 누락·과잉을 대조한 실물 기록
 - [EVOLVE_UPSTREAM_FINDINGS.md](./EVOLVE_UPSTREAM_FINDINGS.md) — Reflect가 Gen 2+에서 Brief를 대체하는 방식과 다음 Seed 생성 충돌 조사
 - [EVOLVE_BACKEND_AB.md](./EVOLVE_BACKEND_AB.md) — 같은 Wonder/Reflect 계약을 Hermes·Claude로 각 1회 실행한 품질·호출 수·token·지연·격리 비교와 Claude 기본값 유지 처분
+- [PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md](./PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md) — dependency stage·shared-worktree fan-out·worker별 write Telemetry·Coordinator 충돌 수습·실패 격리·level checkpoint 조사와 Phase 11 Gate 근거
 - [DOGFOODING_0001.md](./DOGFOODING_0001.md) — 실 AI 도그푸딩 1차 (전부 codex) 관측 기록
 - [DOGFOODING_0002.md](./DOGFOODING_0002.md) — 실 AI 도그푸딩 2차 (claude+codex, Recover 경로) 관측 기록
 - [DOGFOODING_0003.md](./DOGFOODING_0003.md) — 실 AI 도그푸딩 3차 (설치된 mcx CLI 실물, QA EXHAUSTED·자연 Recover 첫 관측) 기록
 - [DOGFOODING_0004.md](./DOGFOODING_0004.md) — Phase 9 첫 실물 관측, Brief에서 중단하고 과제 선정 오류·빈 handoff 결함을 처분한 기록
 - [DOGFOODING_0005.md](./DOGFOODING_0005.md) — Phase 9 다섯 층과 rollback·checkpoint를 검증하고 `MISSION COMPLETE`까지 완주한 기록
+- [DOGFOODING_0006.md](./DOGFOODING_0006.md) — Phase 10 Verify HOLD→Evolve Gen 2→재승인→Execute/Verify `MISSION COMPLETE`와 cross-generation 결함 수정 기록
 
 ## Evidence levels
 
