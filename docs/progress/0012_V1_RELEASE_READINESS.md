@@ -66,7 +66,7 @@ host discovery와 routing 검증에는 충분하다.
 
 | 검사 | 최종 결과 |
 |---|---|
-| 전체 회귀 | PASS — `1058 passed` |
+| 전체 회귀 | PASS — `1060 passed` |
 | lint / format | PASS — `ruff check .`, 171 files formatted |
 | type / lock | PASS — `mypy src` 92 files, `uv lock --check` |
 | release build | PASS — simulated `0.1.0` sdist/wheel, `twine check` |
@@ -74,10 +74,10 @@ host discovery와 routing 검증에는 충분하다.
 | Claude plugin | PASS — validate/tag dry-run, 새 로컬 설치에서 skill 6종·MCP server 1개·connected |
 | Codex plugin | PASS — skill 6종, MCP handshake 33종, 실제 `mcx_status` routing event |
 | 임시 환경 정리 | PASS — Claude/Codex plugin·marketplace 등록 제거 확인 |
-| 라이선스 일치 | PASS — MIT, `Copyright (c) 2026 FRONT-JB`, package metadata·wheel·sdist 일치 |
+| 라이선스 일치 | PASS — FRONT-JB LICENSE와 Q00 THIRD_PARTY_NOTICES가 metadata·wheel·sdist에 포함 |
 
-기술 release candidate와 공개 라이선스 일치 검증을 모두 통과했다. tag와 release는
-별도 승인 전까지 만들지 않는다.
+기술 release candidate와 공개 라이선스·upstream notice 포함 검증을 모두
+통과했다. tag와 release는 별도 승인 전까지 만들지 않는다.
 
 ## 4. 비용 예측과 실측
 
@@ -93,19 +93,28 @@ host의 실제 tool registry를 정확히 반영하지 않아, tool 호출 event
 검증해야 했기 때문이다. 다음 검증부터는 자연어 inventory를 Gate evidence로
 사용하지 않고 protocol handshake와 tool-call event를 바로 확인한다.
 
-## 5. 라이선스 결정과 재검증
+## 5. 라이선스·upstream notice 결정과 재검증
 
 **2026-08-11 사용자 결정:** MIT를 유지하고 저작권자 문구를
 `Copyright (c) 2026 FRONT-JB`로 확정했다.
 
-결정 반영 후 다음을 재검증했다.
+후속 source 대조에서 기존 observe-only 결론이 틀렸음을 확인했다. 일부
+정규식·prompt 계약·candidate 판정은 Q00/Ouroboros `v0.50.8`의 adapted
+portion이다([provenance audit](../research/UPSTREAM_PROVENANCE.md)). 사용자는
+출처 고지를 추가하고 진행하도록 결정했다.
 
-- root `LICENSE`와 `[project] license = "MIT"`, `license-files = ["LICENSE"]`
+두 결정을 반영한 뒤 다음을 재검증했다.
+
+- root `LICENSE`: `Copyright (c) 2026 FRONT-JB`, MIT
+- root `THIRD_PARTY_NOTICES.md`: Ouroboros 식별 정보, pinned commit,
+  `Copyright (c) 2025 Q00`, upstream MIT 전문
+- `[project] license = "MIT"`,
+  `license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]`
 - simulated `0.1.0` wheel metadata의 `License-Expression: MIT`와
-  `License-File: LICENSE`
-- wheel의 `.dist-info/licenses/LICENSE`와 sdist root `LICENSE`
+  두 `License-File` field
+- wheel `.dist-info/licenses/`와 sdist root에 두 notice 포함
 - Python 3.12 격리 설치, dependency check, CLI, MCP tool 33종
-- 전체 `1058 passed`, lint, format, typecheck, lock check
+- 전체 `1060 passed`, lint, format, typecheck, lock check
 - 검증용 임시 디렉터리 제거 확인
 
 따라서 Release Gate를 `CLEAR — ready for user-approved release`로 판정한다.

@@ -21,9 +21,9 @@ Phase 0~11 구현을 완료했다. 다섯 Stage 전부가 실제 AI로 구동되
 [docs/progress/README.md](docs/progress/README.md)에 있다 — 이 README가 아니라
 그 문서가 상태의 소유자다.
 
-v1 release candidate는 plugin 새 설치, MCP 33종 handshake, Python 배포물 격리
-설치와 MIT 라이선스 포함까지 통과해 Release Gate가 CLEAR다. tag·release는 별도
-사용자 승인 전까지 만들지 않는다.
+v1 release candidate는 기술 검증과 FRONT-JB·Q00 MIT 고지의 배포물 포함 검증을
+통과해 Release Gate가 CLEAR다. tag·release는 별도 사용자 승인 전까지 만들지
+않는다.
 
 ## 설치
 
@@ -100,12 +100,19 @@ Control을 되부르는 경로를 막기 위해서다
 | [adr/](docs/adr/README.md) | Architecture Decision Records |
 | [research/](docs/research/README.md) | upstream 조사와 대응표 |
 
-## 참고 프로젝트
+## 참고 프로젝트와 출처
 
 이 프로젝트는 [`Q00/ouroboros`](https://github.com/Q00/ouroboros)의 workflow
 설계를 참고했다. 개념 대응표와 차이 기록은
 [research/UPSTREAM_MAPPING.md](docs/research/UPSTREAM_MAPPING.md)와
 [ADR-0011](docs/adr/0011-brief-deliberate-divergences.md)에 있다.
+
+일부 구현·정규식·계약 문구는 Ouroboros `v0.50.8`
+(`9486c78575a0332e9b84d93ef5832985291d7943`)에서 adapted했다. Q00의 MIT
+저작권·허가 고지는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), 파일별
+대응은 [upstream provenance audit](docs/research/UPSTREAM_PROVENANCE.md)에 있다.
+Mission Control은 Q00 또는 Ouroboros 프로젝트와 제휴하거나 보증받은 프로젝트가
+아니다.
 
 ## 개발
 

@@ -9,6 +9,7 @@ skill은 산문이라 컴파일되지 않는다 — CLI에서 명령 하나를 �
 import json
 from pathlib import Path
 import re
+import tomllib
 
 import pytest
 
@@ -193,3 +194,25 @@ class TestManifests:
         pyproject = (REPO / "pyproject.toml").read_text(encoding="utf-8")
 
         assert 'mcx-mcp = "mission_control.mcp.server:main"' in pyproject
+
+
+class TestLicenseArtifacts:
+    def test_the_project_and_upstream_notices_are_present(self) -> None:
+        project_license = (REPO / "LICENSE").read_text(encoding="utf-8")
+        upstream_notice = (REPO / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+
+        assert "Copyright (c) 2026 FRONT-JB" in project_license
+        assert "Copyright (c) 2025 Q00" in upstream_notice
+        assert "https://github.com/Q00/ouroboros" in upstream_notice
+        assert "v0.50.8" in upstream_notice
+        assert "9486c78575a0332e9b84d93ef5832985291d7943" in upstream_notice
+        assert "The above copyright notice and this permission notice" in upstream_notice
+
+    def test_python_distributions_include_both_notices(self) -> None:
+        pyproject = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
+
+        assert pyproject["project"]["license"] == "MIT"
+        assert pyproject["project"]["license-files"] == [
+            "LICENSE",
+            "THIRD_PARTY_NOTICES.md",
+        ]

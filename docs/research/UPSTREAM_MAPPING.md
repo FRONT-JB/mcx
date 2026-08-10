@@ -357,12 +357,14 @@ Event sourcing/SQLite를 v1에 그대로 채택할지는 Architecture ADR로 결
 baseline에서 확인한 upstream `LICENSE`는 MIT이며 copyright notice와 permission
 notice를 copies 또는 substantial portions에 포함하도록 요구한다.
 
-Mission Control은 현재 문서와 동작을 재구성하는 단계다. 원본 코드를 직접
-복사하거나 상당 부분 포팅하기 전에는 다음을 수행한다.
+**2026-08-11 정정.** Mission Control은 observe-only가 아니다. pinned source와
+직접 대조해 정규식·prompt 계약·candidate 판정 등 adapted portion을 확인했다.
+파일별 inventory와 evidence는
+[UPSTREAM_PROVENANCE](./UPSTREAM_PROVENANCE.md)가 소유한다.
 
-- pinned commit의 LICENSE 재확인
-- copied/derived 파일 목록 기록
-- 필요한 copyright/permission notice 보존
-- `THIRD_PARTY_NOTICES.md` 또는 적절한 고지 방식 결정
+- pinned commit의 LICENSE를 재확인했다.
+- copied/derived 파일 목록을 기록했다.
+- Q00 copyright/permission notice를 `THIRD_PARTY_NOTICES.md`로 보존한다.
+- notice를 source repository와 Python wheel·sdist에 함께 포함한다.
 
 이 문단은 법률 자문이 아니라 프로젝트의 추적·고지 체크리스트다.

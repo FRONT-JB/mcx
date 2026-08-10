@@ -30,6 +30,7 @@
 - [EVOLVE_UPSTREAM_FINDINGS.md](./EVOLVE_UPSTREAM_FINDINGS.md) — Reflect가 Gen 2+에서 Brief를 대체하는 방식과 다음 Seed 생성 충돌 조사
 - [EVOLVE_BACKEND_AB.md](./EVOLVE_BACKEND_AB.md) — 같은 Wonder/Reflect 계약을 Hermes·Claude로 각 1회 실행한 품질·호출 수·token·지연·격리 비교와 Claude 기본값 유지 처분
 - [PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md](./PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md) — dependency stage·shared-worktree fan-out·worker별 write Telemetry·Coordinator 충돌 수습·실패 격리·level checkpoint 조사와 Phase 11 Gate 근거
+- [UPSTREAM_PROVENANCE.md](./UPSTREAM_PROVENANCE.md) — pinned source와 mcx를 직접 대조한 adapted surface, Q00 MIT 고지·배포 계약
 - [DOGFOODING_0001.md](./DOGFOODING_0001.md) — 실 AI 도그푸딩 1차 (전부 codex) 관측 기록
 - [DOGFOODING_0002.md](./DOGFOODING_0002.md) — 실 AI 도그푸딩 2차 (claude+codex, Recover 경로) 관측 기록
 - [DOGFOODING_0003.md](./DOGFOODING_0003.md) — 실 AI 도그푸딩 3차 (설치된 mcx CLI 실물, QA EXHAUSTED·자연 Recover 첫 관측) 기록
@@ -73,7 +74,8 @@ Runtime 분리는 Accepted baseline일 수 있지만 protocol method와 streamin
 3. 문서와 코드가 다르면 둘 다 기록하고 실제 동작 테스트를 계획한다.
 4. session에서 나온 기억을 upstream 사실로 승격하지 않는다.
 5. 원본 수치를 Mission Control 기본값으로 복사하기 전에 실패 사례와 테스트를 만든다.
-6. 원본 코드 복사 또는 상당한 포팅 전에는 LICENSE와 고지 의무를 다시 확인한다.
+6. 원본 코드 복사 또는 상당한 포팅 전에는 LICENSE와 고지 의무를 다시 확인하고,
+   adapted surface를 [UPSTREAM_PROVENANCE](./UPSTREAM_PROVENANCE.md)에 갱신한다.
 7. 연구 결과가 설계를 바꾸면 관련 ADR과 Stage Guide를 갱신한다.
 
 ## Baseline snapshot

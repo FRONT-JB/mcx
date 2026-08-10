@@ -6,9 +6,9 @@
 |---|---|
 | Project phase | **Phase 0~11 COMPLETE (2026-08-10)** — upstream Coordinator 경로의 병렬 Execute와 대표 brownfield dogfood 완료 ([progress 0011](./0011_PARALLEL_EXECUTION_GATE.md), [ADR-0053](../adr/0053-parallel-coordinator-execution-contract.md), [DOGFOODING_0007](../research/DOGFOODING_0007.md)). 순차 Execute도 정상 경로로 유지 |
 | Mission status | ACTIVE |
-| Gate | **v1 release CLEAR — ready for user-approved release** — MIT·`Copyright (c) 2026 FRONT-JB`와 package metadata·배포물 포함 검증 완료 ([progress 0012](./0012_V1_RELEASE_READINESS.md)) |
+| Gate | **v1 release CLEAR — ready for user-approved release** — FRONT-JB LICENSE와 adapted Ouroboros portion의 Q00 MIT notice를 metadata·wheel·sdist에 포함해 검증 완료 ([progress 0012](./0012_V1_RELEASE_READINESS.md), [provenance audit](../research/UPSTREAM_PROVENANCE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, immutable plan, grouped stage run, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (Codex worker+Coordinator), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 11종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 26 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 33종 — CLI 파서 파생 26 + 비동기 5 + job 2, stdio, entry point `mcx-mcp`) |
-| Automated tests | **1058 passed** (unit + integration, 2026-08-11 release audit 실측) |
+| Automated tests | **1060 passed** (unit + integration, 2026-08-11 release audit 실측) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-11 |
 
@@ -51,9 +51,9 @@
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
 - v1 release candidate는 host별 plugin 설치, MCP 33종 handshake, simulated
-  `0.1.0` sdist/wheel, 격리 설치를 통과했다. MIT·`Copyright (c) 2026 FRONT-JB`를
-  root LICENSE와 Python metadata에 반영하고 wheel·sdist 포함까지 검증해 Release
-  Gate가 CLEAR다 ([progress 0012](./0012_V1_RELEASE_READINESS.md)).
+  `0.1.0` sdist/wheel, 격리 설치를 통과했다. FRONT-JB MIT LICENSE와
+  Q00/Ouroboros `v0.50.8`의 MIT notice를 Python metadata와 wheel·sdist에 함께
+  포함해 Release Gate가 CLEAR다 ([progress 0012](./0012_V1_RELEASE_READINESS.md)).
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
   ([progress 0000](./0000_DOCUMENTATION_FOUNDATION.md) Gate 참조).
 - 루트에 에이전트 온보딩 지침 `AGENTS.md`와 `CLAUDE.md` symlink가 추가되었다.

@@ -32,8 +32,11 @@ LICENSE 재확인(코드 복사 직전)만 남아 `[-]`로 유지한다.
 
 **2026-08-09 정정.** 위 문장의 두 잔여는 이렇게 처분됐다 — upstream **test
 조사는 수행되지 않았고**(Phase 1 시한 도과), 전 Stage 조사가 소스 읽기로
-진행됐다. 이 한계는 §1 머리말에 공통 조건으로 옮겼다. LICENSE는 발동 조건
-자체가 성립한 적이 없다(observe-only).
+진행됐다. 이 한계는 §1 머리말에 공통 조건으로 옮겼다.
+
+**2026-08-11 재정정.** “observe-only” 결론은 source 대조 없이 내려 틀렸다.
+정규식·prompt 계약·candidate 판정의 adapted portion을 확인했고
+[UPSTREAM_PROVENANCE](./UPSTREAM_PROVENANCE.md)에 범위와 고지 계약을 기록했다.
 
 ---
 
@@ -93,10 +96,9 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       이중 dispatch 격리(`:497-503`). 우리 ADR-0004와 같은 축
 - [x] pinned commit의 LICENSE와 copied code notice 요구를 재확인한다. →
       MIT © Q00 (2025), [research README](./README.md) baseline snapshot에
-      기록. **발동 조건은 "코드 복사 또는 상당한 포팅 전"**
-      ([UPSTREAM_MAPPING](./UPSTREAM_MAPPING.md) §라이선스)이며, mcx는
-      observe-only라 조건이 발동한 적이 없다 — 원래 문구의 "구현 직전"은
-      조건을 잘못 좁혀 적은 것이라 실제 조건으로 정정했다
+      기록. **2026-08-11 source 대조에서 발동 조건이 이미 성립했음을 확인했다.**
+      Q00 MIT 고지와 adapted file inventory는
+      [UPSTREAM_PROVENANCE](./UPSTREAM_PROVENANCE.md)가 소유한다.
 
 ---
 

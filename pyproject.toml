@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "Mission Control — specification-first mission coordinator for AI coding agents."
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.0.0,<3.0.0",
