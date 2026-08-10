@@ -586,22 +586,29 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
 (`evolution/reflect.py`: *"Interview is Gen 1 only; Reflect handles all
 subsequent generations autonomously"*). Wonder는 *"What do we still not
 know?"*로 빈틈을 찾고, Reflect가 그 위에서 다음 Seed의 AC와 ontology 변형을
-만든다. 지정 하네스는 **Hermes**이며 upstream 정식 backend이고 로컬 실물도
-있다 (`~/.local/bin/hermes`).
+만든다. 아키텍처 설명은 reflect 하네스로 **Hermes**를 배치하지만 실제 선택은
+stage 설정→profile default→orchestrator fallback 순서라 자동 고정되지 않는다.
+Hermes는 upstream 정식 backend이고 로컬 실물도 있다 (`~/.local/bin/hermes`).
 
 - [ ] **Hermes를 reflect에서 어떻게 쓰는지** 조사한다 — 호출 계약, 프롬프트,
       출력 스키마, 다른 backend와 다르게 다루는 점.
-- [ ] **자가개선 결과가 다음 작업에 연결되는 경로**를 조사한다 —
-      `evolution/loop.py`, `projector.py`, `parent_seed_id` lineage,
-      `evolve_step` MCP tool. "무엇이 다음 세대의 입력이 되는가"의 전 구간.
-- [ ] **upstream Stage enum의 stage 내부 국면과 우리 다섯 Stage의 대응을
-      대조한다.** (2026-08-09 Phase 6 종료 검토에서 시한 재지정 —
+- [x] **자가개선 결과가 다음 작업에 연결되는 경로** 조사 완료 (2026-08-10 —
+      [EVOLVE findings](./EVOLVE_UPSTREAM_FINDINGS.md) §7~§10). 완료된 부모
+      Evaluate의 Seed·execution output·evaluation summary를 Wonder→Reflect에
+      넣고, `parent_seed_id`가 있는 후속 Seed를 같은 generation 호출 안에서
+      Execute→Evaluate한 뒤 event로 기록한다. 다음 `evolve_step`은 채팅이 아니라
+      그 event를 replay한다. 실패·중단·hard crash는 새 generation이 아니라 같은
+      번호의 durable checkpoint에서 재개한다.
+- [x] **upstream의 내부 phase 축과 우리 다섯 Stage의 대응을 대조했다.**
+      (2026-08-10 — [EVOLVE findings](./EVOLVE_UPSTREAM_FINDINGS.md) §11,
+      2026-08-09 Phase 6 종료 검토에서 시한 재지정 —
       [ADR-0037](../adr/0037-mission-record-and-canonical-stage.md) §5는 이
-      대조를 Phase 6 시한으로 걸었고 **무처분 도과했다**.) upstream enum은
-      `RALPH_HANDOFF`·`UNSTUCK_LATERAL` 같은 stage 내부 국면까지 포함하는데,
-      우리 `current_stage`에는 대응물도 제외 기록도 없다. 이 국면들이 진화
-      루프의 것이므로 Phase 10 조사가 같은 소스를 읽는다 — 별도 조사가 아니라
-      위 두 항목에 붙는 대조다.
+      대조를 Phase 6 시한으로 걸었고 **무처분 도과했다**.) 기존 기술을 정정한다:
+      `Stage`는 4개 runtime routing 어휘이고 `RALPH_HANDOFF`·
+      `UNSTUCK_LATERAL`은 별도 `AutoPhase`다. 전자는 Execute→Verify handoff,
+      후자는 Recover 내부의 bounded lateral recovery라 `current_stage`에 새 값을
+      추가하지 않는다. generation의 `wondering`~`evaluating`도 별도
+      `GenerationPhase` 복구 checkpoint다.
 - [ ] Wonder/Reflect 출력의 mcx 대응물을 결정한다 — 우리 Brief/Blueprint의
       어디로 들어오는가. Gen 2+에서 Brief를 대체하는지, 입력으로 합류하는지가
       핵심 갈림길이다 (도그푸딩 기록이 수동으로 하던 역할의 자동화).

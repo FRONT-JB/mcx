@@ -632,9 +632,20 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
   비용은 0이다(라우팅 테이블이 이미 있어 나중 고정은 설정 한 줄).
   배포 관점도 함께 본다 — Hermes는 별도 설치물이라 필수로 만들면 설치
   의존이 claude+codex+hermes 셋이 된다
-- [ ] **자가개선 결과가 다음 작업에 연결되는 경로** 조사 —
-  `evolution/loop.py`, `projector.py`, `parent_seed_id` lineage,
-  `evolve_step` MCP tool. "무엇이 다음 세대의 입력이 되는가"의 전체 경로
+- [x] **자가개선 결과가 다음 작업에 연결되는 경로 — 2026-08-10 완료**
+  ([EVOLVE findings](../research/EVOLVE_UPSTREAM_FINDINGS.md) §7~§10, pinned
+  source focused tests 11 passed). 완료된 부모 Seed·실행 산출물·Evaluate 결과가
+  Wonder→Reflect→후속 Seed(`parent_seed_id`)로 이어지고, 같은 한-generation
+  호출 안에서 Execute→Evaluate한 결과를 event에 기록한다. 다음 호출은
+  `LineageProjector`로 그 event를 replay한다. 실패·중단·hard crash는 같은
+  generation identity와 durable phase checkpoint에서 재개하며, MCP는 이 전이를
+  정확히 한 세대씩 연다
+- [x] **내부 phase 축과 우리 다섯 Stage 대조 — 2026-08-10 완료**
+  ([EVOLVE findings](../research/EVOLVE_UPSTREAM_FINDINGS.md) §11). 기존 질문의
+  전제가 틀렸다: `Stage`는 4개 runtime routing enum이고 `RALPH_HANDOFF`·
+  `UNSTUCK_LATERAL`은 별도 `AutoPhase`다. 전자는 Execute→Verify handoff,
+  후자는 Recover 내부 bounded recovery다. `wondering`~`evaluating`은 또 다른
+  `GenerationPhase` 복구 축이다. 셋 모두 새 `current_stage` 값의 근거가 아니다
 - [x] **Reflect가 무엇을 대체하는지 조사 — 2026-08-10 완료**
   ([EVOLVE findings](../research/EVOLVE_UPSTREAM_FINDINGS.md)). 답: **Brief를
   대체한다** (Blueprint가 아니다). Seed는 양쪽 세대에 다 있고 바뀌는 것은
@@ -986,12 +997,10 @@ worktree 격리(ADR-0045). 둘 다 **뒤 항목의 선행이었다는 점이 같
 `context` 공백을, 후자는 checkpoint·rollback·`changed_files`가 딛고 설 git
 경계를 열었다.
 
-다음 검증 가능한 목표 한 개: **upstream Gen 2+의 전체 연결 경로를 소스에서
-재구성한다.** Verify/Evaluate 결과 → Wonder → Reflect → 다음 Seed 생성 →
-`parent_seed_id` lineage → 다음 Execute/Evaluate 기록을 추적하고,
-`RALPH_HANDOFF`·`UNSTUCK_LATERAL`이 우리 다섯 Stage와 어떤 관계인지 같은 조사에서
-대조한다. 결과는 Phase 10 설계 ADR의 입력이며, 그 전에는 `Stage.REFLECT`나
-Hermes adapter를 구현하지 않는다.
+다음 검증 가능한 목표 한 개: **동일한 Wonder/Reflect 계약을 Hermes와 Claude로
+각각 1회 실행해 품질·호출 수·비용·지연을 비교한다.** 호출 입력과 JSON 출력
+스키마, backend별 전처리 차이, 설치 의존까지 함께 기록한다. 이 실측 전에는
+Hermes를 reflect 기본값으로 고정하거나 adapter를 구현하지 않는다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 

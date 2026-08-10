@@ -2,7 +2,7 @@
 
 - Status: **Accepted** (사용자 결정 2026-08-10 — 세 안 중 (b))
 - Date: 2026-08-10
-- Constitutional basis: [ADR-0003](./0003-runtime-neutral-core.md) (Core는
+- Constitutional basis: [ADR-0003](./0003-runtime-abstraction.md) (Core는
   Runtime-neutral), [ADR-0040](./0040-secret-redaction-boundaries.md)
   (redaction 경계), [ADR-0041](./0041-mcp-control-surface-contract.md) §4·§5
   (원장에서 유도한다 · 관측은 설치되어야 한다)
@@ -128,6 +128,15 @@ upstream은 도구 호출이 liveness를 증명한다고 보고 시한을 갱신
 
 **미결로 등록한다** (§미결).
 
+**Phase 10 진입 재검토 (2026-08-10).** pinned upstream Evolve watchdog는
+`idle_timeout`(event가 전혀 없음), `no_material_progress_timeout`(event는 있지만
+정해진 상태 전진이 없음), 여러 세대의 semantic stagnation을 서로 다른 신호로
+본다 ([EVOLVE findings](../research/EVOLVE_UPSTREAM_FINDINGS.md) §12.2). 이는
+`item.started` 한 종류를 stall 시계로 승격하는 근거가 아니며, 우리 silence
+기준이 실제 stall을 놓친 새 실사용 관측도 없다. **현재 판정을 유지한다.** Phase
+10 Evolve가 generation watchdog을 설계할 때 material/semantic 신호를 별도 계약으로
+다룬다.
+
 ## Consequences
 
 ### Positive
@@ -180,8 +189,10 @@ upstream은 도구 호출이 liveness를 증명한다고 보고 시한을 갱신
 
 ## 미결로 남기는 것
 
-- **stall 판정을 정규화 기준으로 옮길 것인가** (§7). 실사용에서 침묵 기준이
-  실제 stall을 놓치는 것이 관측되면 옮긴다. **시한 Phase 10 진입 시.**
+- [x] **stall 판정을 정규화 기준으로 옮길 것인가** (§7) — **Phase 10 진입
+  재검토 완료: 옮기지 않는다.** 실제 stall 누락 관측이 없고 upstream도 단순
+  activity와 material/semantic progress를 분리한다. 기존 발동 조건(실사용에서
+  실제 stall 누락 관측)은 유지한다.
 - ~~**진행 꼬리의 정리**~~ → **닫음: 넣지 않는다** ([Phase 9 종료 검토](../progress/0009_RECOVERY_LAYERS.md) §3-11, 2026-08-10).
   미션 하나에 파일 15개, 합계 **60K** — 같은 상태 디렉터리의 worktree 52K,
   outputs 112K와 견줘 거슬리는 크기가 아니다. `mcx cleanup`에 넣지 않는 이유는

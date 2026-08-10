@@ -52,6 +52,17 @@ rewind가 세대를 고르고, `rollback_to_previous`는 `gen_{N-1}`을 이름�
 세대(Evolve)는 Phase 10이다. 그때 지점 선택이 생기면 이름표가 필요해지므로
 **§2를 다시 본다** (미결).
 
+**Phase 10 진입 재검토 (2026-08-10).** pinned upstream의 전체 연결을 다시
+추적한 결과, Python lineage rewind는 generation 번호를 고르고 shell loop는 성공한
+실행 세대마다 `ooo/{lineage_id}/gen_{N}` tag를 만든다. working-tree checkout은
+선택 사항이지만 실행하면 그 tag가 event generation과 파일 상태를 잇는다
+([EVOLVE findings](../research/EVOLVE_UPSTREAM_FINDINGS.md) §12.1).
+
+따라서 Phase 10에서 **임의 generation 선택과 파일 복원을 함께** 채택하면 안정적
+지점 identity는 필요하다. 그러나 그 identity가 반드시 tag일 필요는 없다 — 기존
+checkpoint commit에 generation identity를 싣는 선택도 남아 있다. Phase 10 설계
+ADR이 rewind 범위를 확정할 때까지 현재의 **태그 미도입** 결정은 유지한다.
+
 ### 3. 파괴적 연산을 쓰지 않는다 — upstream 세 걸음 그대로
 
 ```sh
@@ -169,8 +180,10 @@ ADR-0045 §2·ADR-0046 §5와 같은 판단이다: 유도되는 것을 저장하
 
 ## 미결로 남기는 것
 
-- **세대가 생기면 지점 이름이 필요한가** (§2). Phase 10 Evolve에서 세대와
-  지점 선택이 들어오면 태그 결정을 다시 본다. **시한 Phase 10 진입 시.**
+- [-] **세대가 생기면 지점 이름이 필요한가** (§2) — **Phase 10 진입 재검토
+  완료, 최종 처분은 설계 ADR로 이관.** 임의 generation 선택 + 파일 복원을
+  채택하면 안정적 identity가 필요하지만 tag 자체는 필수가 아니다. 그전까지
+  태그 미도입을 유지한다.
 - **되돌리기가 지운 것을 사용자가 볼 수 없다** — 무엇이 사라졌는지 목록이
   남지 않는다. → **재지정** ([Phase 9 종료 검토](../progress/0009_RECOVERY_LAYERS.md) §3-8, 2026-08-10): 도그푸딩 0005에서 rollback이
   발동한 시점의 트리가 checkpoint 직후라 **지운 것이 없었다** — 관측이 아직
