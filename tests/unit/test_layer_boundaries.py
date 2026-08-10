@@ -74,3 +74,24 @@ def test_the_application_layer_does_not_depend_on_the_adapters() -> None:
     }
 
     assert offenders == set()
+
+
+def test_evolve_domain_is_a_neutral_projection_package() -> None:
+    """BlueprintState가 Evolve record를 품어도 역방향 domain import가 없어야 한다."""
+
+    forbidden = {
+        "mission_control.domain.blueprint",
+        "mission_control.domain.execute",
+        "mission_control.domain.verify",
+    }
+    offenders = {
+        path.relative_to(_SRC).as_posix()
+        for path in sorted((_SRC / "domain" / "evolve").rglob("*.py"))
+        if any(
+            imported == name or imported.startswith(f"{name}.")
+            for imported in _imported_modules(path)
+            for name in forbidden
+        )
+    }
+
+    assert offenders == set()

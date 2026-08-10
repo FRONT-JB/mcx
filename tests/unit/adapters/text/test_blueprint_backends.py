@@ -19,7 +19,7 @@ from mission_control.application.ports import (
     QaRequest,
 )
 from mission_control.domain.blueprint.qa import BLUEPRINT_QUALITY_BAR, QaDimension, QaFinding
-from mission_control.domain.blueprint.spec import AcceptanceCriterion
+from mission_control.domain.blueprint.spec import AcceptanceCriterion, initial_ontology
 
 
 def _write_stub(directory: Path, name: str, response_json: str) -> str:
@@ -97,6 +97,7 @@ class TestQaJudge:
                 constraints=(),
                 non_goals=(),
                 acceptance_criteria=(AcceptanceCriterion(description="목록에 댓글이 보인다"),),
+                ontology=initial_ontology(),
                 quality_bar=BLUEPRINT_QUALITY_BAR,
                 pass_threshold=0.9,
                 previous_iterations=(QaIteration(iteration=1, score=0.79, verdict="revise"),),
@@ -104,7 +105,8 @@ class TestQaJudge:
             )
         )
         assert "parsimonious in the ontological sense" in prompt
-        assert "ontology_schema" not in prompt  # 유예 필드 절은 제거되었다
+        assert "ontology_schema must cover all entities" in prompt
+        assert "Ontology:\nname: ConfirmedRequirementContract" in prompt
         assert "## Findings from the previous round" in prompt
         assert "- 확인 명령이 없다" in prompt
 
@@ -118,6 +120,7 @@ class TestQaJudge:
                 constraints=("로그인 사용자만",),
                 non_goals=(),
                 acceptance_criteria=(AcceptanceCriterion(description="목록에 댓글이 보인다"),),
+                ontology=initial_ontology(),
                 quality_bar=BLUEPRINT_QUALITY_BAR,
                 pass_threshold=0.9,
                 previous_iterations=(
@@ -148,6 +151,7 @@ class TestQaJudge:
                 constraints=(),
                 non_goals=(),
                 acceptance_criteria=(AcceptanceCriterion(description="목록에 댓글이 보인다"),),
+                ontology=initial_ontology(),
                 quality_bar=BLUEPRINT_QUALITY_BAR,
                 pass_threshold=0.9,
             )

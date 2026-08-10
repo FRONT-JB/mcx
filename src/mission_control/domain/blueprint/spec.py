@@ -25,6 +25,43 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 
+class OntologyField(BaseModel):
+    """세대를 건너 보존할 개념의 한 필드 (ADR-0051 §3)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str = Field(min_length=1)
+    field_type: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    required: bool
+
+
+class OntologySchema(BaseModel):
+    """Mission이 Blueprint 세대 사이에서 유지하는 개념 경계."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    fields: tuple[OntologyField, ...] = ()
+
+    @model_validator(mode="after")
+    def _field_names_are_unique(self) -> OntologySchema:
+        names = [item.name for item in self.fields]
+        if len(names) != len(set(names)):
+            raise ValueError("ontology field 이름은 중복될 수 없다")
+        return self
+
+
+def initial_ontology() -> OntologySchema:
+    """Gen 1이 LLM 판단 없이 갖는 결정적 최소 ontology."""
+
+    return OntologySchema(
+        name="ConfirmedRequirementContract",
+        description="승인된 요구사항의 개념 경계",
+    )
+
+
 class AcceptanceCriterion(BaseModel):
     """하나의 수용 기준과 그것을 확인하는 방법.
 
@@ -108,14 +145,32 @@ class Blueprint(BaseModel):
     mission_id: str
     #: Blueprint의 내용 버전. Brief revision과 별개이며, 어느 Brief에서 나왔는지는
     #: ``brief_revision``이 가리킨다.
-    revision: int = 1
+    revision: int = Field(default=1, ge=1)
+    #: Execute→Verify를 지난 학습 주기. 수동 수정은 이 값을 올리지 않는다.
+    generation: int = Field(default=1, ge=1)
+    #: Gen 2+를 연 Verify 대상 revision. 같은 generation의 수동 수정도 이어받는다.
+    evolved_from_revision: int | None = Field(default=None, ge=1)
     #: 이 Blueprint를 만들어 낸 Brief revision. 승인 lineage를 잇는다.
-    brief_revision: int
+    brief_revision: int = Field(ge=1)
 
     goal: str = Field(min_length=1)
     constraints: tuple[str, ...] = ()
     non_goals: tuple[str, ...] = ()
     acceptance_criteria: tuple[AcceptanceCriterion, ...] = ()
+    ontology: OntologySchema = Field(default_factory=initial_ontology)
+
+    @model_validator(mode="after")
+    def _generation_lineage_is_explicit(self) -> Blueprint:
+        if self.generation == 1 and self.evolved_from_revision is not None:
+            raise ValueError("generation 1은 evolved_from_revision을 가질 수 없다")
+        if self.generation > 1 and self.evolved_from_revision is None:
+            raise ValueError("generation 2+에는 evolved_from_revision이 필요하다")
+        if (
+            self.evolved_from_revision is not None
+            and self.evolved_from_revision >= self.revision
+        ):
+            raise ValueError("evolved_from_revision은 현재 revision보다 앞서야 한다")
+        return self
 
     @model_validator(mode="after")
     def _criterion_keys_are_unique(self) -> Blueprint:

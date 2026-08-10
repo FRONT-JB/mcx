@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from mission_control.domain.blueprint.assembly import BlueprintDraft
 from mission_control.domain.blueprint.qa import QaAssessment, QaFinding
-from mission_control.domain.blueprint.spec import AcceptanceCriterion
+from mission_control.domain.blueprint.spec import AcceptanceCriterion, OntologySchema
 from mission_control.domain.blueprint.state import BlueprintState
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityDimension
 from mission_control.domain.brief.closure import (
@@ -31,6 +31,11 @@ from mission_control.domain.brief.requirement import (
 )
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.checkpoint import Checkpoint, Rollback
+from mission_control.domain.evolve.models import (
+    EvolveSourceSnapshot,
+    ReflectOutput,
+    WonderOutput,
+)
 from mission_control.domain.execute.state import ExecuteState
 from mission_control.domain.mechanical import MechanicalCommands
 from mission_control.domain.recover.packet import PreviousFailure
@@ -482,6 +487,50 @@ class BlueprintGenerator(Protocol):
         ...
 
 
+class WonderRequest(BaseModel):
+    """후속 Blueprint를 고민하는 Wonder 역할의 최소 입력."""
+
+    model_config = ConfigDict(frozen=True)
+
+    goal: str
+    constraints: tuple[str, ...]
+    non_goals: tuple[str, ...]
+    acceptance_criteria: tuple[AcceptanceCriterion, ...]
+    ontology: OntologySchema
+    source: EvolveSourceSnapshot
+    previous_wonders: tuple[WonderOutput, ...] = ()
+
+
+class EvolveWonderer(Protocol):
+    """도구 없이 parent 계약과 실패 evidence를 공격하는 제한된 역할."""
+
+    async def wonder(self, request: WonderRequest) -> WonderOutput:
+        """challenge·gap proposal을 반환한다. Stage나 Gate는 결정하지 않는다."""
+        ...
+
+
+class ReflectRequest(BaseModel):
+    """Wonder를 explicit patch로 바꾸는 Reflect 역할의 최소 입력."""
+
+    model_config = ConfigDict(frozen=True)
+
+    goal: str
+    constraints: tuple[str, ...]
+    non_goals: tuple[str, ...]
+    acceptance_criteria: tuple[AcceptanceCriterion, ...]
+    ontology: OntologySchema
+    source: EvolveSourceSnapshot
+    wonder: WonderOutput
+
+
+class EvolveReflector(Protocol):
+    """도구 없이 AC patch·ontology mutation을 제안하는 제한된 역할."""
+
+    async def reflect(self, request: ReflectRequest) -> ReflectOutput:
+        """구조화된 proposal만 반환한다. application이 검증·조립한다."""
+        ...
+
+
 class QaIteration(BaseModel):
     """이전 채점 한 번의 궤적 — upstream QA 프롬프트의 Previous Iterations 행.
 
@@ -516,6 +565,7 @@ class QaRequest(BaseModel):
     constraints: tuple[str, ...]
     non_goals: tuple[str, ...]
     acceptance_criteria: tuple[AcceptanceCriterion, ...]
+    ontology: OntologySchema
     quality_bar: str
     pass_threshold: float
     previous_iterations: tuple[QaIteration, ...] = ()

@@ -42,6 +42,7 @@ class TestPolicyDefaults:
         assert "a means of reaching it" in POLICY.quality_bar
         assert "siblings" in POLICY.quality_bar
         assert "parsimonious in the ontological sense" in POLICY.quality_bar
+        assert "ontology_schema must cover all entities" in POLICY.quality_bar
 
     def test_every_upstream_scoring_axis_is_present(self) -> None:
         """축을 줄이면 채점자가 무엇을 보는지가 우리 쪽에서 달라진다."""

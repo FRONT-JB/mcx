@@ -22,7 +22,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
+from mission_control.domain.blueprint.spec import (
+    AcceptanceCriterion,
+    Blueprint,
+    OntologySchema,
+    initial_ontology,
+)
 from mission_control.domain.brief.handoff import BriefHandoff
 from mission_control.domain.errors import MissionControlError
 
@@ -125,7 +130,13 @@ def check_scope(*, draft: BlueprintDraft, handoff: BriefHandoff) -> tuple[ScopeF
 
 
 def assemble_blueprint(
-    *, draft: BlueprintDraft, handoff: BriefHandoff, revision: int = 1
+    *,
+    draft: BlueprintDraft,
+    handoff: BriefHandoff,
+    revision: int = 1,
+    generation: int = 1,
+    evolved_from_revision: int | None = None,
+    ontology: OntologySchema | None = None,
 ) -> Blueprint:
     """범위를 확인하고 lineage를 붙여 Blueprint를 확정한다.
 
@@ -139,9 +150,12 @@ def assemble_blueprint(
     return Blueprint(
         mission_id=handoff.mission_id,
         revision=revision,
+        generation=generation,
+        evolved_from_revision=evolved_from_revision,
         brief_revision=handoff.revision,
         goal=draft.goal,
         constraints=draft.constraints,
         non_goals=draft.non_goals,
         acceptance_criteria=draft.acceptance_criteria,
+        ontology=ontology or initial_ontology(),
     )

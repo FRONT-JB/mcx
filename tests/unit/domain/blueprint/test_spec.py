@@ -10,6 +10,9 @@ from mission_control.domain.blueprint.spec import (
     AcceptanceCriterion,
     Blueprint,
     BlueprintApproval,
+    OntologyField,
+    OntologySchema,
+    initial_ontology,
 )
 
 
@@ -171,6 +174,36 @@ class TestImmutabilityAndShape:
 
         assert blueprint.brief_revision == 7
         assert blueprint.revision == 1
+
+    def test_generation_one_gets_the_deterministic_initial_ontology(self) -> None:
+        blueprint = _blueprint()
+
+        assert blueprint.generation == 1
+        assert blueprint.evolved_from_revision is None
+        assert blueprint.ontology == initial_ontology()
+
+    def test_successor_generation_requires_a_parent_revision(self) -> None:
+        with pytest.raises(ValidationError, match="evolved_from_revision"):
+            _blueprint(revision=2, generation=2)
+
+        successor = _blueprint(revision=2, generation=2, evolved_from_revision=1)
+        assert successor.generation == 2
+
+    def test_ontology_field_names_are_unique(self) -> None:
+        field = OntologyField(
+            name="request_id",
+            field_type="string",
+            description="요청 식별자",
+            required=True,
+        )
+        with pytest.raises(ValidationError, match="중복"):
+            _blueprint(
+                ontology=OntologySchema(
+                    name="Request",
+                    description="요청 경계",
+                    fields=(field, field),
+                )
+            )
 
     def test_non_goals_are_first_class(self) -> None:
         blueprint = _blueprint(non_goals=("수정·삭제는 이번 범위가 아니다",))

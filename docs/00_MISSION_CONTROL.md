@@ -1225,6 +1225,7 @@ migration 계획 없이 즉시 교체하지 않는다.
 | 텍스트 lane의 기본 vendor는 Claude, 실행은 Codex다. | Confirmed (ADR-0036) |
 | `mcx` CLI 표면은 비대화형 단발 명령이고 exit code는 0(성공/CLEAR)·1(오류)·2(판정 부정)다. | Confirmed (ADR-0038) |
 | 병렬 실행과 조건부 consensus는 v1에 포함하지 않는다 — 병렬은 Phase 11(독립 항목), consensus 부재의 출구는 escalation `HOLD`다. | Confirmed (ADR-0024 §3, ADR-0030 §5) |
+| Evolve는 Verify `HOLD` 뒤 같은 Mission의 후속 Blueprint generation을 제안하며, 새 Stage·Mission을 만들지 않는다. | Confirmed (ADR-0051) |
 
 **2026-08-09 갱신.** 이 표는 Phase 1~6이 진행되는 동안 갱신되지 않아, 11개
 항목 중 10개가 이미 ADR로 확정된 상태에서 "미확정"으로 남아 있었다. 최상위
@@ -1236,7 +1237,6 @@ migration 계획 없이 즉시 교체하지 않는다.
 | RecoveryDirective의 exact serialization | [Open Questions §6](../docs/research/OPEN_QUESTIONS.md) — 진입과 packet 축은 ADR-0031로 확정, 필드명만 잔여 |
 | Telemetry event·bundle 층 schema와 보존·redaction 정책 | Open Questions §9 — report 층은 ADR-0027로 확정. redaction은 Phase 7 진입 조건 |
 | OpenCode adapter의 클래스명과 호출 방식 | 실물 구현 이연 (ADR-0003 note 3) — Execute backend 교체 **구조**는 Phase 6 라우팅 테이블이 연다 |
-| reflect(자가개선) 단계의 mcx 대응물과 Hermes 취급 | Phase 10 (Open Questions §10) |
 | ~~MCP tool 목록과 transport 세부사항~~ | **확정 (2026-08-09, ADR-0041)** — tool은 `build_parser()`에서 파생(CLI 24 + 비동기 3 + job 2), transport는 stdio 하나, SDK는 optional extra |
 | worker가 Mission Control을 재귀 호출하는 것을 무엇이 막는가 | Phase 8 (Open Questions §8) — 텍스트 lane에는 격리가 있고 **실행 lane에는 없다** |
 

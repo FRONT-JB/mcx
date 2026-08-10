@@ -170,7 +170,14 @@ class BlueprintService:
                 current=handoff.revision,
             )
 
-        blueprint = assemble_blueprint(draft=draft, handoff=handoff, revision=state.revision + 1)
+        blueprint = assemble_blueprint(
+            draft=draft,
+            handoff=handoff,
+            revision=state.revision + 1,
+            generation=state.generation,
+            evolved_from_revision=state.current.evolved_from_revision,
+            ontology=state.current.ontology,
+        )
         # 상한 소진 뒤의 최종 수정은 한 번뿐이다 (ADR-0019 §6.1).
         revised = state.revise(blueprint=blueprint, policy=self.qa_policy)
         await self.repository.save(revised)
@@ -285,6 +292,7 @@ class BlueprintService:
             constraints=current.constraints,
             non_goals=current.non_goals,
             acceptance_criteria=current.acceptance_criteria,
+            ontology=current.ontology,
             quality_bar=self.qa_policy.quality_bar,
             pass_threshold=self.qa_policy.pass_threshold,
             previous_iterations=tuple(
@@ -293,13 +301,16 @@ class BlueprintService:
                     score=record.assessment.score,
                     verdict=self.qa_policy.verdict_for(record.assessment.score).value,
                 )
-                for index, record in enumerate(state.qa_records)
+                for index, record in enumerate(
+                    state.records_for_generation(state.generation)
+                )
             ),
             previous_findings=self._previous_findings(state),
         )
 
     @staticmethod
     def _previous_findings(state: BlueprintState) -> tuple[QaFinding, ...]:
-        if not state.qa_records:
+        records = state.records_for_generation(state.generation)
+        if not records:
             return ()
-        return state.qa_records[-1].assessment.findings
+        return records[-1].assessment.findings

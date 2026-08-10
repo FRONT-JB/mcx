@@ -37,8 +37,8 @@ from pydantic import BaseModel, ConfigDict, Field
 # upstream `skills/seed/SKILL.md` quality_bar의 영어 원문이다. 문장이 곧
 # 계약이므로 번역을 두지 않는다 — ADR-0019 §4가 등록한 위험(한국어 번역)은
 # 채점자 어댑터 도입 시점(2026-08-08)에 원문 채택으로 해소되었다. 원문 중
-# `ontology_schema` 절 하나만 제거했다 — 그 필드는 우리 스키마에 유예되어
-# 있어(ADR-0017) 채점자에게 존재하지 않는 것을 채점하라는 지시가 된다.
+# Phase 2에서는 ``ontology_schema`` 절을 유예했으나, Wonder/Reflect가 실제
+# 소비자가 된 Phase 10에 원문 절을 복원했다 (ADR-0051 §3).
 #
 # 번역(참고용): 명세는 내부적으로 일관되어야 하고, 수용 기준은 측정·확인
 # 가능해야 하며, 제약은 구체적이어야 한다. 수용 기준은 존재론적으로 인색해야
@@ -46,8 +46,9 @@ from pydantic import BaseModel, ConfigDict, Field
 # 이해되는 기준은 그 형제에 병합한다. 기준의 개수는 그 판단에서 따라 나온다.
 BLUEPRINT_QUALITY_BAR = (
     "Seed must be internally consistent, acceptance_criteria must be measurable "
-    "and testable, constraints must be concrete (no vague terms), and there must "
-    "be no contradictions between fields. acceptance_criteria must also be "
+    "and testable, constraints must be concrete (no vague terms), ontology_schema "
+    "must cover all entities referenced in goal/criteria, and there must be no "
+    "contradictions between fields. acceptance_criteria must also be "
     "parsimonious in the ontological sense: a criterion names a state of the "
     "finished work a user can see is true, while an implementation step names a "
     "means of reaching it, and only the first belongs in the list. Read each "

@@ -21,10 +21,18 @@ from mission_control.domain.blueprint.state import (
 POLICY = QaPolicy.blueprint_v1()
 
 
-def _blueprint(*, revision: int = 1, goal: str = "댓글을 쓰고 볼 수 있다") -> Blueprint:
+def _blueprint(
+    *,
+    revision: int = 1,
+    goal: str = "댓글을 쓰고 볼 수 있다",
+    generation: int = 1,
+    evolved_from_revision: int | None = None,
+) -> Blueprint:
     return Blueprint(
         mission_id="m-1",
         revision=revision,
+        generation=generation,
+        evolved_from_revision=evolved_from_revision,
         brief_revision=5,
         goal=goal,
         constraints=("로그인 사용자만 작성",),
@@ -82,6 +90,12 @@ class TestRevisionHistory:
         foreign = _blueprint(revision=2).model_copy(update={"mission_id": "m-2"})
         with pytest.raises(ValueError, match="의 것이다"):
             _started().revise(blueprint=foreign)
+
+    def test_manual_revise_cannot_advance_the_generation(self) -> None:
+        successor = _blueprint(revision=2, generation=2, evolved_from_revision=1)
+
+        with pytest.raises(ValueError, match="generation"):
+            _started().revise(blueprint=successor)
 
 
 class TestQaPermissions:

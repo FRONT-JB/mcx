@@ -5,6 +5,7 @@ docs/adr/0013-brief-durable-state-baseline.md §3
 Test Matrix: Persistence 행 (docs/06_BLUEPRINT.md §14)
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -12,10 +13,21 @@ import pytest
 from mission_control.adapters.persistence.file_blueprint_repository import (
     FileBlueprintRepository,
 )
+from mission_control.domain.blueprint.evolution import assemble_evolved_blueprint
 from mission_control.domain.blueprint.qa import QaAssessment, QaPolicy
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
 from mission_control.domain.blueprint.state import BlueprintState
 from mission_control.domain.errors import StaleWriteError
+from mission_control.domain.evolve.models import (
+    AcceptanceCriterionPatch,
+    AcPatchOperation,
+    ChallengeKind,
+    CriterionOutcomeSnapshot,
+    EvolveSourceSnapshot,
+    ReflectOutput,
+    WonderChallenge,
+    WonderOutput,
+)
 
 POLICY = QaPolicy.blueprint_v1()
 
@@ -75,6 +87,95 @@ class TestRoundTrip:
         first = await repository.load("m-1")
         assert first is not None
         assert first.mission_id == "m-1"
+
+    async def test_evolution_checkpoint_and_successor_survive_together(
+        self, repository: FileBlueprintRepository
+    ) -> None:
+        state = _approved_state()
+        parent = state.current
+        key = parent.criterion_keys[0]
+        source = EvolveSourceSnapshot(
+            mission_id=state.mission_id,
+            blueprint_revision=state.revision,
+            blueprint_generation=state.generation,
+            verify_sequence=4,
+            gate_blockers=(f"{key} failed",),
+            execution_attempt_numbers=(2,),
+            criteria=(
+                CriterionOutcomeSnapshot(
+                    ac_key=key,
+                    mechanical_passed=False,
+                    mechanical_detail="pytest status 1",
+                    semantic_passed=False,
+                    semantic_score=0.3,
+                    semantic_uncertainty=0.1,
+                    reward_hacking_risk=0.0,
+                    semantic_reasoning="목록 위치가 계약과 다르다",
+                    proven=False,
+                ),
+            ),
+        )
+        wonder = WonderOutput(
+            challenges=(
+                WonderChallenge(
+                    kind=ChallengeKind.CHALLENGE,
+                    parent_ac_key=key,
+                    detail="관찰 경계를 다듬는다",
+                ),
+            ),
+            reasoning="실패한 계약만 수정한다",
+        )
+        reflect = ReflectOutput(
+            refined_goal=parent.goal,
+            refined_constraints=parent.constraints,
+            ac_patches=(
+                AcceptanceCriterionPatch(
+                    operation=AcPatchOperation.REVISE,
+                    parent_ac_key=key,
+                    description="목록에 새 댓글이 맨 위에 보인다",
+                ),
+            ),
+            reasoning="parent identity를 유지한다",
+        )
+        state = state.begin_evolution(source=source).record_wonder(output=wonder)
+        state = state.record_reflect(output=reflect)
+        successor = assemble_evolved_blueprint(
+            parent=parent,
+            source=source,
+            wonder=wonder,
+            reflect=reflect,
+            revision=2,
+        )
+        state = state.complete_evolution(blueprint=successor)
+
+        await repository.save(state)
+
+        restored = await repository.load("m-1")
+        assert restored == state
+        assert restored is not None
+        assert restored.current.generation == 2
+        assert restored.current.ontology == parent.ontology
+        assert restored.evolutions[-1].result_blueprint_revision == 2
+
+    async def test_pre_evolve_json_gets_generation_one_defaults(
+        self, repository: FileBlueprintRepository, tmp_path: Path
+    ) -> None:
+        legacy = json.loads(_approved_state().model_dump_json())
+        legacy.pop("evolutions")
+        for revision in legacy["revisions"]:
+            revision.pop("generation")
+            revision.pop("evolved_from_revision")
+            revision.pop("ontology")
+        (tmp_path / "blueprint_m-1.json").write_text(
+            json.dumps(legacy, ensure_ascii=False), encoding="utf-8"
+        )
+
+        restored = await repository.load("m-1")
+
+        assert restored is not None
+        assert restored.generation == 1
+        assert restored.current.ontology.fields == ()
+        assert restored.evolutions == ()
 
 
 class TestStaleWrites:

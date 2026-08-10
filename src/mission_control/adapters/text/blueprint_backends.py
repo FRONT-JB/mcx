@@ -178,6 +178,21 @@ class PromptedBlueprintQaJudge:
             if criterion.output_assertion:
                 criteria_lines.append(f"  output_assertion: {criterion.output_assertion}")
 
+        ontology_lines = [
+            f"name: {request.ontology.name}",
+            f"description: {request.ontology.description}",
+        ]
+        if request.ontology.fields:
+            ontology_lines.extend(
+                (
+                    f"- {item.name}: {item.field_type}; required={str(item.required).lower()}; "
+                    f"{item.description}"
+                )
+                for item in request.ontology.fields
+            )
+        else:
+            ontology_lines.append("fields: (none)")
+
         parts = [
             _JUDGE_ROLE,
             f"## Quality bar (verbatim policy)\n{request.quality_bar}",
@@ -188,6 +203,7 @@ class PromptedBlueprintQaJudge:
             "Constraints:\n" + ("\n".join(f"- {item}" for item in request.constraints) or "(none)"),
             "Non-goals:\n" + ("\n".join(f"- {item}" for item in request.non_goals) or "(none)"),
             "Acceptance criteria:\n" + "\n".join(criteria_lines),
+            "Ontology:\n" + "\n".join(ontology_lines),
         ]
         if request.previous_iterations:
             parts.append(

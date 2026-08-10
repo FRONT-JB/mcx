@@ -1,6 +1,6 @@
 """Blueprint의 durable state — revision 이력, QA 채점 기록, 사용자 승인.
 
-이 모듈이 강제하는 핵심 불변 조건은 두 개다.
+이 모듈이 강제하는 핵심 불변 조건은 세 개다.
 
 **승인은 채점된 현재 revision에만 성립한다.** 채점되지 않은 내용을 승인하면
 승인 기록이 담아야 할 QA 근거(ADR-0019 §8)가 없고, 이전 revision의 점수를
@@ -14,9 +14,15 @@
 기록에 남긴다. 이 예외가 없으면 소진 뒤 명세를 고치는 순간 미션이 잠긴다
 (도그푸딩 0005 §4가 관측했다).
 
-**채점 예산은 durable 상태에 있다.** 반복 상한(ADR-0019 §6)이 메모리에만 있으면
-세션을 다시 시작하는 것만으로 횟수가 초기화된다. 채점 기록이 상태에 남으므로
-상한 판정이 재시작을 건너 유지된다.
+**채점 예산은 generation별 durable 상태에 있다.** 반복 상한(ADR-0019 §6)이
+메모리에만 있으면 세션을 다시 시작하는 것만으로 횟수가 초기화된다. 같은
+generation의 revision들은 기록을 공유하고, Execute→Verify 뒤 Evolve가 연 다음
+generation만 새 예산을 갖는다 (ADR-0051 §7).
+
+**Evolve checkpoint와 successor revision은 한 상태 문서에 있다.** Wonder·Reflect
+중단은 완료한 phase 다음부터 재개하고, 마지막 record와 새 revision은 한 번의
+상태 변경으로 붙는다. 진행 중에는 parent revision을 다른 수정으로 움직이지
+않는다 (ADR-0051 §8).
 
 점수에서 판정과 최선을 계산하는 기계는
 :class:`~mission_control.domain.blueprint.qa.QaLoopState`를 그대로 쓴다. 이
@@ -41,6 +47,14 @@ from mission_control.domain.blueprint.qa import (
 )
 from mission_control.domain.blueprint.spec import Blueprint, BlueprintApproval
 from mission_control.domain.errors import MissionControlError
+from mission_control.domain.evolve.models import (
+    EvolutionPhase,
+    EvolutionRecord,
+    EvolveSourceSnapshot,
+    ReflectOutput,
+    ScopeChangeFinding,
+    WonderOutput,
+)
 
 
 class QaBudgetExhaustedError(MissionControlError):
@@ -140,6 +154,14 @@ class QaLoopStillOpenError(MissionControlError):
         self.revision = revision
 
 
+class EvolutionNotAllowedError(MissionControlError):
+    """현재 Blueprint 상태가 successor generation을 열 수 없다."""
+
+
+class EvolutionAlreadyCompletedError(MissionControlError):
+    """같은 parent revision에서 successor를 다시 만들려 했다."""
+
+
 class BlueprintQaRecord(BaseModel):
     """한 번의 채점과 그것이 본 revision.
 
@@ -170,9 +192,11 @@ class BlueprintState(BaseModel):
     sequence: int = 1
     #: revision 1부터의 전체 이력. 마지막 항목이 현재 revision이다.
     revisions: tuple[Blueprint, ...]
-    #: 채점 기록. 루프 전체에 걸친 순서가 곧 iteration 순서다.
+    #: 채점 기록. Mission 전체 chronological 이력이며 예산은 generation별로 계산한다.
     qa_records: tuple[BlueprintQaRecord, ...] = ()
     approval: BlueprintApproval | None = None
+    #: Wonder→Reflect→Seed partial phase와 완료 lineage. 같은 JSON에 원자 저장한다.
+    evolutions: tuple[EvolutionRecord, ...] = ()
 
     @model_validator(mode="after")
     def _revisions_are_contiguous(self) -> BlueprintState:
@@ -194,6 +218,60 @@ class BlueprintState(BaseModel):
                     f"revision {item.revision}은 mission {item.mission_id}의 것이다 — "
                     f"{self.mission_id}가 아니다"
                 )
+            if index == 0:
+                if item.generation != 1 or item.evolved_from_revision is not None:
+                    raise ValueError("첫 Blueprint revision은 generation 1이어야 한다")
+                continue
+            previous = self.revisions[index - 1]
+            if item.generation == previous.generation:
+                if item.evolved_from_revision != previous.evolved_from_revision:
+                    raise ValueError(
+                        "같은 generation의 revision은 evolve lineage를 이어받아야 한다"
+                    )
+            elif item.generation == previous.generation + 1:
+                if item.evolved_from_revision != previous.revision:
+                    raise ValueError("새 generation은 직전 parent revision을 가리켜야 한다")
+            else:
+                raise ValueError("Blueprint generation은 유지되거나 1씩만 증가할 수 있다")
+
+        for qa_record in self.qa_records:
+            if qa_record.revision < 1 or qa_record.revision > len(self.revisions):
+                raise ValueError(
+                    f"QA record가 없는 revision {qa_record.revision}을 가리킨다"
+                )
+
+        active_records = [
+            item for item in self.evolutions if item.phase is not EvolutionPhase.COMPLETED
+        ]
+        if len(active_records) > 1:
+            raise ValueError("동시에 진행 중인 EvolutionRecord는 하나만 허용한다")
+        if active_records and self.evolutions[-1] is not active_records[0]:
+            raise ValueError("진행 중인 EvolutionRecord 뒤에 다른 record를 붙일 수 없다")
+        if active_records and active_records[0].parent_blueprint_revision != self.revision:
+            raise ValueError("진행 중인 EvolutionRecord의 parent는 current revision이어야 한다")
+        seen_parents: set[int] = set()
+        for evolution_record in self.evolutions:
+            if evolution_record.source.mission_id != self.mission_id:
+                raise ValueError("EvolutionRecord가 다른 mission의 source를 가리킨다")
+            parent_revision = evolution_record.parent_blueprint_revision
+            if parent_revision < 1 or parent_revision > len(self.revisions):
+                raise ValueError("EvolutionRecord parent revision이 Blueprint 이력에 없다")
+            if parent_revision in seen_parents:
+                raise ValueError("같은 parent revision의 EvolutionRecord가 둘 이상이다")
+            seen_parents.add(parent_revision)
+            parent = self.revisions[parent_revision - 1]
+            if evolution_record.source.blueprint_generation != parent.generation:
+                raise ValueError("EvolutionRecord source generation이 parent와 다르다")
+            if evolution_record.phase is EvolutionPhase.COMPLETED:
+                result_revision = evolution_record.result_blueprint_revision
+                if result_revision is None or result_revision > len(self.revisions):
+                    raise ValueError("완료 EvolutionRecord의 result revision이 이력에 없다")
+                result = self.revisions[result_revision - 1]
+                if (
+                    result.generation != evolution_record.successor_generation
+                    or result.evolved_from_revision != parent_revision
+                ):
+                    raise ValueError("EvolutionRecord와 successor Blueprint lineage가 다르다")
         return self
 
     @classmethod
@@ -210,6 +288,10 @@ class BlueprintState(BaseModel):
         return self.current.revision
 
     @property
+    def generation(self) -> int:
+        return self.current.generation
+
+    @property
     def has_current_approval(self) -> bool:
         """현재 revision에 유효한 승인이 있는가.
 
@@ -219,12 +301,13 @@ class BlueprintState(BaseModel):
         return self.approval is not None and self.approval.revision == self.revision
 
     def loop(self, *, policy: QaPolicy) -> QaLoopState:
-        """채점 기록을 판정 기계에 얹는다. 기록 순서가 iteration 순서다."""
+        """현재 generation의 채점 기록만 판정 기계에 얹는다."""
+        records = self.records_for_generation(self.generation)
         return QaLoopState(
             policy=policy,
             attempts=tuple(
                 QaAttempt(iteration=index + 1, assessment=item.assessment)
-                for index, item in enumerate(self.qa_records)
+                for index, item in enumerate(records)
             ),
         )
 
@@ -237,10 +320,16 @@ class BlueprintState(BaseModel):
         best = self.loop(policy=policy).best
         if best is None:
             return None
-        return self.qa_records[best.iteration - 1]
+        return self.records_for_generation(self.generation)[best.iteration - 1]
 
     def records_for(self, revision: int) -> tuple[BlueprintQaRecord, ...]:
         return tuple(item for item in self.qa_records if item.revision == revision)
+
+    def records_for_generation(self, generation: int) -> tuple[BlueprintQaRecord, ...]:
+        revisions = {
+            item.revision for item in self.revisions if item.generation == generation
+        }
+        return tuple(item for item in self.qa_records if item.revision in revisions)
 
     def ensure_qa_allowed(self, *, policy: QaPolicy) -> None:
         """채점이 허용되는 상태인지 확인한다. 아니면 예외를 올린다.
@@ -253,14 +342,15 @@ class BlueprintState(BaseModel):
         기록 시점에만 검사하면 규칙상 일어나지 말았어야 할 채점(예: 6회째)이
         이미 수행된 뒤에 거부된다 — 호출자는 위임 전에 이것을 먼저 묻는다.
         """
-        if self.qa_records:
-            latest_verdict = policy.verdict_for(self.qa_records[-1].assessment.score)
+        generation_records = self.records_for_generation(self.generation)
+        if generation_records:
+            latest_verdict = policy.verdict_for(generation_records[-1].assessment.score)
             if latest_verdict is QaVerdict.FAIL:
                 raise QaEscalatedError(mission_id=self.mission_id)
         for item in self.records_for(self.revision):
             if policy.verdict_for(item.assessment.score) is QaVerdict.PASS:
                 raise QaAlreadyPassedError(mission_id=self.mission_id, revision=self.revision)
-        if len(self.qa_records) >= policy.max_iterations:
+        if len(generation_records) >= policy.max_iterations:
             raise QaBudgetExhaustedError(
                 mission_id=self.mission_id, max_iterations=policy.max_iterations
             )
@@ -290,11 +380,12 @@ class BlueprintState(BaseModel):
         """
         if self.records_for(self.revision):
             return None
-        if len(self.qa_records) < policy.max_iterations:
+        generation_records = self.records_for_generation(self.generation)
+        if len(generation_records) < policy.max_iterations:
             return None
-        if not self.qa_records:
+        if not generation_records:
             return None
-        carried = max(self.qa_records, key=lambda item: item.assessment.score)
+        carried = max(generation_records, key=lambda item: item.assessment.score)
         if policy.verdict_for(carried.assessment.score) is not QaVerdict.REVISE:
             # PASS는 그 revision을 승인하면 되고 FAIL은 에스컬레이션이다.
             # 최종 수정 경로는 `EXHAUSTED`(재작업 점수 + 상한 도달) 하나를 위한 것이다.
@@ -312,6 +403,10 @@ class BlueprintState(BaseModel):
         (ADR-0019 §6.1 — upstream *"one final manual edit"*). 두 번째를 허용하면
         채점 없는 revision을 무한히 쌓으며 상한을 우회하게 된다.
         """
+        if self.active_evolution is not None:
+            raise EvolutionNotAllowedError(
+                "Evolve 진행 중에는 parent Blueprint를 revise할 수 없다"
+            )
         if policy is not None and self.final_edit_carry(policy=policy) is not None:
             raise FinalEditAlreadyUsedError(mission_id=self.mission_id, revision=self.revision)
         if blueprint.mission_id != self.mission_id:
@@ -323,6 +418,10 @@ class BlueprintState(BaseModel):
             raise ValueError(
                 f"revision {self.revision + 1}이 와야 하는데 {blueprint.revision}이 왔다"
             )
+        if blueprint.generation != self.generation:
+            raise ValueError("수동 revise는 Blueprint generation을 바꿀 수 없다")
+        if blueprint.evolved_from_revision != self.current.evolved_from_revision:
+            raise ValueError("수동 revise는 evolve lineage를 바꿀 수 없다")
         return self.model_copy(
             update={
                 "sequence": self.sequence + 1,
@@ -362,7 +461,8 @@ class BlueprintState(BaseModel):
         verdict = policy.verdict_for(best_score)
         if verdict is QaVerdict.FAIL:
             raise QaEscalatedError(mission_id=self.mission_id)
-        if verdict is QaVerdict.REVISE and len(self.qa_records) < policy.max_iterations:
+        generation_records = self.records_for_generation(self.generation)
+        if verdict is QaVerdict.REVISE and len(generation_records) < policy.max_iterations:
             raise QaLoopStillOpenError(mission_id=self.mission_id, revision=self.revision)
 
         approval = BlueprintApproval(
@@ -371,8 +471,100 @@ class BlueprintState(BaseModel):
             qa_policy_version=policy.version,
             qa_threshold=policy.pass_threshold,
             qa_best_score=best_score,
-            qa_iterations=len(self.qa_records),
+            qa_iterations=len(generation_records),
             accepted_below_threshold=accept_below_threshold,
             qa_scored_revision=scored_revision,
         )
         return self.model_copy(update={"sequence": self.sequence + 1, "approval": approval})
+
+    @property
+    def active_evolution(self) -> EvolutionRecord | None:
+        if self.evolutions and self.evolutions[-1].phase is not EvolutionPhase.COMPLETED:
+            return self.evolutions[-1]
+        return None
+
+    def begin_evolution(self, *, source: EvolveSourceSnapshot) -> BlueprintState:
+        """승인된 current revision에서 successor checkpoint를 연다."""
+
+        if not self.has_current_approval:
+            raise EvolutionNotAllowedError("Evolve에는 승인된 current Blueprint가 필요하다")
+        if self.active_evolution is not None:
+            raise EvolutionNotAllowedError("이미 진행 중인 Evolve checkpoint가 있다")
+        if any(item.parent_blueprint_revision == self.revision for item in self.evolutions):
+            raise EvolutionAlreadyCompletedError(
+                f"Blueprint revision {self.revision}의 successor가 이미 기록됐다"
+            )
+        if (
+            source.mission_id != self.mission_id
+            or source.blueprint_revision != self.revision
+            or source.blueprint_generation != self.generation
+        ):
+            raise EvolutionNotAllowedError("Evolve source가 current Blueprint와 일치하지 않는다")
+        if {item.ac_key for item in source.criteria} != set(self.current.criterion_keys):
+            raise EvolutionNotAllowedError("Evolve source가 current AC outcome 전부를 갖지 않는다")
+
+        record = EvolutionRecord.start(source=source)
+        return self.model_copy(
+            update={
+                "sequence": self.sequence + 1,
+                "evolutions": (*self.evolutions, record),
+            }
+        )
+
+    def record_wonder(self, *, output: WonderOutput) -> BlueprintState:
+        record = self.active_evolution
+        if record is None:
+            raise EvolutionNotAllowedError("Wonder output을 기록할 Evolve checkpoint가 없다")
+        return self.model_copy(
+            update={
+                "sequence": self.sequence + 1,
+                "evolutions": (*self.evolutions[:-1], record.record_wonder(output)),
+            }
+        )
+
+    def record_reflect(self, *, output: ReflectOutput) -> BlueprintState:
+        record = self.active_evolution
+        if record is None:
+            raise EvolutionNotAllowedError("Reflect output을 기록할 Evolve checkpoint가 없다")
+        return self.model_copy(
+            update={
+                "sequence": self.sequence + 1,
+                "evolutions": (*self.evolutions[:-1], record.record_reflect(output)),
+            }
+        )
+
+    def hold_evolution_for_scope(
+        self, *, findings: tuple[ScopeChangeFinding, ...]
+    ) -> BlueprintState:
+        record = self.active_evolution
+        if record is None:
+            raise EvolutionNotAllowedError("scope finding을 기록할 Evolve checkpoint가 없다")
+        return self.model_copy(
+            update={
+                "sequence": self.sequence + 1,
+                "evolutions": (*self.evolutions[:-1], record.hold_for_scope(findings)),
+            }
+        )
+
+    def complete_evolution(self, *, blueprint: Blueprint) -> BlueprintState:
+        """successor revision과 completed record를 한 state 변경으로 묶는다."""
+
+        record = self.active_evolution
+        if record is None or record.phase is not EvolutionPhase.SEEDING:
+            raise EvolutionNotAllowedError("완료할 seeding checkpoint가 없다")
+        if blueprint.mission_id != self.mission_id or blueprint.revision != self.revision + 1:
+            raise EvolutionNotAllowedError("successor Blueprint identity가 현재 상태와 다르다")
+        if (
+            blueprint.generation != record.successor_generation
+            or blueprint.evolved_from_revision != record.parent_blueprint_revision
+        ):
+            raise EvolutionNotAllowedError("successor Blueprint generation lineage가 다르다")
+
+        completed = record.complete(result_blueprint_revision=blueprint.revision)
+        return self.model_copy(
+            update={
+                "sequence": self.sequence + 1,
+                "revisions": (*self.revisions, blueprint),
+                "evolutions": (*self.evolutions[:-1], completed),
+            }
+        )
