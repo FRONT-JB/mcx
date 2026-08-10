@@ -7,8 +7,8 @@
 |---|---|
 | 문서 지위 | Draft implementation guide |
 | 선행 문서 | [Constitution](./00_MISSION_CONTROL.md), [Lifecycle](./02_MISSION_LIFECYCLE.md), [Brief](./05_BRIEF.md) |
-| 계획된 canonical CLI 명령 | `mcx blueprint` (아직 미구현) |
-| 진입 전제 | `CLEAR — Clear for Blueprint`와 완료된 Brief revision |
+| canonical CLI 명령 | `mcx blueprint generate|qa|revise|approve|gate` (Evolve 명령은 구현 대기) |
+| 진입 전제 | Gen 1: `CLEAR — Clear for Blueprint` + Brief revision / Gen 2+: Verify `HOLD` + Evolve source snapshot |
 | 성공 결과 | 승인된 immutable Seed revision, `CLEAR — Clear for Execute` |
 | 실패 결과 | `HOLD`와 수정·질문·승인 요구사항 |
 
@@ -16,8 +16,9 @@
 
 ## 1. 목적
 
-Blueprint는 Brief의 질문·답변·관찰·결정을 실행과 검증이 사용할 수 있는 하나의
-구조화된 specification으로 결정화한다.
+Blueprint는 Gen 1에서 Brief의 질문·답변·관찰·결정을, Gen 2+에서 이전
+Execute·Verify evidence에 대한 Wonder/Reflect proposal을 실행과 검증이 사용할 수
+있는 하나의 구조화된 specification으로 결정화한다.
 
 ```text
 Brief state
@@ -26,6 +27,14 @@ Brief state
   → structural and semantic QA
   → bounded refinement
   → user approval
+  → immutable approved revision
+```
+
+```text
+Verify HOLD + parent Blueprint
+  → Wonder → Reflect
+  → successor generation proposal
+  → QA + user approval
   → immutable approved revision
 ```
 
@@ -69,18 +78,19 @@ Blueprint에 진입하려면 다음이 필요하다.
 
 - Mission을 식별할 수 있다.
 - 현재 Stage가 Blueprint다.
-- Brief의 `CLEAR — Clear for Blueprint` GateDecision이 존재한다.
-- Gate가 참조한 Brief revision을 읽을 수 있다.
-- Goal, Constraints, Non-goals, Success Criteria의 근거가 있다.
+- Gen 1은 Brief의 `CLEAR — Clear for Blueprint`와 그 Brief revision을 읽을 수 있다.
+- Gen 2+는 current approved Blueprint와 같은 revision의 Execute lineage,
+  Verify evidence·semantic verdict, Verify Gate `HOLD`를 읽을 수 있다.
+- Goal, Constraints, Non-goals, Success Criteria 또는 parent AC의 근거가 있다.
 - unresolved user decision이 Gate를 무효화하지 않는다.
-- Brief approval provenance가 있다.
+- Gen 1은 Brief approval provenance가 있고, Gen 2+는 source Verify snapshot이 있다.
 
 Brief가 이후 수정되었거나 ambiguity snapshot이 stale하면 기존 CLEAR를 재사용하지
 않고 Brief Gate를 다시 평가한다.
 
 ### Input identity
 
-Blueprint attempt는 최소한 다음에 묶인다.
+Gen 1 Blueprint attempt는 최소한 다음에 묶인다.
 
 ```text
 mission_id
@@ -88,6 +98,17 @@ brief_revision
 brief_gate_decision
 blueprint_attempt_id
 generator/policy/schema version
+```
+
+Gen 2+ Evolve attempt는 다음에 묶인다.
+
+```text
+mission_id
+successor_generation
+parent_blueprint_revision
+source_verify_sequence + evidence/verdict snapshot
+source_execution_attempt_numbers
+wonder/reflect policy/schema version
 ```
 
 ---
@@ -108,6 +129,15 @@ generator/policy/schema version
 - 질문하지 않은 제품 결정을 발명하지 않는다.
 - source와 assumption을 구분한다.
 - 구조화된 결과만 반환한다.
+
+### Wonder / Reflect producer (Gen 2+)
+
+- Wonder는 parent ontology와 Execute·Verify evidence에서 challenge와 gap을 찾는다.
+- Reflect는 explicit `keep | revise | add` AC patch와 ontology mutation을 제안한다.
+- 둘 다 파일·Shell·Git·Mission Control 도구 없이 구조화된 결과만 반환한다.
+- Goal·Constraints·Non-goals, parent identity, revision, approval을 결정하지 않는다.
+- application이 parent AC key binding, scope와 patch 불변식을 검사해 successor
+  proposal을 조립한다 ([ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md)).
 
 ### Seed QA evaluator
 
@@ -151,8 +181,10 @@ boundary가 수행한다.
 ```yaml
 seed_id: seed_example
 revision: 1
+generation: 1
 mission_id: mission_example
 source_brief_revision: brief_3
+evolved_from_revision: null
 
 goal: >
   사용자가 요청한 최종 결과와 해결할 문제.
@@ -168,6 +200,11 @@ acceptance_criteria:
     description: 관찰 가능한 결과 상태
     evidence_expectation: 결과를 어떻게 확인할지
     dependencies: []
+
+ontology:
+  name: ConfirmedRequirementContract
+  description: 승인된 요구사항의 개념 경계
+  fields: []
 
 exit_conditions:
   - 미션 전체를 종료할 수 있는 검증 조건
@@ -286,14 +323,30 @@ Generator는 observed facts를 읽어 제약을 이해하되, 관찰된 값을 �
 문장으로 옮기지 않는다. 관찰이 요구사항이 되어야 한다면 그것은 Brief로 되돌아가
 사용자 결정으로 확정해야 할 항목이다.
 
+### 6.7 Generation과 ontology
+
+`revision`은 모든 내용 변경을 세고 `generation`은 Execute→Verify 뒤 Evolve가 연
+학습 주기를 센다. 수동 QA 보완은 revision만 올리며, successor generation의 첫
+revision은 `evolved_from_revision`으로 Verify가 본 parent를 가리킨다.
+
+Ontology는 output schema가 아니라 Mission이 세대를 건너 보존할 개념과 경계다.
+Gen 1은 고정된 최소 ontology(빈 fields)로 시작하고 Gen 2+의 Reflect만 명시적
+`add | modify | remove` mutation을 제안한다. ontology도 Blueprint 내용이므로
+QA·사용자 승인과 revision 불변성의 적용을 받는다.
+
 ---
 
 ## 7. Generation, QA, refinement, approval
 
 ### 7.1 Generation
 
-Generator는 canonical Brief revision만 입력으로 사용한다. 오래된 summary나 원본
-대화 transcript를 임의로 섞지 않는다.
+Gen 1 Generator는 canonical Brief revision만 입력으로 사용한다. 오래된 summary나
+원본 대화 transcript를 임의로 섞지 않는다.
+
+Gen 2+ producer는 Brief를 다시 열지 않는다. current approved Blueprint,
+그 revision의 Execute result, Verify evidence·semantic verdict, 이전 Evolve lineage를
+Wonder→Reflect에 넣는다. 출력은 parent Blueprint를 in-place로 바꾸지 않고 후속
+generation의 새 revision proposal이 된다.
 
 출력은 parse 가능한 구조여야 하며, parse 실패를 “거의 성공”으로 저장하지 않는다.
 
@@ -340,6 +393,11 @@ draft
 매 round는 새 draft attempt로 기록한다. 같은 문제를 무한 반복하지 않으며 정확한
 repair round 한도는 정책으로 정한다.
 
+QA 상한은 **generation마다 5회**다. 같은 generation의 수동 revision들은 예산을
+공유해 revision 반복으로 상한을 우회하지 못한다. Verify `HOLD`에서 Evolve가 다음
+generation을 열 때만 새 예산이 시작된다. 상한 소진 뒤 최종 수동 수정 1회와
+미달 수락도 generation별 규칙이다.
+
 ### 7.5 User approval
 
 QA 통과와 사용자 승인은 별도다.
@@ -360,6 +418,26 @@ approval에는 actor/provenance, Seed revision, decision time을 연결한다. a
 사용자가 미달을 수락한 것인가"를 물을 수 없다. 미달 명세에서 출발한 미션이
 `MISSION COMPLETE`에 도달했을 때 그 사실이 어디에도 없으면 완료 선언의 근거가
 비어 있다.
+
+### 7.6 Evolve patch application
+
+LLM이 반환한 index는 prompt 표시 좌표다. application은 즉시 parent AC content
+key로 바꾸어 durable patch를 저장한다.
+
+- 모든 parent AC는 정확히 한 번 `keep` 또는 `revise`된다.
+- `delete`·reorder는 거부하고 `add`는 끝에만 붙인다.
+- Verify 통과 + Wonder challenge 없음인 AC는 exact `keep`이다.
+- `revise`는 설명만 바꾸고 explicit parent의 mechanical contract를 이어받는다.
+  내용 key는 새로 계산된다.
+- `add`는 설명만 가진다. mechanical contract는 후속 QA/수동 revision에서
+  명시적으로 채우며, 확인 수단이 전혀 없으면 Gate가 `HOLD`한다.
+- Goal·Constraints·Non-goals 변경 proposal은 successor revision으로 적용하지
+  않고 Brief 사용자 결정으로 보낸다.
+
+`wondering`·`reflecting`·`seeding` 완료마다 같은 Blueprint 상태 문서에 checkpoint를
+남긴다. 마지막 저장은 Reflect output, completed record, successor revision을 함께
+원자적으로 기록한다. 자세한 계약은
+[ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md)이다.
 
 ---
 
@@ -411,6 +489,19 @@ sequenceDiagram
 12. approval evidence와 revision lineage를 지속한다.
 13. Gate가 `CLEAR — Clear for Execute` 또는 `HOLD`를 기록한다.
 
+### Gen 2+ Evolve sequence
+
+1. current approved Blueprint와 같은 revision의 Execute·Verify lineage를 검증한다.
+2. Verify Gate가 `HOLD`인지 재계산하고 source snapshot을 저장한다.
+3. Wonder output을 저장한다.
+4. Reflect output을 저장한다.
+5. parent AC key binding, protected keep, delete/reorder 금지, scope 보존을 검사한다.
+6. successor generation의 pending revision과 completed evolution record를 원자 저장한다.
+7. QA와 사용자 승인을 거쳐 Gate를 다시 판정한다.
+
+정상 호출 예산은 Wonder 1 + Reflect 1 = **2 primary calls**다. 기존 Claude
+transient retry 상한을 포함하면 phase당 3 attempts, 전체 최악 6회다.
+
 ---
 
 ## 9. Immutability and revisions
@@ -448,7 +539,8 @@ Seed revision 1 — approved
 
 다음 조건을 모두 만족해야 한다.
 
-- exact Brief revision과 traceability가 있다.
+- exact input lineage가 있다: Gen 1은 Brief revision, Gen 2+는 parent Blueprint
+  revision과 source Verify snapshot이 있다.
 - structure validation이 통과한다.
 - Goal이 명확하고 Brief와 일치한다.
 - Constraints와 Non-goals가 충돌하지 않는다.
@@ -458,18 +550,21 @@ Seed revision 1 — approved
 - QA blocker가 없다.
 - 사용자가 exact Seed revision을 승인했다.
 - approval 이후 content가 바뀌지 않았다.
+- Evolve proposal이면 generation/parent lineage와 ontology가 구조적으로 유효하다.
 
 ### `HOLD`
 
 다음 중 하나면 기본적으로 HOLD한다.
 
 - Brief Gate 또는 revision이 stale함
+- Evolve source Verify snapshot이 없거나 current parent revision과 어긋남
 - 구조 parse/validation 실패
 - Goal/Constraint/Non-goal 충돌
 - 필수 AC 누락
 - AC가 구현 수단만 설명하거나 검증 불가능함
 - Exit Condition 없음 또는 평가 불가능
 - generator가 Brief에 없는 요구사항을 발명함
+- Reflect가 Goal·Constraint·Non-goal 변경을 제안함 — Brief 사용자 결정 필요
 - unresolved assumption이 실행 결과를 바꿈
 - QA issue가 반복되며 progress가 없음
 - user approval 없음 또는 거절
@@ -585,6 +680,10 @@ Next action:
 |---|---|---|
 | Entry | Brief CLEAR 없음 | generation 없이 HOLD |
 | Entry | stale Brief revision | 재평가 요구 |
+| Evolve entry | Verify `CLEAR` 또는 `MISSION COMPLETE` (`upstream 대응물 없음`, [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §1) | LLM 호출 전 거부; 완료 Mission을 다시 열지 않음 |
+| Evolve entry | current revision의 Execute/Verify snapshot 누락 (`upstream 관측`, [EVOLVE findings](./research/EVOLVE_UPSTREAM_FINDINGS.md) §7~§8) | successor를 만들지 않고 HOLD |
+| Evolve replay | Wonder 저장 뒤 process 중단 (`upstream 관측`, 위 findings §8) | 같은 successor generation에서 Reflect부터 재개 |
+| Evolve concurrency | 같은 parent에 동시 호출 (`upstream 관측`, 위 findings §10) | single-flight; successor revision 하나만 생성 |
 | Generation | valid structured draft | QA로 진행 |
 | Generation | malformed output | parse failure, CLEAR 금지 |
 | Structure | duplicate AC IDs | validation HOLD |
@@ -605,6 +704,11 @@ Next action:
 | Persistence | Seed 저장 실패 | CLEAR 금지 |
 | Traceability | source ref 없음 | policy에 따른 issue/HOLD |
 | Revision | 새 Seed 승인 | 이전 downstream evidence 자동 재사용 금지 |
+| Evolve patch | explicit keep/revise/add (`upstream 관측`, 위 findings §4, focused tests 2 passed) | 모든 parent key를 한 번씩 매핑; revise는 mechanical contract 보존 + 새 key, add는 빈 contract |
+| Evolve patch | delete/reorder/unknown·duplicate parent (`upstream 관측`, 위 findings §4) | successor revision 생성 거부 |
+| Evolve scope | refined goal/constraints가 parent와 다름 (`upstream divergence`, [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §5) | proposal finding을 보존하고 Brief 사용자 결정 요구 |
+| QA budget | 같은 generation의 manual revision | 남은 5회 예산 공유; revision으로 우회 불가 |
+| QA budget | Verify `HOLD` 뒤 Evolve successor generation | 새 generation QA 예산 시작 |
 
 ### Property-style invariants
 
@@ -694,17 +798,21 @@ Next action:
   ([ADR-0021](./adr/0021-blueprint-state-and-revisions.md) §1). schema version
   필드는 미정
 - ~~필수/선택 field와 ontology 포함 여부~~ →
-  [ADR-0017](./adr/0017-blueprint-schema-baseline.md)
+  방향 필드는 [ADR-0017](./adr/0017-blueprint-schema-baseline.md), ontology 유예는
+  실제 소비자가 생긴 [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §3에서 해소
 - Seed에 기록할 source reference의 concrete schema (authority rule 자체는 [ADR-0010](./adr/0010-answer-provenance-and-requirement-authority.md)에서 확정)
 - AC dependency를 Seed에 포함할지 Execute에서 파생할지
 - ~~AC quality rubric과 QA score 사용 여부~~ →
   [ADR-0019](./adr/0019-blueprint-qa-loop.md)
-- ~~refinement attempt budget~~ → 최대 5회, durable 상태로 유지
+- ~~refinement attempt budget~~ → generation마다 최대 5회, 같은 generation의
+  revision들이 durable 예산을 공유
   ([ADR-0019](./adr/0019-blueprint-qa-loop.md) §2,
-  [ADR-0021](./adr/0021-blueprint-state-and-revisions.md) §4)
+  [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §7)
 - approval UX와 actor identity
 - ~~revision ID 생성 방식~~ → 1부터 연속 정수
-  ([ADR-0021](./adr/0021-blueprint-state-and-revisions.md) §2). content hash는
+  ([ADR-0021](./adr/0021-blueprint-state-and-revisions.md) §2). Evolve generation은
+  별도 연속 정수이며 `(mission_id, generation)`이 identity
+  ([ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §2). content hash는
   미정 — 최선 시도 채택 절차가 내용 동일성 판정을 요구할 때 확정한다
 - editorial change와 semantic revision 구분
 - user-authored Seed import/edit 지원 여부

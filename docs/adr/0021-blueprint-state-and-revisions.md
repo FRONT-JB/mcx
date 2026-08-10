@@ -5,6 +5,11 @@
 - Constitutional basis: Principle 7 (Durable state over conversation memory), §14 (Mission State와 Artifacts), [ADR-0002](./0002-approved-seed-is-immutable.md), [ADR-0019](./0019-blueprint-qa-loop.md)
 - Upstream evidence: [SEED_UPSTREAM_FINDINGS](../research/SEED_UPSTREAM_FINDINGS.md) §7, §8, §11, §12; [PERSISTENCE_UPSTREAM_FINDINGS](../research/PERSISTENCE_UPSTREAM_FINDINGS.md) §9
 
+> **Phase 10 partial supersession (2026-08-10).** revision·QA·승인의 단일 문서와
+> 원자 저장은 유지한다. 다만 Evolve가 `generation`과 `EvolutionRecord`를 같은
+> 문서에 추가하고 QA 예산을 generation별로 계산한다
+> ([ADR-0051](./0051-evolve-successor-blueprint-contract.md) §2·§7·§8).
+
 ## Context
 
 Blueprint domain 부품(spec·assembly·QA)은 있으나 이를 묶는 durable 상태가 없다.

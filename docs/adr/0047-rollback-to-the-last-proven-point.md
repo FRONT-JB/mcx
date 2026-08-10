@@ -60,8 +60,13 @@ rewind가 세대를 고르고, `rollback_to_previous`는 `gen_{N-1}`을 이름�
 
 따라서 Phase 10에서 **임의 generation 선택과 파일 복원을 함께** 채택하면 안정적
 지점 identity는 필요하다. 그러나 그 identity가 반드시 tag일 필요는 없다 — 기존
-checkpoint commit에 generation identity를 싣는 선택도 남아 있다. Phase 10 설계
-ADR이 rewind 범위를 확정할 때까지 현재의 **태그 미도입** 결정은 유지한다.
+checkpoint commit에 generation identity를 싣는 선택도 남아 있다.
+
+**최종 처분 (2026-08-10, [ADR-0051](./0051-evolve-successor-blueprint-contract.md)
+§2·§9): 임의 generation rewind를 최초 Evolve slice에 넣지 않는다.** generation
+identity는 Blueprint state의 `(mission_id, generation)`이고 checkpoint가 이미
+`Blueprint-Revision`을 기록하므로 대응 revision을 찾을 수 있다. 고를 표면이 없는
+지금 tag나 두 번째 trailer를 더하지 않고 rollback은 계속 HEAD 하나만 사용한다.
 
 ### 3. 파괴적 연산을 쓰지 않는다 — upstream 세 걸음 그대로
 
@@ -180,10 +185,10 @@ ADR-0045 §2·ADR-0046 §5와 같은 판단이다: 유도되는 것을 저장하
 
 ## 미결로 남기는 것
 
-- [-] **세대가 생기면 지점 이름이 필요한가** (§2) — **Phase 10 진입 재검토
-  완료, 최종 처분은 설계 ADR로 이관.** 임의 generation 선택 + 파일 복원을
-  채택하면 안정적 identity가 필요하지만 tag 자체는 필수가 아니다. 그전까지
-  태그 미도입을 유지한다.
+- [x] **세대가 생기면 지점 이름이 필요한가** (§2) — **필요 없다.** 최초
+  Evolve는 임의 generation rewind를 도입하지 않고 마지막 proven HEAD만 쓴다.
+  generation↔revision identity는 Blueprint state가 소유한다
+  ([ADR-0051](./0051-evolve-successor-blueprint-contract.md) §2·§9).
 - **되돌리기가 지운 것을 사용자가 볼 수 없다** — 무엇이 사라졌는지 목록이
   남지 않는다. → **재지정** ([Phase 9 종료 검토](../progress/0009_RECOVERY_LAYERS.md) §3-8, 2026-08-10): 도그푸딩 0005에서 rollback이
   발동한 시점의 트리가 checkpoint 직후라 **지운 것이 없었다** — 관측이 아직

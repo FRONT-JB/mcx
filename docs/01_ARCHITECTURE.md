@@ -96,6 +96,8 @@ Mission Control 시스템 경계 안에는 다음 책임이 있다.
 - dispatch 범위와 capability envelope 구성
 - Runtime/LLM 결과의 정규화, domain evidence 연결, provenance 보존
 - retry, Recover와 같은 control decision
+- Verify `HOLD` evidence를 같은 Mission의 후속 Blueprint generation proposal로
+  바꾸는 Evolve 조율과 partial-phase checkpoint
 - CLI와 MCP가 공유하는 application use case
 
 operator pause/resume overlay는 **PROPOSED**이며 현재 v1의 필수 Core 책임이 아니다.
@@ -424,6 +426,25 @@ Verify는 결정적 검사를 먼저 수행하고 각 Acceptance Criterion을 ev
 Recover dispatch는 실패와 무관한 범위로 확장할 수 없고, 결과는 반드시 다시
 Verify를 통과해야 한다.
 
+### 8.5 Evolve 흐름 — NORMATIVE shape
+
+Evolve는 새 lifecycle Stage가 아니라 Verify `HOLD`에서 Blueprint로 돌아가는
+후속 명세 생산 경로다 ([ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md)).
+
+1. current approved Blueprint와 같은 revision의 Execute·Verify lineage를 읽고
+   Verify Gate `HOLD`를 재계산한다.
+2. source evidence와 현재 ontology를 durable evolution record에 고정한다.
+3. 무도구 text lane의 Wonder가 challenge/gap을 제안한다.
+4. Reflect가 explicit AC patch와 ontology mutation을 제안한다.
+5. application이 scope, parent AC identity, delete/reorder 금지를 결정적으로 검사한다.
+6. 후속 generation의 pending Blueprint revision과 completed evolution record를
+   원자적으로 저장한다.
+7. QA와 exact user approval 뒤에만 Blueprint Gate가 Execute를 연다.
+
+`wondering`·`reflecting`·`seeding`은 이 경로의 재개 checkpoint이지 canonical
+`current_stage`가 아니다. Verify `CLEAR`/`MISSION COMPLETE`에서는 이 흐름을
+시작하지 않는다.
+
 ---
 
 ## 9. Persistence와 일관성 경계
@@ -432,7 +453,9 @@ Verify를 통과해야 한다.
 
 - mission identity, current Stage와 state version
 - Brief 질문·답변·가정·출처
-- Blueprint revision, 승인 주체·시각·대상 revision
+- Blueprint revision과 generation, ontology, 승인 주체·시각·대상 revision
+- Evolve의 source Verify snapshot, Wonder/Reflect output, partial phase와 parent
+  Blueprint revision
 - 각 Stage/Recover attempt와 parent/trigger 관계
 - dispatch 당시의 scope와 capability envelope
 - raw Runtime observation, canonical Runtime event와 domain evidence의 lineage/reference
@@ -440,8 +463,10 @@ Verify를 통과해야 한다.
 - cancellation과 operator intervention 같은 확정된 control event
 - 최종 verification report
 
-pause/resume event는 Lifecycle의 제안이 채택될 때만 이 목록에 추가한다. 현재 v1
-persistence contract는 pause/resume event를 필수로 요구하지 않는다.
+일반 operator pause/resume event는 Lifecycle의 제안이 채택될 때만 이 목록에
+추가한다. 다만 Evolve의 `wondering`·`reflecting`·`seeding` checkpoint는
+ADR-0051이 정한 해당 command의 durable 재개 계약이며 별도 event store를 뜻하지
+않는다.
 
 ### 9.2 불변 artifact와 가변 projection — NORMATIVE
 

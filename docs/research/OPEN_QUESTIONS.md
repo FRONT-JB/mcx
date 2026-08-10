@@ -61,10 +61,10 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
 - [x] Seed 생성 → QA → repair → approval path를 실제 handler로 추적한다. →
       [SEED_UPSTREAM_FINDINGS](./SEED_UPSTREAM_FINDINGS.md)
 - [-] Seed field와 immutability/revision behavior를 source에서 확인한다. →
-      필드·불변성은 확인(ADR-0017·0021). **잔여 3건**은
-      [SEED findings §11](./SEED_UPSTREAM_FINDINGS.md): revision lineage와
-      `parent_seed`의 의미, `GradeGate`의 등급 소비 규칙,
-      `SeedRepairer.converge`의 bounded stop 조건
+      필드·불변성은 확인(ADR-0017·0021), revision lineage와 `parent_seed` 의미는
+      Phase 10에서 해소([EVOLVE findings](./EVOLVE_UPSTREAM_FINDINGS.md), ADR-0051).
+      **잔여 2건**은 [SEED findings §11](./SEED_UPSTREAM_FINDINGS.md):
+      `GradeGate`의 등급 소비 규칙, `SeedRepairer.converge`의 bounded stop 조건
 - [x] Run이 AC를 atomic-first로 시도하고 분해하는 정확한 조건을 확인한다. →
       [RUN_UPSTREAM_FINDINGS §6](./RUN_UPSTREAM_FINDINGS.md) (분해는 예외
       경로, 자식 2~5·깊이 2·repair 1)
@@ -172,8 +172,11 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       검사(`check_scope`)만 있고 점수화된 결정적 층이 없다. upstream 위치가
       합성 계층(`auto/`)이므로 우리 대응 층도 Phase 8이다
       ([SEED findings §11](./SEED_UPSTREAM_FINDINGS.md)).
-- [x] schema/ontology를 v1에 포함할지 결정한다. → 제외. upstream 필드 5개
-      (ontology_schema 등)는 v1 미포함으로 기록
+- [x] schema/ontology를 v1에 포함할지 결정한다. → Phase 2에서는 소비자 부재로
+      제외했으나 Phase 10 Wonder/Reflect가 실제 소비자가 되어 최소
+      `OntologySchema`를 도입하기로 supersede
+      ([ADR-0051](../adr/0051-evolve-successor-blueprint-contract.md) §3).
+      나머지 upstream 필드 4개는 미포함 유지
       ([ADR-0017](../adr/0017-blueprint-schema-baseline.md) Cost)
 
 2026-08-08 도그푸딩 0001에서 등록, 같은 날 대조·처분
@@ -615,12 +618,14 @@ Hermes는 upstream 정식 backend이고 로컬 실물도 있다 (`~/.local/bin/h
       후자는 Recover 내부의 bounded lateral recovery라 `current_stage`에 새 값을
       추가하지 않는다. generation의 `wondering`~`evaluating`도 별도
       `GenerationPhase` 복구 checkpoint다.
-- [ ] Wonder/Reflect 출력의 mcx 대응물을 결정한다 — 우리 Brief/Blueprint의
-      어디로 들어오는가. Gen 2+에서 Brief를 대체하는지, 입력으로 합류하는지가
-      핵심 갈림길이다 (도그푸딩 기록이 수동으로 하던 역할의 자동화).
-- [ ] 도입 ADR을 작성하고 구현한다. backend는 위 실측으로 Claude 유지가
-      확정됐으므로 기존 vendor-neutral `CompletionEngine`을 재사용하고 Hermes
-      adapter는 최초 범위에서 제외한다.
+- [x] Wonder/Reflect 출력의 mcx 대응물을 결정했다 (2026-08-10,
+      [ADR-0051](../adr/0051-evolve-successor-blueprint-contract.md)). Verify `HOLD`
+      뒤 **같은 Mission**의 후속 Blueprint generation proposal이며 새 Stage·새
+      Mission이 아니다. generation/revision 분리, ontology, explicit parent-key
+      AC patch, user+QA 재승인, 세대별 QA 예산, partial phase checkpoint까지 확정.
+- [ ] 구현한다. backend는 위 실측으로 Claude 유지가 확정됐으므로 기존
+      vendor-neutral `CompletionEngine`을 재사용하고 Hermes adapter는 최초
+      범위에서 제외한다. Gen 2 대표 경로 dogfood 전 Phase 10 COMPLETE 금지.
 
 ---
 

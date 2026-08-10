@@ -5,6 +5,11 @@
 - Constitutional basis: Principle 1 (Specification before execution), Principle 3 (Evidence over reasoning), §17 (Scope와 Reasoning Discipline)
 - Upstream evidence: [SEED_UPSTREAM_FINDINGS.md](../research/SEED_UPSTREAM_FINDINGS.md)
 
+> **Phase 10 partial supersession (2026-08-10).** 이 ADR이 소비자 부재를 이유로
+> 유예한 `ontology_schema`는 Wonder/Reflect가 실제 소비자가 되어
+> [ADR-0051](./0051-evolve-successor-blueprint-contract.md) §3에서 도입하기로 했다.
+> 나머지 방향 필드·`extra="forbid"`·content-key 결정은 유지된다.
+
 ## Context
 
 [Brief handoff](./0016-brief-handoff-projection.md)가 Blueprint의 입력으로

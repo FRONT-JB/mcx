@@ -9,7 +9,7 @@
 | 아키텍처 | [`01_ARCHITECTURE.md`](./01_ARCHITECTURE.md) |
 | Stage Guide | [`05_BRIEF.md`](./05_BRIEF.md), [`06_BLUEPRINT.md`](./06_BLUEPRINT.md), [`07_EXECUTE.md`](./07_EXECUTE.md), [`08_VERIFY.md`](./08_VERIFY.md), [`09_RECOVER.md`](./09_RECOVER.md) |
 | 적용 범위 | 한 Mission의 생성부터 `MISSION COMPLETE`까지 |
-| 최종 갱신일 | 2026-08-07 |
+| 최종 갱신일 | 2026-08-10 |
 
 이 문서는 Mission Control의 canonical Stage, Gate 의미, attempt lineage, 정상 전이와
 policy-directed Recover routing을 정의한다. 각 Stage의 prompt, tool allowlist,
@@ -109,7 +109,17 @@ RecoveryDirective는 `HOLD`의 실패 evidence를 다음 corrective action으로
 2. `HOLD`에서 아무 행동도 못 하는 것이 아니라, 기록된 정책으로 교정 경로를
    선택할 수 있다.
 
-### 3.6 Stage activation — PROPOSED representation
+### 3.6 Blueprint generation — NORMATIVE
+
+`generation`은 같은 Mission 안에서 승인된 Blueprint가 Execute→Verify를 지난
+학습 주기다. 내용 변경 횟수인 `revision`과 다르다. 같은 generation의 QA 보완은
+revision만 올리고, Verify `HOLD` evidence에서 Evolve가 후속 Blueprint를 열 때만
+generation이 올라간다 ([ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md)).
+
+`wondering`·`reflecting`·`seeding`은 generation proposal의 durable 내부 phase다.
+canonical Stage가 아니며 Stage enum을 늘리지 않는다.
+
+### 3.7 Stage activation — PROPOSED representation
 
 한 Stage에 들어와 `CLEAR`로 나가거나 corrective route로 떠날 때까지의 점유 구간을
 Stage activation으로 표현할 수 있다. 같은 Mission이 Blueprint 또는 Verify에 다시
@@ -180,6 +190,10 @@ flowchart LR
 Recover는 위 직선 경로의 마지막 Stage가 아니다. `HOLD`와 failure evidence가 있고
 정책이 bounded correction이 가능하다고 판단할 때만 진입하는 corrective path다.
 
+Verify가 `HOLD`이면 Evolve를 명시적으로 선택해 같은 Mission의 다음 Blueprint
+generation proposal로 돌아갈 수 있다. proposal은 QA·사용자 재승인 전까지
+Blueprint `HOLD`이며, Verify `CLEAR` 뒤에는 이 경로가 없다.
+
 ### 5.1 Mission creation — NORMATIVE
 
 Mission creation은 이전 Stage에서의 전이가 아니라 lifecycle 시작 event다. 생성 시
@@ -239,8 +253,11 @@ success, 사용자 침묵, 모델 확신은 forward progression을 허가하지 
 
 #### Entry — NORMATIVE
 
-- Brief Gate의 `CLEAR`와 해당 evidence reference가 있다.
-- 입력 Brief revision/snapshot이 고정되어 있다.
+- Gen 1은 Brief Gate의 `CLEAR`와 해당 evidence reference가 있고 입력 Brief
+  revision/snapshot이 고정되어 있다.
+- Gen 2+는 current approved Blueprint와 같은 revision의 Execute lineage,
+  Verify evidence·semantic verdict, Verify Gate `HOLD`가 있고 Evolve source
+  snapshot이 고정되어 있다.
 - 해결되지 않은 제품 결정을 몰래 구현 선택으로 바꾸지 않았다.
 
 #### Permitted work
@@ -249,11 +266,14 @@ success, 사용자 침묵, 모델 확신은 forward progression을 허가하지 
   reviewable specification으로 구성한다.
 - QA, 모순 검사, 검증 가능성 검사를 수행한다.
 - 승인 전 revision을 보완한다.
+- Gen 2+에서는 Wonder/Reflect proposal을 parent AC identity와 ontology mutation
+  규칙으로 조립하되 사용자 소유 Goal·Constraints·Non-goals를 자동 변경하지 않는다.
 
 #### Exit evidence — NORMATIVE
 
-- immutable Blueprint revision identifier
-- Brief input revision과 추적 관계
+- immutable Blueprint revision과 generation identifier
+- input lineage: Gen 1은 Brief revision, Gen 2+는 parent Blueprint revision과
+  source Verify snapshot
 - 각 Acceptance Criterion의 관찰/검증 방법
 - Constraints와 Non-goals의 검사 방법
 - QA 결과와 남은 위험
@@ -522,6 +542,7 @@ forward progression이 아니라 `HOLD`에서 시작하는 corrective route다.
 | Verify | `HOLD` | evidence만 부족 + directive | Verify | 추가 검증 attempt |
 | Verify | `HOLD` | 구현 결함 교정 가능 + directive | Recover | bounded correction |
 | Verify | `HOLD` | Goal/AC 자체의 gap + directive | Brief 또는 Blueprint | spec correction |
+| Verify | `HOLD` | Evolve 명시 선택 + current revision의 완전한 Execute/Verify evidence | Blueprint | 같은 Mission의 후속 generation proposal; QA·재승인 필요 |
 | Verify | `HOLD` | 권한·risk·budget blocker | Verify | operator action 대기 |
 | Recover | `CLEAR` | 교정 결과와 Telemetry 준비 | Verify | 반드시 재검증 |
 | Recover | `HOLD` | Recover-owned evidence 누락 + directive | Recover | evidence-only attempt |
@@ -540,6 +561,7 @@ forward progression이 아니라 `HOLD`에서 시작하는 corrective route다.
 - 승인되지 않은 Blueprint revision을 기준으로 Execute/Recover/Verify
 - 과거 state version을 기준으로 현재 Stage 덮어쓰기
 - Runtime/LLM result가 destination을 직접 commit
+- Verify `CLEAR`/`MISSION COMPLETE`에서 Evolve로 Blueprint를 다시 여는 전이
 
 ### 9.2 Backward route의 선택 기준 — NORMATIVE
 
@@ -548,6 +570,10 @@ Brief와 Blueprint 중 어디로 돌아갈지는 문제의 소유자가 결정�
 - 사용자 Goal, 제약, Non-goal, 성공 의미가 불명확/변경됨 → **Brief**
 - 의미는 명확하지만 실행 명세, AC, 검증 방법, 작업 분해가 잘못됨 → **Blueprint**
 - 승인된 명세는 유효하고 구현/검증 결과만 잘못됨 → **Recover** 또는 동일 Stage retry
+
+Evolve는 이 셋을 자동 분류하는 장치가 아니다. Verify `HOLD` evidence를 보고
+후속 명세 generation을 제안하도록 명시적으로 선택하는 Blueprint 복귀 경로다.
+goal·constraint 변경 proposal은 적용하지 않고 Brief 사용자 결정으로 보낸다.
 
 더 앞 Stage로 보내는 것이 안전하다는 이유만으로 매번 Brief부터 다시 시작하지
 않는다. 반대로 specification gap을 코드 수정으로 덮지 않는다.

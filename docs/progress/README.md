@@ -4,9 +4,9 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | **Phase 9 COMPLETE (2026-08-10)** — 실사용 진입·되돌리기·관측 층, 종료 검토 포함 ([progress 0009](./0009_RECOVERY_LAYERS.md)). **Phase 10 Reflect/Evolve upstream 조사 진행 중** |
+| Project phase | **Phase 9 COMPLETE (2026-08-10)** — 실사용 진입·되돌리기·관측 층, 종료 검토 포함 ([progress 0009](./0009_RECOVERY_LAYERS.md)). **Phase 10 Reflect/Evolve 설계 완료·구현 대기** |
 | Mission status | ACTIVE |
-| Gate | **Phase 0~9 COMPLETE.** Phase 10 진입 조건 없음([progress 0009 §4](./0009_RECOVERY_LAYERS.md)); 구현 전 upstream Gen 2+ 연결 경로 조사와 설계 ADR 필요 |
+| Gate | **Phase 0~9 COMPLETE.** Phase 10 Gen 2+ 조사·backend A/B·설계 ADR-0051 완료. 구현 slice 진입 가능 |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 29종 — CLI 파서 파생, 원장 유도 job, stdio, entry point `mcx-mcp`) |
 | Automated tests | 967 passed (unit + integration, 2026-08-10 실측) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
@@ -23,7 +23,7 @@
 - upstream `Q00/ouroboros`의 기준 commit을 기록했다.
 - 사용자 용어와 내부/upstream 용어 mapping을 확정했다.
 - Runtime은 Codex/OpenCode 방향이며 Gemini는 v1 범위에서 제외했다.
-- Phase 1~9의 결정은 ADR-0009~0050과 각 Phase 종료 기록에 연결되어 있다.
+- Phase 1~9와 Phase 10 설계 결정은 ADR-0009~0051과 각 Phase 기록에 연결되어 있다.
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
@@ -35,17 +35,17 @@
 | 문서 | 상태 | 다음 Gate |
 |---|---|---|
 | `00_MISSION_CONTROL.md` | Active Draft | 구현 evidence로 검증 (사용자 검토 완료) |
-| `01_ARCHITECTURE.md` | Draft | Phase 1~9 경계는 구현 evidence로 검증; Phase 10 세대 루프 경계 갱신 대기 |
-| `02_MISSION_LIFECYCLE.md` | Draft | 다섯 Stage 전이는 구현으로 검증; Phase 10의 세대 간 연결과 upstream 내부 국면 대조 대기 |
+| `01_ARCHITECTURE.md` | Draft | Phase 1~9 경계는 구현 evidence로 검증; Phase 10 Evolve 경계는 ADR-0051 반영, 구현 evidence 대기 |
+| `02_MISSION_LIFECYCLE.md` | Draft | 다섯 Stage 전이는 구현으로 검증; Evolve는 새 Stage 없이 Verify HOLD→후속 Blueprint generation으로 설계 확정 |
 | `03_RUNTIME.md` | Draft | Codex 실행·Claude/Codex 텍스트 계약 검증; OpenCode 실물 이연, Hermes는 Phase 10 A/B 후 최초 범위 제외 |
 | `04_MCP.md` | Draft | tool 29종·stdio·job/cancel은 ADR-0041로 검증; worker 재귀 경계와 host 합성 책임은 ADR-0042로 검증 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
-| `06_BLUEPRINT.md` | Draft | schema·QA·revision·결정적 품질 하한을 Phase 2·8·9에서 검증; Gen 2+ Brief 없는 생성 경로 결정 대기 |
+| `06_BLUEPRINT.md` | Draft | schema·QA·revision·결정적 품질 하한 검증; Gen 2+ generation/ontology/Evolve patch 계약은 ADR-0051 반영, 구현 대기 |
 | `07_EXECUTE.md` | Draft | v1 실행·Runtime·worktree·checkpoint 계약을 Phase 3·5·9에서 검증; 병렬 실행은 Phase 11 |
 | `08_VERIFY.md` | Draft | 진입·mechanical·semantic·`changed_files`·MISSION COMPLETE 계약을 Phase 4·9에서 검증 |
-| `09_RECOVER.md` | Draft | 실패 packet·재시도·rollback 계약을 Phase 4·9에서 검증; spec-gap 자동 분류는 Phase 10 설계 후 재평가 |
-| `adr/` | 50 Accepted ADRs | ADR-0001~0050. Phase 9 종료 검토에서 upstream 원문 대조 규칙까지 추가 |
-| `research/` | Phase 10 baseline in progress | upstream baseline·도그푸딩 0001~0005·Evolve 선행 조사 보존 |
+| `09_RECOVER.md` | Draft | 실패 packet·재시도·rollback 계약을 Phase 4·9에서 검증; spec-gap classifier는 ADR-0051에서 미도입 확정 |
+| `adr/` | 51 Accepted ADRs | ADR-0001~0051. Phase 10 Evolve successor Blueprint 계약까지 확정 |
+| `research/` | Phase 10 baseline complete | upstream baseline·도그푸딩 0001~0005·Evolve 연결·backend A/B 보존 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
 작성되었지만 사용자가 검토하고 구현 evidence로 검증하기 전이라는 뜻이다.
@@ -598,7 +598,10 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
 
 ### Phase 10 — Reflect/Evolve: 자가개선 루프 — IN PROGRESS (사용자 결정 2026-08-09)
 
-목표: **미션이 배운 것을 다음 미션의 스펙으로 자동 전환한다.** 사용자 지시는
+목표: **미션이 배운 것을 같은 Mission의 다음 Blueprint generation으로 자동
+전환한다.** "다음 미션"이라는 이전 표현은 Mission 경계를 잘못 잡았다 — Verify
+`HOLD`는 아직 같은 Goal의 ACTIVE Mission이고 `MISSION COMPLETE`는 terminal이다.
+사용자 지시는
 "도입 여부 조사"가 아니라 **확실하게 구성**이다 — Hermes 사용 방식과 자가개선
 결과가 다음 작업에 연결되는 경로를 깊이 파악해 반영한다.
 
@@ -660,21 +663,26 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
   **입력을 만드는 단계**다. Gen 2+에는 **모호함 채점이 돌지 않고**
   (`ambiguity_score`·`interview_id`가 부모 것 그대로), goal·constraints·AC만
   진화하며 판정 원칙과 종료 조건은 상속된다. AC는 **설명 문장만** 바뀌고
-  기계적 확인 계약은 **위치로** 이어지며, 설명이 바뀌면 semantic key를 새로
+  기계적 확인 계약은 **explicit parent identity로** 이어지며, 설명이 바뀌면 semantic key를 새로
   발급한다. 모호한 삭제·재정렬은 거부하고 `ACPatch`에 `delete`가 없다.
+  `generate_from_reflect`의 "explicit keep만 계약 보존" docstring은 실제 구현·
+  focused tests와 충돌했고, explicit `revise`도 mechanical contract를 보존함을
+  추가 2 tests로 확인했다([EVOLVE findings](../research/EVOLVE_UPSTREAM_FINDINGS.md) §4).
   **핵심 결론: `BlueprintService.generate`가 승인된 Brief handoff를 요구하므로
   Gen 2+에는 생성 경로가 없다 — 계층 경계 문제이며 Phase 10 설계 ADR의 1번
   항목이다**
-- [ ] Wonder/Reflect 출력의 mcx 대응물 설계 ADR — 위 조사를 근거로. 결정할 것
-  넷: (1) Brief 없는 Blueprint 생성 경로, (2) `revise`의 두 번째(자동) 생산자,
-  (3) Gen 2+의 승인 주체(upstream은 자율, 우리는 사람+QA 근거 필수 — ADR-0021),
-  (4) AC 식별 모델 차이(우리는 내용 식별 ADR-0017, upstream은 위치로 권위 이관)
+- [x] **Wonder/Reflect 출력의 mcx 대응물 설계 — 2026-08-10 완료**
+  ([ADR-0051](../adr/0051-evolve-successor-blueprint-contract.md)). Verify `HOLD`
+  뒤 같은 Mission의 후속 Blueprint generation proposal이다. 새 Stage·새 Mission은
+  만들지 않는다. 기존 네 항목에 구현상 필수였던 ontology 재도입과 generation별
+  QA 예산을 추가로 확정했다. partial Wonder/Reflect phase는 Blueprint 상태 문서에
+  checkpoint하고, exact user approval 없이는 Execute를 열지 않는다
 - [ ] 구현 — 기존 vendor-neutral `CompletionEngine` + `ClaudeCompletion`을
   재사용한다. Hermes adapter는 A/B 결과에 따라 최초 범위에서 제외
-- [ ] **spec-gap 분류 필요 여부 재평가** (Phase 9에서 이관, 2026-08-10). 두
-  갈래다: upstream처럼 루프가 매 세대 스펙을 다시 만들면 분류는 **불필요**하고,
-  루프가 `HOLD`를 읽어 스펙 문제일 때만 Brief로 가면 **필요**하다. 어느 쪽인지는
-  Evolve 설계가 정한다 — 지금 만들면 두 번째를 근거 없이 확정하는 것이다
+- [x] **spec-gap 분류 불필요 확정** (ADR-0051 §9). Core는 새 분류 축을 만들지
+  않는다. Evolve는 Verify `HOLD`에서 명시적으로 고르는 후속 명세 경로이고,
+  Recover는 기존 Blueprint를 유지하는 bounded correction이다. 호출 순서와 사용자
+  선택은 skill 책임이며 scope 변경 proposal은 Brief로 HOLD한다
 
 ### Phase 11 — 병렬 실행
 
@@ -1005,10 +1013,11 @@ worktree 격리(ADR-0045). 둘 다 **뒤 항목의 선행이었다는 점이 같
 `context` 공백을, 후자는 checkpoint·rollback·`changed_files`가 딛고 설 git
 경계를 열었다.
 
-다음 검증 가능한 목표 한 개: **Wonder/Reflect 출력의 mcx 대응물 설계 ADR을
-작성한다.** 결정할 것은 (1) Brief 없는 Blueprint 생성 경로, (2) 자동
-`revise` 생산자, (3) Gen 2+ 승인 권위, (4) 내용 기반 AC identity와 upstream
-위치 patch의 reconcile이다. backend는 [A/B 실측](../research/EVOLVE_BACKEND_AB.md)으로
+다음 검증 가능한 목표 한 개: **ADR-0051의 Evolve domain/state vertical slice를
+구현한다.** 먼저 generation·ontology·content-key patch·세대별 QA 예산과
+EvolutionRecord checkpoint를 fake Wonder/Reflect로 닫는다. 그 뒤 기존
+`CompletionEngine` 기반 Claude adapter·CLI/MCP surface를 잇고, 마지막에 Gen 2
+대표 실사용 dogfood를 한다. backend는 [A/B 실측](../research/EVOLVE_BACKEND_AB.md)으로
 Claude 유지·Hermes 최초 범위 제외까지 확정됐으므로 다시 열지 않는다.
 
 ### CLEAR 조건 중 강제되지 않는 것
@@ -1276,7 +1285,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 7 — MCP control surface | **충족 (2026-08-09)** — 로드맵 체크리스트 9항목이 이행 5·부분 2·미이행 2였음을 드러냈다. 미조립 부품 1건 수정(Recover 비동기 짝 — `recover dispatch`가 같은 `codex exec`를 돈다), 무처분 도과 3건 재지정(host 자기 도구 경로·승인 actor→Phase 8, cancelled 상태·resume→Phase 9), 미표시 보류 2건 등재(취소된 attempt, 재귀 경계), 미등록 이탈 1건 등록(서버가 사람에게 직접 묻지 않음, `upstream 미확인`) | [progress 0007](./0007_MCP_CONTROL_SURFACE.md) |
 | Phase 8 — plugin 패키징 (합성 계층) | **충족 (2026-08-09)** — tool description이 이름의 반복이던 것을 검토에서 이행(CLI `help=` 파생, 24명령). 미이행 2건 재지정(stale write 재확인·host 자기 도구 경로 → Phase 9, 전자는 **발동 조건과 종료 조건을 함께 걸어** 무한 연기를 끊었다), 표시 없던 보류 1건 등록(skill 6종의 근거), 산문 강제 1건 확인(질문 형태 규칙) | [progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | **충족 (2026-08-10)** — 두 번의 도그푸딩이 결함 6건을 잡았고 전부 조사·테스트로는 드러나지 않았다. 가장 큰 소득은 개별 결함이 아니라 **셋이 같은 뿌리를 갖는다는 것** — *"upstream과 같다"고 적어 놓고 원문과 대조하지 않았다*(§1.3). ADR README에 절차 한 줄을 넣었다. 검토가 직접 잡은 것 1건 수정(`changed_files`를 만들어 놓고 표시하지 않았다), 미결 11건 처분(닫음 6·재지정 3·구현 1·해소 1, **무처분 통과 0**). Phase 5를 시한으로 쓴 마지막 항목(telemetry event 층)도 종결됐다 | [progress 0009](./0009_RECOVERY_LAYERS.md) |
-| Phase 10 — Reflect/Evolve | **진행 중** — Gen 2+ 전체 연결과 backend A/B 완료; Claude 유지·Hermes 최초 범위 제외. 다음은 Wonder/Reflect→Blueprint 설계 ADR | — |
+| Phase 10 — Reflect/Evolve | **진행 중** — Gen 2+ 전체 연결·backend A/B·ADR-0051 설계 완료. 같은 Mission의 successor generation, ontology, AC patch, 세대별 QA 예산, replay checkpoint 확정. 다음은 domain/state 구현 | — |
 | Phase 11 — 병렬 실행 | 대기 | — |
 
 ## Update protocol

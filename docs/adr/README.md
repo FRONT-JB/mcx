@@ -81,6 +81,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0048](./0048-changed-files-collection.md) | `changed_files` 수집 — 기준선은 **HEAD**이며 우리 브랜치에서 그것은 곧 마지막 입증 지점이라 목록이 rollback이 지울 집합과 같다. **검증 명령을 돌리기 전에** 찍는다(뒤로 미루면 명령 캐시가 섞이고, checkpoint 뒤면 트리가 깨끗해 언제나 빈 목록이 된다). rename은 두 경로 모두 싣는다(staging용 파서와 다르다 — upstream도 파서가 둘). **빈 목록과 수집 실패를 구분한다.** `--stat`·원문 보존·평가자 전달은 미도입 — upstream이 그것을 두는 이유(QA가 workspace를 관찰 못 함)가 우리에겐 없다(등록된 divergence). | Accepted |
 | [0049](./0049-runtime-progress-observation.md) | 실행 중 진행 관측 — **정규화 층은 두고 event store는 두지 않는다.** 로드맵 항목의 근거 둘 중 하나(`changed_files`가 같은 생산자를 요구)는 0048이 git으로 끝내며 소멸했고, 조사가 나머지도 뒤집었다: **upstream에서 진행 표시는 event 층의 소비자가 아니다** — 콘솔 출력은 store를 읽지 않고 같은 루프에서 정규화 결과를 직접 찍는다. event store를 읽는 넷 중 셋(TUI·auto·resume)이 우리에게 없고 넷째(job 상태)는 0041이 이미 원장에서 유도한다(등록된 divergence). 대신 원장이 비워 둔 칸 하나 — *한 명령이 도는 동안 그 안에서 무슨 일이 일어나는가* — 를 **진행 꼬리**로 채운다. `item.started`만 싣는다(우리 질문은 "지금 무엇을 하는가"). 관측은 **설치되어야 한다**(취소와 같은 ambient). 마스킹은 생성 시점이며 stall 판정은 바꾸지 않는다. | Accepted |
 | [0050](./0050-requirement-candidate-provenance.md) | 요구사항 후보의 출처 — 도그푸딩 0004가 **빈 handoff에 `CLEAR`** 를 관측했다. 원인은 우리가 두 곳에서 **반대 방향으로** 갈라진 교집합이다: 후보를 upstream은 파생하는데 우리는 수동 명령으로 받고(빠뜨릴 수 있다), 전사를 upstream은 생성기에 넘기는데 우리는 끊는다(ADR-0016·0018). 각각은 무해하나 둘 다 끊으면 생성기가 받는 것이 의도 82자뿐이다. 승격 0건 미검사 **자체는 upstream 파리티**이며 upstream은 전사 backstop이 있어 필요가 없다. 처분: upstream 파생을 이식하고(초기 의도→GOAL, 답변은 upstream 정규식—한국어 포함—에 매칭될 때만), **수동 경로는 남기며**(실측 1/21로 파생만으론 부족), Gate가 승격된 성공 조건을 요구한다(Guide §13.1이 이미 요구하던 것 — 구현이 계약보다 얇았다). 자유 텍스트 `-` 문제는 **정정**: 실패는 조용하지 않았고 간극은 help의 `--` 안내뿐이었다. | Accepted |
+| [0051](./0051-evolve-successor-blueprint-contract.md) | Evolve는 Verify `HOLD` 뒤 **같은 Mission**의 후속 Blueprint generation을 제안한다. 새 Stage·새 Mission은 만들지 않는다. generation/revision 분리, ontology 재도입, content-key AC patch, 세대별 QA 예산, partial-phase durable checkpoint, user+QA 재승인을 확정했다. | Accepted |
 
 ## Template
 
@@ -100,4 +101,3 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 
 ## Verification
 ```
-

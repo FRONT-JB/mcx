@@ -87,10 +87,21 @@ metadata = SeedMetadata(
 
 `ACPatch`의 연산은 셋이다: `keep` · `revise` · `add`. **`delete`가 없다.**
 
-`generate_from_reflect` docstring이 한계도 적는다:
+`generate_from_reflect` docstring에는 다음 한계가 적혀 있다.
 
 > *"Mechanical AC contracts cross only explicit keeps; description changes
 > require a future replacement-contract patch."*
+
+**그러나 이 주석은 현재 구현·테스트와 충돌한다.**
+`evolution/acceptance_contracts.py::evolve_acceptance_contracts`는 explicit
+`revise`에도 parent의 `verify_command`·`expected_artifacts`·
+`output_assertion`·investment를 복사하고 description만 바꾼다. 그 결과 semantic
+key는 새로 계산된다. pinned focused tests
+`test_seed_generation_preserves_structured_ac_contracts`와
+`test_seed_generation_uses_explicit_patch_identity_for_multiple_revisions`도 이 동작을
+직접 고정한다(2 passed). 따라서 현재 baseline의 실행 계약은 **explicit parent
+identity가 있는 keep/revise는 mechanical authority를 이어받고, add만 빈 계약으로
+시작한다**이다. 위 docstring을 규범으로 승격하지 않는다.
 
 ## 5. Wonder → Reflect 순서와 빈 변형 감시
 
@@ -301,7 +312,8 @@ semantic 신호를 별도 계약으로 다룬다.
 
 ## 검증
 
-Pinned baseline에서 다음 focused test 11개를 실행했다.
+Pinned baseline에서 연결 경로 focused test 11개와 AC authority focused test 2개,
+총 13개를 실행했다.
 
 ```text
 uv run pytest -q \
@@ -314,6 +326,14 @@ uv run pytest -q \
   tests/unit/auto/test_pipeline_ralph_handoff.py::test_state_machine_allows_run_to_ralph_handoff \
   tests/unit/auto/test_pipeline_lateral.py::test_unstuck_lateral_phase_in_allowed_transitions
 11 passed in 3.53s
+```
+
+추가 AC authority 대조:
+
+```text
+tests/unit/evolution/test_reflect_delta.py::TestReflectEndToEnd::test_seed_generation_preserves_structured_ac_contracts
+tests/unit/evolution/test_reflect_delta.py::TestReflectEndToEnd::test_seed_generation_uses_explicit_patch_identity_for_multiple_revisions
+2 passed in 0.48s
 ```
 
 검증한 계약: event replay로 Gen 2 진행, ontology-only 연속 진화, 실패/hard-crash의

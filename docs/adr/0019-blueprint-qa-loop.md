@@ -5,6 +5,11 @@
 - Constitutional basis: Principle 3 (Evidence over reasoning), Principle 5 (User authority), §6.5 (surface 간 동일 state)
 - Upstream evidence: [SEED_UPSTREAM_FINDINGS.md](../research/SEED_UPSTREAM_FINDINGS.md) §8, §9, §10, §12
 
+> **Phase 10 partial supersession (2026-08-10).** 5회 수치와 루프 규칙은
+> 유지하되, Mission 전체가 공유하던 예산 범위는
+> [ADR-0051](./0051-evolve-successor-blueprint-contract.md) §7에 따라
+> **generation별**로 바뀐다. 같은 generation의 manual revisions는 예산을 공유한다.
+
 ## Context
 
 생성된 Blueprint를 그대로 승인 대상으로 올릴 수 없다.
