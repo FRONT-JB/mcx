@@ -54,9 +54,17 @@ def changed_paths(workspace: Path) -> tuple[str, ...]:
 
     ``-z``로 읽는 이유는 공백이 든 경로 때문이다. rename/copy 항목은 원본
     경로가 한 칸 더 오므로 건너뛴다 (upstream 파싱과 같다).
+
+    **출력을 ``strip``하지 않는다.** porcelain의 상태 두 글자는 ``" M"``처럼
+    선행 공백을 가질 수 있고, 그것을 지우면 첫 항목만 경로가 한 글자 잘린다 —
+    ``__pycache__`` → ``_pycache__``. 도그푸딩 0005가 실물로 관측했다: 첫
+    checkpoint는 모든 파일이 ``??``(untracked)라 통과했고, **수정된 추적 파일이
+    처음 나온 두 번째 라운드**에서 조용히 실패했다.
     """
-    raw = _output(workspace, "status", "--porcelain=v1", "-z", "--untracked-files=all")
-    entries = raw.split("\0")
+    result = _git(workspace, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+    if result.returncode != 0:
+        raise RuntimeError(f"git status 실행에 실패했다: {result.stderr.strip()}")
+    entries = result.stdout.split("\0")
     paths: list[str] = []
     index = 0
     while index < len(entries):

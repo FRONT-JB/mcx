@@ -144,6 +144,43 @@ upstream의 quality bar는 채점자에게 그대로 전달되는 영어 문자�
 **통과 판정이 상한 판정보다 앞선다.** 상한에 도달한 마지막 채점이 통과라면
 통과다 — 횟수를 다 썼다는 이유로 합격을 취소하지 않는다.
 
+### 6.1 상한 소진 뒤의 **최종 수정 1회** (2026-08-10 개정)
+
+> **왜 개정하는가.** 도그푸딩 0005 §4가 데드락을 관측했다 — 소진 뒤 명세를
+> 고치면 `revise`는 되는데 `approve`는 채점을 요구하고(§8) `qa`는 예산이 없다.
+> 출구가 없다.
+>
+> **원인은 우리가 upstream 규칙의 절반만 이식한 것이다.** upstream은 상한과
+> 그 뒤의 경로를 **한 문장에 함께** 둔다 (`skills/seed/SKILL.md:113`):
+>
+> > If the user chooses **one final manual edit**, apply exactly that
+> > user-specified edit … and ask for **explicit below-threshold acceptance**;
+> > **do not start a sixth QA iteration, rerun QA**, or claim the result passed.
+>
+> 우리는 상한을 skill이 아니라 **코드로** 옮겼고(§1, Constitution §6.5) 그러면서
+> 그 상한을 살 만하게 만드는 나머지 절반을 산문에 두고 왔다. upstream에서는
+> 강제자가 에이전트라 지시 전체가 한 덩어리로 작동한다.
+
+`EXHAUSTED` 뒤에 다음 셋이 성립한다.
+
+- **수정은 한 번뿐이다.** 소진 뒤 채점 없는 revision이 이미 있으면 두 번째
+  `revise`를 거부한다 (`FinalEditAlreadyUsedError`). 허용하면 채점 없는
+  revision을 쌓으며 상한을 우회한다.
+- **재채점하지 않는다.** `qa`는 여전히 `QaBudgetExhaustedError`다.
+- **직전 채점을 물려받아 임계 미달 수락으로 승인한다.** 물려받는 것은 루프
+  전체의 최고 점수이며, 그 판정이 `REVISE`일 때만 이 경로가 열린다 — `PASS`면
+  그 revision을 승인하면 되고 `FAIL`은 에스컬레이션이다.
+
+**§8이 지키는 것을 깨지 않는다.** 물려받은 점수가 **어느 revision의 것인지**를
+`BlueprintApproval.qa_scored_revision`이 기록한다. 그 자리가 없으면 채점된 적
+없는 revision이 채점된 것처럼 남아 *"통과한 것인가 봐준 것인가"* 가 다시
+대답 불가능해진다.
+
+**대가**: 최종 수정이 revision을 올리므로 **실행 lineage가 전부 무효가 된다**
+(ADR-0002). 도그푸딩 0005에서 AC 하나의 문구를 고치는 데 AC 7개 재실행이
+들었다. 관측으로 기록한다 — 이 대가는 최종 수정 경로가 아니라 revision 단위
+실행 lineage에서 온다.
+
 ### 7. 수정은 자동 적용하지 않는다
 
 채점자는 지적과 제안만 반환하고 초안을 고치지 않는다. 무엇을 적용할지는 사용자가

@@ -171,7 +171,8 @@ class BlueprintService:
             )
 
         blueprint = assemble_blueprint(draft=draft, handoff=handoff, revision=state.revision + 1)
-        revised = state.revise(blueprint=blueprint)
+        # 상한 소진 뒤의 최종 수정은 한 번뿐이다 (ADR-0019 §6.1).
+        revised = state.revise(blueprint=blueprint, policy=self.qa_policy)
         await self.repository.save(revised)
         return revised
 

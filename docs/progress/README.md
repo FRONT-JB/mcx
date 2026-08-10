@@ -576,7 +576,22 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   산문) — REDACTION_FIELD_TRIAL과 같은 구조의 divergence다. 라벨 없는 층에만
   `eyJ` 접두사를 요구한다. **그 문서의 "과잉 0건"은 측정 범위가 좁았던
   것**이며 실사용이 드러냈다
-- [ ] **QA 예산 소진 후 `revise`하면 영원히 승인할 수 없다** (미처분,
+- [x] **QA 예산 소진 후 `revise`하면 영원히 승인할 수 없다** — 처분 완료
+  ([ADR-0019 §6.1](../adr/0019-blueprint-qa-loop.md) 개정, 964 tests).
+  **우리가 upstream 규칙의 절반만 이식한 것이 원인이었다** — upstream은 상한과
+  *"one final manual edit + 재채점 없이 임계 미달 수락"* 을 한 문장에 함께
+  두는데(`skills/seed/SKILL.md:113`), 우리는 상한만 코드로 옮기고 탈출구를
+  산문에 두고 왔다. 물려받은 점수가 어느 revision의 것인지는
+  `qa_scored_revision`이 기록해 §8이 지키는 질문을 보존한다.
+  **도그푸딩 0005가 이어서 `MISSION COMPLETE`로 완주했다** (1시간 5분,
+  claude 41 + codex 15콜)
+- [x] **checkpoint 경로 파서가 첫 항목을 한 글자 잘랐다** — 수정 완료
+  ([DOGFOODING_0005](../research/DOGFOODING_0005.md) §7). `_output`의
+  `strip()`이 porcelain의 선행 공백(`" M"`)을 지워 `__pycache__` →
+  `_pycache__`가 됐다. **ADR-0046 §3이 "두 번째 라운드부터 증분"이라고 적은
+  바로 그 지점에서만 발동**했고 테스트가 untracked만 덮어 새어나갔다.
+  `changes.py`의 파서는 strip 없이 넘겨 무사했다
+- [x] ~~QA 데드락 미처분~~ (이전 기술, 위에서 처분됨
   [DOGFOODING_0005](../research/DOGFOODING_0005.md) §4). 예산은 mission 단위
   누적(ADR-0019 §6)인데 승인은 현재 revision의 QA 평가를 요구한다(§8) —
   소진 뒤 "명세가 틀렸으니 고치자"를 하면 미션이 잠긴다.

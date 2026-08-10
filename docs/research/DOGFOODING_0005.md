@@ -1,12 +1,13 @@
-# Dogfooding 0005 — Phase 9 다섯 층 전부 실물 검증. 결함 2건
+# Dogfooding 0005 — Phase 9 다섯 층 전부 실물 검증, `MISSION COMPLETE`. 결함 3건
 
-- 일시: 2026-08-10 (09:05~10:05 KST)
+- 일시: 2026-08-10 (09:05~10:30 KST)
 - Evidence level: **Verified by execution** (사용자 승인 하에 실제 AI 실행)
 - Mission: `m-b8f181` — `roman.py`: 정수 ↔ 로마 숫자 변환 모듈 (1~3999, 표준형,
   표준 라이브러리만, unittest 검증)
 - 구성: `uv run mcx`, 텍스트·판정 claude 2.1.226, 실행 codex 0.147.0
 - 목표: **Phase 9가 만든 다섯 층**의 실물 검증
-- 결과: **다섯 층 전부 관측됨.** 미션은 Verify `HOLD`에서 데드락(§4).
+- 결과: **다섯 층 전부 관측됨.** 결함 3건을 잡아 모두 처분하고
+  **`MISSION COMPLETE`로 완주**했다 (§6).
 
 ## 0. 과제 선정이 0004의 원인이었음을 확인했다
 
@@ -118,7 +119,7 @@ QA 궤적: `0.87 → 0.85 → 0.85 → 0.82 → 0.85(rev2)`.
 `action: continue`가 *"이제 revise할 차례"* 를 말하지 않는다. 표면 관측으로
 기록한다 — upstream은 반복 카운트를 호출자가 넘기므로(§4) 대응물이 없다.
 
-## 4. 결함 2 — 예산 소진 후 `revise`하면 **영원히 승인할 수 없다** (미처분)
+## 4. 결함 2 — 예산 소진 후 `revise`하면 **영원히 승인할 수 없다** (수정 완료)
 
 ```
 blueprint revise   → revision 3 생성 (성공)
@@ -140,9 +141,21 @@ blueprint qa       → QaBudgetExhaustedError: 예산이 소진됐다 (5회)
 (`mcp/tools/qa.py:358, :479`) — 예산이 저장된 상태가 아니고, 승인이 저장된
 평가에 묶이지도 않는다. 우리가 둘 다 상태로 만들면서 생긴 조합이다.
 
-**미처분.** 처분 후보는 (a) `revise`가 새 revision을 만들면 예산을 한 번
-허용한다, (b) 소진 후 `revise` 자체를 거부하고 사유를 말한다, (c) 예산을
-revision 단위로 바꾼다. 셋은 ADR-0019의 계약을 건드리므로 ADR이 먼저다.
+**처분** ([ADR-0019 §6.1](../adr/0019-blueprint-qa-loop.md) 개정). 처음 떠올린
+후보 셋((a) 예산 1회 허용 (b) revise 거부 (c) revision 단위 예산)은 **전부
+발명이었다.** upstream 규칙이 답을 이미 갖고 있었다:
+
+> `skills/seed/SKILL.md:113` — "If the user chooses **one final manual edit**,
+> apply exactly that user-specified edit … and ask for **explicit
+> below-threshold acceptance**; **do not start a sixth QA iteration, rerun QA**"
+
+즉 **우리는 upstream 규칙의 절반만 이식했다.** upstream은 상한과 그 뒤의
+탈출구를 한 문장에 함께 두는데, 우리는 상한을 skill이 아니라 코드로
+옮기면서(§1, Constitution §6.5) 나머지 절반을 산문에 두고 왔다. upstream에서는
+강제자가 에이전트라 지시 전체가 한 덩어리로 작동한다.
+
+물려받은 점수가 어느 revision의 것인지는 `qa_scored_revision`이 기록해 §8이
+지키는 질문("통과한 것인가 봐준 것인가")을 보존한다.
 
 ## 5. 미션이 실패한 이유 — 운영자 저작 오류
 
@@ -154,9 +167,59 @@ AC7의 `output_assertion`을 `"OK / TESTS ENOUGH"` 로 썼는데 실제 출력�
 *"부분 문자열 확인은 측정이 아니다"* 를 지적했던 것과 같은 축인데, 새로 들어온
 assertion이 자기 명령의 출력과 맞는지는 보지 않았다. 관측으로 기록한다.
 
-## 6. 남은 것
+## 6. 결함 2 처분 후 재개 — `MISSION COMPLETE`
 
-- **결함 2(데드락) 처분** — ADR 선행.
-- 미션 `m-b8f181`은 Verify `HOLD`로 남았다. Phase 9 검증이 목적이었고 그것은
-  달성됐으므로 완주를 위해 더 지출하지 않는다.
-- `MISSION COMPLETE` 완주는 0003이 이미 검증했다.
+[ADR-0019 §6.1](../adr/0019-blueprint-qa-loop.md)로 데드락을 풀고 같은 미션을
+그대로 이어 돌렸다.
+
+```
+approve --accept-below-threshold  →  approved_revision 3
+blueprint gate                    →  CLEAR → execute
+승인 기록: revision 3 / 점수가 나온 revision 1 / 0.87 / 미달수락 True
+```
+
+**최종 상태**: `✅ MISSION COMPLETE · 총 1시간 5분 · claude 41콜 · codex 15콜`
+(Brief 5라운드 · Blueprint AC 7개 · mechanical 7/7 · semantic 7/7).
+
+`revise`가 revision을 올리므로 **실행 lineage가 전부 무효가 됐다** — AC 하나의
+문구를 고치는 데 AC 7개 재실행이 들었다. revision 단위 실행 lineage(ADR-0002)의
+대가이며 최종 수정 경로의 것이 아니다. 관측으로 기록한다.
+
+## 7. 결함 3 — checkpoint 경로 파서가 첫 항목을 한 글자 잘랐다 (수정 완료)
+
+완주 직후 두 번째 checkpoint가 남지 않았다. 사유는 결과에 있었다 (ADR-0046 §6이
+요구한 표시가 제 몫을 했다):
+
+```
+checkpoint 없음: git add -- _pycache__/test_roman.cpython-312.pyc … 실행에 실패했다
+                            ↑ 밑줄 하나가 사라졌다
+```
+
+**원인**: `_output()`이 `result.stdout.strip()`을 한다. porcelain의 상태 두
+글자는 수정된 추적 파일에서 `" M"`처럼 **선행 공백**을 갖고, strip이 그것을
+지우면 첫 항목만 `entry[3:]`가 한 글자 밀린다.
+
+**왜 지금까지 안 걸렸나**: 첫 checkpoint에서는 모든 파일이 `??`(untracked)라
+선행 공백이 없었다. 그리고 `test_checkpoint.py`가 **untracked만** 덮고 있었다.
+즉 ADR-0046 §3이 *"두 번째 라운드부터 증분"* 이라고 적은 바로 그 지점에서만
+발동하는 결함이었고, 실사용이 아니면 드러나지 않았다.
+
+`changes.py`의 파서(ADR-0048)는 `result.stdout`을 strip 없이 넘기므로 무사했다 —
+같은 저장소에 파서가 둘이라는 ADR-0048 §3의 기술이 여기서 다행이 됐다.
+
+**수정**: `changed_paths`가 strip하지 않는 경로로 git을 읽는다. 회귀 테스트 2건
+추가(수정된 추적 파일, `__pycache__` 형태). 964 tests.
+
+재확인:
+
+```
+checkpoint: b5f1ef6 (ac_71a…, ac_032…, ac_4e2…, ac_274…, ac_dda…, ac_a71…, ac_19d…)
+b5f1ef6 mcx: …        ← 두 번째 라운드의 증분 checkpoint
+6c9111c mcx: …
+c5b1ef0 chore: 초기 커밋
+```
+
+## 8. 남은 것
+
+없다. 관측 항목 셋은 등록만 한다 — 파생 후보의 굵기, `action: continue`가
+revise 시점을 말하지 않는 것, revision 단위 실행 lineage의 재실행 비용.

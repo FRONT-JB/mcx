@@ -67,6 +67,37 @@ class TestCommitting:
         assert record(repo).committed
         assert "brand_new.py" in git("show", "--name-only", "--format=", "HEAD", cwd=repo)
 
+    def test_a_modified_tracked_file_keeps_its_whole_path(self, repo: Path) -> None:
+        """porcelain의 ``" M"``은 선행 공백을 갖는다 — 출력을 strip하면 첫 항목의
+        경로가 한 글자 잘린다 (``__pycache__`` → ``_pycache__``).
+
+        도그푸딩 0005가 실물로 잡았다. 여기 테스트가 **untracked만** 덮고 있어서
+        새어나갔다 — 첫 라운드는 전부 ``??``라 통과하고, 수정된 추적 파일이 처음
+        나오는 두 번째 라운드에서 조용히 실패했다.
+        """
+        (repo / "README.md").write_text("changed\n")
+
+        result = record(repo)
+
+        assert result.committed, result.skipped
+        assert "README.md" in git("show", "--name-only", "--format=", "HEAD", cwd=repo)
+
+    def test_a_leading_underscore_path_survives(self, repo: Path) -> None:
+        """실물에서 잘린 것이 정확히 이 형태였다."""
+        cache = repo / "__pycache__"
+        cache.mkdir()
+        (cache / "mod.pyc").write_text("x\n")
+        git("add", ".", cwd=repo)
+        git("commit", "-m", "cache", cwd=repo)
+        (cache / "mod.pyc").write_text("y\n")
+
+        result = record(repo)
+
+        assert result.committed, result.skipped
+        assert "__pycache__/mod.pyc" in git(
+            "show", "--name-only", "--format=", "HEAD", cwd=repo
+        )
+
 
 class TestRefusals:
     def test_nothing_proven_means_nothing_committed(self, repo: Path) -> None:

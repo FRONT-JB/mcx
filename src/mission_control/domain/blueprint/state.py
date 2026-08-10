@@ -7,6 +7,13 @@
 빌리면 승인된 내용과 기록된 점수의 대상이 어긋난다. 승인 뒤 내용이 바뀌면
 승인은 이전 revision에 묶인 채 stale이 된다.
 
+예외는 **상한 소진 뒤의 최종 수정 1회** 하나다 (ADR-0019 §6.1). upstream은
+그 수정을 재채점하지 말라고 명시하므로(``skills/seed/SKILL.md:113``) 점수를
+물려받을 수밖에 없고, 대신 어긋남을 숨기지 않는다 —
+``BlueprintApproval.qa_scored_revision``이 **어느 revision의 점수인지**를
+기록에 남긴다. 이 예외가 없으면 소진 뒤 명세를 고치는 순간 미션이 잠긴다
+(도그푸딩 0005 §4가 관측했다).
+
 **채점 예산은 durable 상태에 있다.** 반복 상한(ADR-0019 §6)이 메모리에만 있으면
 세션을 다시 시작하는 것만으로 횟수가 초기화된다. 채점 기록이 상태에 남으므로
 상한 판정이 재시작을 건너 유지된다.
@@ -50,6 +57,23 @@ class QaBudgetExhaustedError(MissionControlError):
         )
         self.mission_id = mission_id
         self.max_iterations = max_iterations
+
+
+class FinalEditAlreadyUsedError(MissionControlError):
+    """상한 소진 뒤의 최종 수정을 두 번째로 하려 했다.
+
+    upstream이 허용하는 것은 *"one final manual edit"* 하나다
+    (``skills/seed/SKILL.md:113``). 둘째를 허용하면 채점 없는 revision을 쌓으며
+    상한을 우회하게 된다 (ADR-0019 §6.1).
+    """
+
+    def __init__(self, *, mission_id: str, revision: int) -> None:
+        super().__init__(
+            f"mission {mission_id}의 revision {revision}이 이미 상한 소진 뒤의 "
+            "최종 수정이다; 수정은 한 번뿐이며 지금은 승인하거나 에스컬레이션한다"
+        )
+        self.mission_id = mission_id
+        self.revision = revision
 
 
 class QaAlreadyPassedError(MissionControlError):
@@ -253,13 +277,43 @@ class BlueprintState(BaseModel):
             }
         )
 
-    def revise(self, *, blueprint: Blueprint) -> BlueprintState:
+    def final_edit_carry(self, *, policy: QaPolicy) -> BlueprintQaRecord | None:
+        """이 revision이 **상한 소진 뒤의 최종 수정 1회**라면 물려받을 채점.
+
+        upstream ``skills/seed/SKILL.md:113``이 정하는 경로다 — 소진 뒤 사용자가
+        최종 수정 하나를 고르면 그것을 적용하고 **재채점 없이** 임계 미달 수락을
+        받는다 (*"do not start a sixth QA iteration, rerun QA"*).
+
+        우리는 상한을 skill이 아니라 코드로 강제했으므로(ADR-0019 §1, Constitution
+        §6.5) 그 문장의 나머지 절반도 코드가 들고 있어야 한다. 들고 있지 않으면
+        소진 뒤 명세를 고치는 순간 미션이 잠긴다 (도그푸딩 0005 §4).
+        """
+        if self.records_for(self.revision):
+            return None
+        if len(self.qa_records) < policy.max_iterations:
+            return None
+        if not self.qa_records:
+            return None
+        carried = max(self.qa_records, key=lambda item: item.assessment.score)
+        if policy.verdict_for(carried.assessment.score) is not QaVerdict.REVISE:
+            # PASS는 그 revision을 승인하면 되고 FAIL은 에스컬레이션이다.
+            # 최종 수정 경로는 `EXHAUSTED`(재작업 점수 + 상한 도달) 하나를 위한 것이다.
+            return None
+        return carried
+
+    def revise(self, *, blueprint: Blueprint, policy: QaPolicy | None = None) -> BlueprintState:
         """수정된 내용을 새 revision으로 붙인다. 이전 revision은 바뀌지 않는다.
 
         기존 승인이 있어도 막지 않는다 — 승인은 이전 revision에 묶인 채 stale이
         되고, Gate가 그것을 ``HOLD`` 사유로 드러낸다 (ADR-0002: 변경은 수정이
         아니라 새 revision + 재승인이다).
+
+        ``policy``가 주어지면 **최종 수정은 한 번뿐**이라는 상한을 강제한다
+        (ADR-0019 §6.1 — upstream *"one final manual edit"*). 두 번째를 허용하면
+        채점 없는 revision을 무한히 쌓으며 상한을 우회하게 된다.
         """
+        if policy is not None and self.final_edit_carry(policy=policy) is not None:
+            raise FinalEditAlreadyUsedError(mission_id=self.mission_id, revision=self.revision)
         if blueprint.mission_id != self.mission_id:
             raise ValueError(
                 f"이 revision은 mission {blueprint.mission_id}의 것이다 — "
@@ -294,8 +348,15 @@ class BlueprintState(BaseModel):
         아니라 기록 생성 자체가 거부된다.
         """
         scores = tuple(item.assessment.score for item in self.records_for(self.revision))
+        scored_revision: int | None = None
         if not scores:
-            raise UnassessedRevisionError(mission_id=self.mission_id, revision=self.revision)
+            # 상한 소진 뒤의 최종 수정이면 직전 채점을 물려받는다 (ADR-0019 §6.1).
+            # 그 밖에는 채점 없는 승인이며 거부한다.
+            carried = self.final_edit_carry(policy=policy)
+            if carried is None:
+                raise UnassessedRevisionError(mission_id=self.mission_id, revision=self.revision)
+            scores = (carried.assessment.score,)
+            scored_revision = carried.revision
 
         best_score = max(scores)
         verdict = policy.verdict_for(best_score)
@@ -312,5 +373,6 @@ class BlueprintState(BaseModel):
             qa_best_score=best_score,
             qa_iterations=len(self.qa_records),
             accepted_below_threshold=accept_below_threshold,
+            qa_scored_revision=scored_revision,
         )
         return self.model_copy(update={"sequence": self.sequence + 1, "approval": approval})

@@ -182,6 +182,15 @@ class BlueprintApproval(BaseModel):
     qa_iterations: int = Field(ge=1)
     accepted_below_threshold: bool = False
 
+    #: 점수가 나온 revision. ``None``이면 승인 대상과 같다.
+    #:
+    #: 상한 소진 뒤 **최종 수정 1회**를 수락하는 경로에서만 다른 값이 온다
+    #: (ADR-0019 §6.1 — upstream ``skills/seed/SKILL.md:113``은 그 수정을
+    #: 재채점하지 말라고 명시한다). 이 자리가 없으면 채점된 적 없는 revision이
+    #: **채점된 것처럼** 기록되어 §8이 지키려는 질문("통과한 것인가 봐준
+    #: 것인가")이 다시 대답 불가능해진다.
+    qa_scored_revision: int | None = None
+
     @model_validator(mode="after")
     def _acceptance_matches_the_score(self) -> BlueprintApproval:
         """미달 수락 표시가 실제 점수와 어긋나지 않는지 확인한다.

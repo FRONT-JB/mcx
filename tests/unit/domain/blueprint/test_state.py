@@ -10,6 +10,7 @@ from mission_control.domain.blueprint.qa import QaAssessment, QaDimension, QaPol
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
 from mission_control.domain.blueprint.state import (
     BlueprintState,
+    FinalEditAlreadyUsedError,
     QaAlreadyPassedError,
     QaBudgetExhaustedError,
     QaEscalatedError,
@@ -215,3 +216,70 @@ class TestApproval:
         assert revised.approval is not None
         assert revised.approval.revision == 1
         assert not revised.has_current_approval
+
+
+class TestTheFinalEditAfterExhaustion:
+    """ADR-0019 §6.1 — upstream 규칙의 나머지 절반.
+
+    도그푸딩 0005 §4가 데드락을 관측했다: 예산이 소진된 뒤 "명세가 틀렸으니
+    고치자"를 하면 `revise`는 되는데 `approve`는 채점을 요구하고 `qa`는 예산이
+    없다. upstream은 상한과 **그 뒤의 최종 수정 1회**를 한 문장에 함께 두는데
+    (``skills/seed/SKILL.md:113``) 우리는 상한만 코드로 옮겼다.
+    """
+
+    def _exhausted(self, score: float = 0.85) -> BlueprintState:
+        state = _started()
+        for _ in range(POLICY.max_iterations):
+            state = state.record_qa(assessment=_assessment(score), policy=POLICY)
+        return state
+
+    def test_the_edit_is_approvable_with_the_carried_score(self) -> None:
+        state = self._exhausted().revise(
+            blueprint=_blueprint(revision=2, goal="assertion을 실제 출력으로 정정"),
+            policy=POLICY,
+        )
+
+        approved = state.approve(
+            statement="최종 수정 수락", policy=POLICY, accept_below_threshold=True
+        )
+
+        assert approved.approval is not None
+        assert approved.approval.revision == 2
+        # 점수가 어느 revision의 것인지 숨기지 않는다 (ADR-0019 §8이 지키는 질문).
+        assert approved.approval.qa_scored_revision == 1
+        assert approved.approval.qa_best_score == 0.85
+        assert approved.approval.accepted_below_threshold is True
+
+    def test_rescoring_the_edit_is_still_refused(self) -> None:
+        """upstream: "do not start a sixth QA iteration, rerun QA"."""
+        state = self._exhausted().revise(blueprint=_blueprint(revision=2), policy=POLICY)
+
+        with pytest.raises(QaBudgetExhaustedError):
+            state.record_qa(assessment=_assessment(0.9), policy=POLICY)
+
+    def test_only_one_final_edit_is_allowed(self) -> None:
+        """둘째를 허용하면 채점 없는 revision을 쌓으며 상한을 우회한다."""
+        state = self._exhausted().revise(blueprint=_blueprint(revision=2), policy=POLICY)
+
+        with pytest.raises(FinalEditAlreadyUsedError):
+            state.revise(blueprint=_blueprint(revision=3), policy=POLICY)
+
+    def test_an_unscored_revision_without_exhaustion_is_still_refused(self) -> None:
+        """예산이 남아 있으면 채점 없는 승인은 그대로 거부다."""
+        state = _started().record_qa(assessment=_assessment(0.85), policy=POLICY)
+        state = state.revise(blueprint=_blueprint(revision=2), policy=POLICY)
+
+        with pytest.raises(UnassessedRevisionError):
+            state.approve(statement="이르다", policy=POLICY, accept_below_threshold=True)
+
+    def test_a_passing_carry_is_not_a_final_edit(self) -> None:
+        """통과했으면 그 revision을 승인하면 된다 — 최종 수정 경로가 아니다."""
+        state = _started()
+        for _ in range(POLICY.max_iterations - 1):
+            state = state.record_qa(assessment=_assessment(0.85), policy=POLICY)
+        state = state.revise(blueprint=_blueprint(revision=2), policy=POLICY)
+        state = state.record_qa(assessment=_assessment(0.92), policy=POLICY)
+        state = state.revise(blueprint=_blueprint(revision=3), policy=POLICY)
+
+        with pytest.raises(UnassessedRevisionError):
+            state.approve(statement="통과분", policy=POLICY, accept_below_threshold=True)
