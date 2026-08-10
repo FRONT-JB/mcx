@@ -74,7 +74,11 @@ async def test_illegal_transition_warns_but_command_succeeds(
 
     class StubService:
         async def run_mechanical(self, *, mission_id: str) -> SimpleNamespace:
-            return SimpleNamespace(evidence=SimpleNamespace(runs=[]))
+            # 실제 VerificationEvidence의 축을 그대로 갖는다 — stub이 얇으면
+            # 표시 경로가 추가될 때 계약이 아니라 stub이 깨진다.
+            return SimpleNamespace(
+                evidence=SimpleNamespace(runs=[], changed_files=(), changed_files_error=None)
+            )
 
     monkeypatch.setattr(composition, "verify_service", lambda layout, adapters: StubService())
     adapters = default_adapters()
@@ -164,3 +168,60 @@ async def test_repository_rejects_stale_writes(tmp_path: Path) -> None:
 
     loaded = await repo.load("m")
     assert loaded == moved
+
+
+class TestChangedFilesAreShown:
+    """ADR-0048 §5는 목록을 *"사용자를 위한 표시"* 라고 적었는데 표시 경로가
+    없었다 — Phase 9 종료 검토 §2.1이 잡았다.
+
+    목록은 rollback이 지울 집합과 같으므로(§1) 되돌리기 전에 무엇이 사라질지
+    이기도 하다.
+    """
+
+    @staticmethod
+    def _stub(monkeypatch: pytest.MonkeyPatch, **evidence: object) -> None:
+        class StubService:
+            async def run_mechanical(self, *, mission_id: str) -> SimpleNamespace:
+                return SimpleNamespace(evidence=SimpleNamespace(runs=[], **evidence))
+
+        monkeypatch.setattr(composition, "verify_service", lambda layout, adapters: StubService())
+
+    async def test_the_changed_files_are_named(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        self._stub(
+            monkeypatch, changed_files=("src/app.py", "tests/test_app.py"), changed_files_error=None
+        )
+        adapters = default_adapters()
+        assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
+        capsys.readouterr()
+
+        assert await amain(["verify", "mechanical", *argv("m", tmp_path)], adapters) == 0
+
+        assert "변경 2건: src/app.py, tests/test_app.py" in capsys.readouterr().err
+
+    async def test_a_collection_failure_is_named_not_silent(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """빈 목록과 수집 실패를 구분한다 (ADR-0048 §4) — 표시에서도 같다."""
+        self._stub(monkeypatch, changed_files=(), changed_files_error="git 저장소가 아니다")
+        adapters = default_adapters()
+        assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
+        capsys.readouterr()
+
+        await amain(["verify", "mechanical", *argv("m", tmp_path)], adapters)
+
+        assert "변경 목록 없음: git 저장소가 아니다" in capsys.readouterr().err
+
+    async def test_a_clean_tree_says_nothing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """할 말이 없으면 하지 않는다 — 빈 줄이 관측을 흐린다."""
+        self._stub(monkeypatch, changed_files=(), changed_files_error=None)
+        adapters = default_adapters()
+        assert await amain(["brief", "start", "g", *argv("m", tmp_path)], adapters) == 0
+        capsys.readouterr()
+
+        await amain(["verify", "mechanical", *argv("m", tmp_path)], adapters)
+
+        assert "변경" not in capsys.readouterr().err

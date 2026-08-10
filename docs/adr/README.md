@@ -12,6 +12,15 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
   [0025](./0025-execute-deliberate-divergences.md)). 다른 ADR에서
   결정했더라도 그 divergence ADR에서 링크한다. 대조하지 못한 항목은 "차이 없음"이
   아니라 미확인으로 같은 곳에 적는다.
+- **upstream 규칙을 이식한다고 적을 때는 그 규칙의 원문을 인용하고, 옮기지
+  않은 절을 명시한다** (Phase 9 종료 검토, 2026-08-10). "upstream과 같다"는
+  주장만으로는 절반만 옮긴 것이 드러나지 않는다 — 실제로 세 번 그렇게 됐다:
+  후보 파생 없이 전사 차단만([ADR-0050](./0050-requirement-candidate-provenance.md)),
+  최종 수정 탈출구 없이 QA 상한만([ADR-0019](./0019-blueprint-qa-loop.md) §6.1),
+  선행 공백 처리 없이 `-z` 파싱만(checkpoint 파서). 셋 다 실사용에서야
+  드러났고, 셋 다 **원문을 그 자리에 붙여 놓았으면 즉시 보였을 것**이다.
+  divergence register가 "다르게 한 것"을 담는다면 이 규칙은 **"같게 했다고
+  적었는데 확인하지 않은 것"** 을 막는다.
 - 상태는 `Proposed`, `Accepted`, `Superseded`, `Rejected` 중 하나다.
 - Accepted ADR의 의미를 바꿀 때는 기존 파일을 덮어쓰지 않고 새 ADR로 대체한다.
 - 코드와 하위 문서는 Accepted ADR을 따라야 한다.

@@ -160,7 +160,9 @@ brownfield 미션이 Gate에서 멈추고, 그때 floor를 낮추는 것은 근�
 - **`role`(primary/reference)의 표현** — upstream은 코드베이스 경로마다 수정
   대상/읽기 전용을 구분한다. 우리 `CapabilityEnvelope`에는 자리가 없다.
   실행 권한 축이므로 [ADR-0033](./0033-first-runtime-adapter-contract.md)의
-  sandbox 경계와 함께 봐야 한다. **시한 Phase 9 종료 검토.**
+  sandbox 경계와 함께 봐야 한다. → **재지정** ([Phase 9 종료 검토](../progress/0009_RECOVERY_LAYERS.md) §3-1, 2026-08-10):
+  도그푸딩 0004·0005가 **둘 다 greenfield**라 발동 재료가 없었다. 관측 없이
+  닫으면 근거 없는 확정이 된다. **시한 brownfield 도그푸딩 시점.**
 - **① 네 번째 축의 도입 여부** — ③ 도입 후 실사용 관측에 달렸다 (§4).
 - ~~**검출 결과의 보존 위치**~~ → **보존하지 않는다 (2026-08-09 구현에서 해소).**
   upstream은 `.ouroboros/mechanical.toml`을 파일로 남겨 idempotency를 얻지만,
@@ -174,4 +176,5 @@ brownfield 미션이 Gate에서 멈추고, 그때 floor를 낮추는 것은 근�
   타입이 들고 있지만 CLI 출력에 나오지 않는다. 지금 그 정보가 진단용인 이유는
   **실질 신호가 따로 있기 때문**이다 — 제안이 버려지면 그 AC에 확인 수단이
   없고, 그러면 `NO_VERIFIABLE_CRITERION`이 Gate에서 잡는다. 표시 필요 여부는
-  실사용에서 판단한다. **시한 Phase 9 종료 검토.**
+  실사용에서 판단한다. → **재지정** ([Phase 9 종료 검토](../progress/0009_RECOVERY_LAYERS.md) §3-2, 2026-08-10): 도그푸딩 2회에서
+  `dropped`가 발동하지 않았다. **시한 brownfield 도그푸딩 시점.**

@@ -648,6 +648,15 @@ async def _dispatch_verify(
         state = await service.run_mechanical(mission_id=mission)
         assert state.evidence is not None
         show(state.evidence.runs)
+        # ADR-0048 §5는 이 목록을 *"판정의 대체재가 아니라 사용자를 위한 표시"*
+        # 라고 적었는데 표시 경로가 없었다 (Phase 9 종료 검토가 잡았다). 목록은
+        # rollback이 지울 집합과 같으므로 되돌리기 전에 무엇이 사라질지이기도
+        # 하다 (§1). checkpoint·rollback과 같은 자리에서 알린다.
+        if state.evidence.changed_files_error is not None:
+            _note(f"변경 목록 없음: {state.evidence.changed_files_error}")
+        elif state.evidence.changed_files:
+            _note(f"변경 {len(state.evidence.changed_files)}건: "
+                  f"{', '.join(state.evidence.changed_files)}")
     elif args.verb == "semantic":
         state = await service.assess_semantics(mission_id=mission)
         assert state.verdicts is not None
