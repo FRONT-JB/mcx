@@ -68,7 +68,11 @@ COMMANDS_WHEN_HOLD: dict[Stage, tuple[str, ...]] = {
         'mcx blueprint approve "<문장>"',
     ),
     Stage.EXECUTE: ("mcx execute next", "mcx recover plan"),
-    Stage.VERIFY: ("mcx verify semantic", "mcx recover plan"),
+    Stage.VERIFY: (
+        "mcx verify semantic",
+        "mcx recover plan",
+        "mcx blueprint evolve",
+    ),
     Stage.RECOVER: ("mcx recover dispatch", "mcx recover gate"),
 }
 
@@ -205,6 +209,33 @@ def _isolation(record: MissionRecord, execute: ExecuteState | None) -> Isolation
     return IsolationView(workspace=used, branch=f"{BRANCH_PREFIX}/{record.mission_id}")
 
 
+def _record_mismatch(
+    *,
+    stage: Stage,
+    stored: bool,
+    blueprint_revision: int | None,
+    verify_blueprint_revision: int | None,
+) -> str | None:
+    """stored Stage와 artifact lineage가 어긋나는 표면 진단 (ADR-0037)."""
+    if not stored:
+        return (
+            f"record는 {stage.value}라고 하는데 그 Stage 저장소가 비어 있다; "
+            "Gate 재계산이 이긴다"
+        )
+    if (
+        stage is Stage.VERIFY
+        and blueprint_revision is not None
+        and verify_blueprint_revision is not None
+        and blueprint_revision != verify_blueprint_revision
+    ):
+        return (
+            f"record는 verify지만 Verify evidence는 Blueprint revision "
+            f"{verify_blueprint_revision}, current Blueprint는 {blueprint_revision}다; "
+            "Gate 재계산이 이긴다"
+        )
+    return None
+
+
 async def build_snapshot(
     *,
     layout: StateLayout,
@@ -334,13 +365,15 @@ async def build_snapshot(
             if blueprint is not None
             else ()
         ),
-        mismatch=(
-            None
-            if stored[record.current_stage]
-            else (
-                f"record는 {record.current_stage.value}라고 하는데 그 Stage 저장소가 비어 있다; "
-                "Gate 재계산이 이긴다"
-            )
+        mismatch=_record_mismatch(
+            stage=record.current_stage,
+            stored=stored[record.current_stage],
+            blueprint_revision=blueprint.revision if blueprint is not None else None,
+            verify_blueprint_revision=(
+                verify.evidence.blueprint_revision
+                if verify is not None and verify.evidence is not None
+                else None
+            ),
         ),
         journal=entries,
     )

@@ -61,6 +61,7 @@ Phase 7 MCP도 같은 service를 공유해 표면 파리티를 구현 공유로 
 | `mcx blueprint revise --draft-file` | `revise` |
 | `mcx blueprint approve "<statement>"` (+`--accept-below-threshold`) | `approve` |
 | `mcx blueprint gate` | `decide_gate` |
+| `mcx blueprint evolve` | `EvolveService.propose` — Verify `HOLD`에서 후속 generation proposal 하나 |
 | `mcx execute next` | `ExecuteService.dispatch_next` |
 | `mcx execute gate` | `decide_gate` |
 | `mcx verify mechanical` | `VerifyService.run_mechanical` |
@@ -143,6 +144,13 @@ mission. 원문이 근거로 든 upstream `ooo seed`의 명시 요구는 사실�
   Blueprint 수정 명령은 mission record 전이를 기록하지 않는다. 그 결과
   Execute 이후의 spec 교정은 record와 실제 작업 위치의 어긋남으로 status에
   나타난다. 명시적 route 명령은 합성 흐름(§7)과 함께 재평가한다.
+- **2026-08-10 Phase 10 추가 — `blueprint evolve`는 명시적 backward route다.**
+  successor revision을 만든 exit 0에서만 Mission record를 Blueprint로 전이한다.
+  scope change finding으로 revision을 만들지 못한 경우는 exit 2 `HOLD`이며 stored
+  Stage도 그대로다. Mission record와 Blueprint 문서는 별도 저장소이므로 crash
+  atomicity를 주장하지 않는다. successor 저장 뒤 record 전이 전에 중단되면
+  `status`가 mismatch를 표시하고 Gate 재계산이 이긴다는 ADR-0037의 기존 복구
+  규칙을 그대로 쓴다.
 - Lifecycle §3.1의 나머지 항목(active input revisions, attempt lineage,
   GateDecision·Telemetry reference)은 mission record에 **복제하지 않는다** —
   각 Stage 저장소가 소유하고 `mcx status`가 조합해 표시한다. Mission

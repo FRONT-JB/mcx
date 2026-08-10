@@ -255,8 +255,34 @@ correction이다. 둘 중 언제 무엇을 호출할지는 ADR-0042의 skill/사
 
 임의 generation rewind는 이 slice에 넣지 않는다. 기존 rollback은 마지막 입증
 checkpoint인 HEAD만 사용한다. 세대 identity는 Blueprint state에 있고 checkpoint는
-이미 `Blueprint-Revision`을 기록하므로, 선택 표면이 없는 지금 별도 git tag는 같은
-사실의 두 번째 이름이다.
+이미 `Blueprint-Revision`을 기록하므로, generation rewind 선택 표면이 없는 지금
+별도 git tag는 같은 사실의 두 번째 이름이다.
+
+### 10. Surface는 `blueprint evolve`이며 새 Stage를 만들지 않는다
+
+CLI의 명시적 선택은 `mcx blueprint evolve`다. 후속 명세의 결과가 Blueprint이고
+Constitution의 다섯 canonical command를 유지해야 하므로 최상위 `evolve` 명령이나
+여섯 번째 Stage를 만들지 않는다. composition root는 Blueprint text lane의 같은
+`CompletionEngine`을 Wonder와 Reflect에 주입한다. 별도 Evolve routing key는 없다.
+
+surface는 LLM 호출 전에 Mission record가 존재하고 `ACTIVE`인지 확인한다. 저장된
+`current_stage == VERIFY`는 요구하지 않는다 — ADR-0037에 따라 stored Stage는
+표시·resume용이고, 실제 진입 자격은 `EvolveService`가 current Blueprint·Execute·
+Verify 상태로 Gate를 재계산해 결정한다.
+
+- successor revision이 생기면 exit 0, 결과 revision·generation·approval 필요를
+  출력하고 Mission record를 Blueprint로 전이한다.
+- Reflect가 Goal/Constraint 변경을 제안해 scope finding만 저장되면 exit 2
+  `HOLD`다. revision과 Stage 전이는 없다.
+- entry·adapter·저장 실패는 exit 1이며 완료하지 못한 evolution phase에서 재개한다.
+- MCP tool은 CLI parser에서 `mcx_blueprint_evolve`로 파생하고, 정상 2회 완성 호출은
+  장기 작업이므로 `mcx_start_blueprint_evolve` 비동기 짝도 둔다.
+
+Blueprint state의 successor append와 Mission record 전이는 서로 다른 파일 저장소다.
+새 transaction store를 만들지 않는다. 전자는 application의 원자 저장이 먼저고,
+후자는 성공 응답의 surface 기록이다. 둘 사이에서 중단되면 `status`가 mismatch를
+드러내고 Gate 재계산이 이긴다 (ADR-0037). 이 복구 규칙을 cross-store atomicity로
+과장하지 않는다.
 
 ## Consequences
 

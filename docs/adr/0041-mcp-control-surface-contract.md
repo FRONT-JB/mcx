@@ -1,6 +1,7 @@
 # ADR 0041 — MCP control surface 계약
 
-- Status: Accepted (사용자 승인 2026-08-09; §1·§4·§7은 구현이 드러낸 사실로 개정)
+- Status: Accepted (사용자 승인 2026-08-09; §1·§4·§7은 구현이 드러낸 사실로 개정,
+  Phase 10 Evolve surface 2026-08-10 추가)
 - Date: 2026-08-09
 - Constitutional basis: [ADR-0007](./0007-mcp-is-control-surface.md) (MCP는 제어 표면),
   [ADR-0038](./0038-mcx-cli-surface-contract.md) §1 (CLI/MCP 공유 경계),
@@ -76,13 +77,15 @@ session은 durable Mission의 identity나 저장소가 아니다"*라고 이미 
 host가 두 mission을 오가는 동안 서버가 "현재"를 기억하면 잘못된 mission에
 쓴다.
 
-### 4. 비동기는 장기 명령 둘에만 두고, job 기록은 **원장을 재사용한다**
+### 4. 비동기는 장기 명령에만 두고, job 기록은 **원장을 재사용한다**
 
-장기 명령은 셋이다 — `execute next`(`codex exec`, 침묵 900초까지),
+장기 명령은 넷이다 — `execute next`(`codex exec`, 침묵 900초까지),
 `recover dispatch`(**같은 `codex exec`**), `verify semantic`(AC 수만큼의 완성
-호출). 이 셋에만 비동기 짝을 둔다:
+호출), `blueprint evolve`(Wonder + Reflect, 정상 2 primary calls). 이 넷에만
+비동기 짝을 둔다:
 
 ```
+mcx_blueprint_evolve /  mcx_start_blueprint_evolve
 mcx_execute_next     /  mcx_start_execute_next
 mcx_recover_dispatch /  mcx_start_recover_dispatch
 mcx_verify_semantic  /  mcx_start_verify_semantic
@@ -178,7 +181,7 @@ SDK가 없어도 `mcx` CLI와 tool 표면 테스트가 그대로 선다. **인�
 
 ### Cost
 
-- tool 24개 + 비동기 3개·job 2개가 host 도구 목록에 올라간다. upstream도 비슷한 규모라
+- tool 25개 + 비동기 4개·job 2개가 host 도구 목록에 올라간다. upstream도 비슷한 규모라
   (약 35) 이례적이지 않지만, host의 컨텍스트를 그만큼 쓴다.
 - 원장 재사용은 job 개념을 mission에 묶는다 — mission 없는 작업은 job이 될 수
   없다. 현재 그런 작업은 없다.
@@ -207,6 +210,8 @@ SDK가 없어도 `mcx` CLI와 tool 표면 테스트가 그대로 선다. **인�
 - `structured_content`가 CLI `--json`과 같은 payload다 (같은 입력, 같은 mission).
 - `mission_id` 없이 호출하면 거부된다 — 서버가 "현재 mission"을 기억하지 않는다.
 - 짝 없는 `start`가 `mcx_job_status`에서 `running`으로 보인다.
+- `mcx_start_blueprint_evolve`가 동기 tool과 같은 schema로 접수되고 실제 원장
+  sequence를 job id로 돌려준다.
 - 프로세스를 죽인 뒤에도 그 job이 사라지지 않고 `running`으로 남는다.
 - 취소 마커를 쓰면 실행 중인 `codex exec`가 종료되고 attempt가 실패로 닫힌다.
 - MCP 응답에 로컬 절대 경로와 자격증명이 없다.

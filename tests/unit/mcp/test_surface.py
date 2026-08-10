@@ -88,7 +88,7 @@ class TestToolSurfaceIsDerived:
         assert schema["properties"]["authority"]["enum"] == ["decision", "observation"]
 
     def test_no_description_is_just_the_name_repeated(self) -> None:
-        """host는 29개 중 무엇을 부를지 description만 보고 고른다.
+        """host는 31개 중 무엇을 부를지 description만 보고 고른다.
 
         ``mcx brief ask``처럼 이름을 되풀이하면 정보가 0이다. Phase 8 종료
         검토가 잡아 CLI ``help=``를 원천으로 바꿨다.
@@ -111,7 +111,12 @@ class TestToolSurfaceIsDerived:
 
     def test_long_commands_say_so(self) -> None:
         """host가 `mcx_start_*` 짝을 언제 쓸지 판단할 근거."""
-        long_running = {"mcx_execute_next", "mcx_verify_semantic", "mcx_recover_dispatch"}
+        long_running = {
+            "mcx_blueprint_evolve",
+            "mcx_execute_next",
+            "mcx_verify_semantic",
+            "mcx_recover_dispatch",
+        }
         described = {t.name: t.description for t in tool_definitions()}
 
         for name in long_running:

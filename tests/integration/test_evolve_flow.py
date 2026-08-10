@@ -1,5 +1,6 @@
 """파일 상태의 Execute·Verify HOLD에서 Evolve successor를 재구성한다."""
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -9,17 +10,19 @@ from mission_control.adapters.persistence.file_blueprint_repository import (
 from mission_control.adapters.persistence.file_execute_repository import (
     FileExecuteRepository,
 )
-from mission_control.adapters.persistence.file_verify_repository import FileVerifyRepository
-from mission_control.adapters.text.evolve_backends import (
-    PromptedEvolveReflector,
-    PromptedEvolveWonderer,
+from mission_control.adapters.persistence.file_mission_repository import (
+    FileMissionRepository,
 )
-from mission_control.application.evolve_service import EvolveService
+from mission_control.adapters.persistence.file_verify_repository import FileVerifyRepository
+from mission_control.cli.composition import StateLayout, default_adapters
+from mission_control.cli.journal import MissionJournal
 from mission_control.domain.blueprint.qa import QaAssessment, QaPolicy
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
 from mission_control.domain.blueprint.state import BlueprintState
 from mission_control.domain.evolve.models import EvolutionPhase
 from mission_control.domain.execute.state import CapabilityEnvelope, ExecuteState
+from mission_control.domain.mission import MissionRecord
+from mission_control.domain.stage import Stage
 from mission_control.domain.verify.evidence import (
     VerificationEvidence,
     VerificationRun,
@@ -30,6 +33,8 @@ from mission_control.domain.verify.verdict import (
     SemanticAssessment,
     SemanticPolicy,
 )
+from mission_control.mcp.protocol import ResultType
+from mission_control.mcp.surface import call_tool
 
 QA_POLICY = QaPolicy.blueprint_v1()
 SEMANTIC_POLICY = SemanticPolicy.verify_v1()
@@ -57,6 +62,7 @@ class ScriptedCompletion:
 
 async def test_file_states_project_a_verify_hold_into_one_successor(tmp_path: Path) -> None:
     mission_id = "m-1"
+    layout = StateLayout.under(tmp_path)
     criterion = AcceptanceCriterion(
         description="429 응답은 재시도한다",
         verify_command="pytest tests/test_retry.py",
@@ -116,12 +122,17 @@ async def test_file_states_project_a_verify_hold_into_one_successor(tmp_path: Pa
         )
     )
 
-    blueprint_repository = FileBlueprintRepository(root=tmp_path)
-    execute_repository = FileExecuteRepository(root=tmp_path)
-    verify_repository = FileVerifyRepository(root=tmp_path)
+    blueprint_repository = FileBlueprintRepository(root=layout.state)
+    execute_repository = FileExecuteRepository(root=layout.state)
+    verify_repository = FileVerifyRepository(root=layout.state)
+    mission_repository = FileMissionRepository(root=layout.state)
     await blueprint_repository.save(blueprint_state)
     await execute_repository.save(execute)
     await verify_repository.save(verify)
+    mission = MissionRecord.create(mission_id=mission_id, workspace=str(tmp_path))
+    for destination in (Stage.BLUEPRINT, Stage.EXECUTE, Stage.VERIFY):
+        mission = mission.transit(destination=destination, at="t", reason="fixture")
+    await mission_repository.save(mission)
 
     completion = ScriptedCompletion(
         [
@@ -151,18 +162,17 @@ async def test_file_states_project_a_verify_hold_into_one_successor(tmp_path: Pa
             },
         ]
     )
-    result = await EvolveService(
-        repository=blueprint_repository,
-        executes=execute_repository,
-        verifies=verify_repository,
-        wonderer=PromptedEvolveWonderer(completion=completion),
-        reflector=PromptedEvolveReflector(completion=completion),
-        policy=SEMANTIC_POLICY,
-    ).propose(mission_id=mission_id)
+    result = await call_tool(
+        "mcx_blueprint_evolve",
+        {"mission": mission_id},
+        state_dir=str(tmp_path),
+        adapters=replace(default_adapters(), completion=completion),
+    )
 
     restored = await blueprint_repository.load(mission_id)
-    assert restored == result
     assert restored is not None
+    assert result.result_type is ResultType.COMPLETE
+    assert result.structured_content["result_blueprint_revision"] == 2
     assert restored.revision == 2
     assert restored.generation == 2
     assert not restored.has_current_approval
@@ -171,3 +181,9 @@ async def test_file_states_project_a_verify_hold_into_one_successor(tmp_path: Pa
     assert restored.evolutions[-1].source.verify_sequence == verify.sequence
     assert len(completion.calls) == 2
     assert all(workspace is None for _, _, workspace in completion.calls)
+    stored_mission = await mission_repository.load(mission_id)
+    assert stored_mission is not None
+    assert stored_mission.current_stage is Stage.BLUEPRINT
+    (entry,) = MissionJournal(root=layout.state, mission_id=mission_id).entries()
+    assert entry.command == "blueprint evolve"
+    assert entry.calls == {"scripted": 2}

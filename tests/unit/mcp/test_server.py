@@ -25,7 +25,7 @@ async def _start(root: Path) -> None:
 
 class TestToolCatalogue:
     def test_only_job_and_start_tools_are_not_derived_from_the_cli(self) -> None:
-        """CLI에 없는 tool은 셋뿐이다 — 나머지는 파서에서 파생된다 (§1)."""
+        """CLI에 없는 tool은 job 둘과 start 넷뿐이다 — 나머지는 파서 파생이다."""
         from mission_control.mcp.surface import tool_definitions
 
         derived = {tool.name for tool in tool_definitions()}
@@ -34,6 +34,7 @@ class TestToolCatalogue:
         assert extra == {
             "mcx_job_status",
             "mcx_cancel_job",
+            "mcx_start_blueprint_evolve",
             "mcx_start_execute_next",
             "mcx_start_verify_semantic",
             "mcx_start_recover_dispatch",
@@ -47,12 +48,17 @@ class TestToolCatalogue:
             by_name["mcx_start_execute_next"].input_schema
             == by_name["mcx_execute_next"].input_schema
         )
+        assert (
+            by_name["mcx_start_blueprint_evolve"].input_schema
+            == by_name["mcx_blueprint_evolve"].input_schema
+        )
 
     def test_only_long_commands_get_a_start_pair(self) -> None:
         """짧은 명령까지 두 벌이면 host가 매번 어느 쪽을 쓸지 판단해야 한다."""
         starts = {t.name for t in server.definitions() if t.name.startswith("mcx_start_")}
 
         assert starts == {
+            "mcx_start_blueprint_evolve",
             "mcx_start_execute_next",
             "mcx_start_verify_semantic",
             "mcx_start_recover_dispatch",
@@ -74,9 +80,16 @@ class TestToolCatalogue:
         assert "self.execute.dispatch_correction" in inspect.getsource(recover_service)
         assert "mcx_recover_dispatch" in LONG_RUNNING
 
+    def test_evolve_has_a_start_pair_for_its_two_completion_phases(self) -> None:
+        """Wonder+Reflect를 동기 tool 하나로만 열면 host가 두 호출 동안 블로킹된다."""
+        from mission_control.mcp.surface import LONG_RUNNING
+
+        assert "mcx_blueprint_evolve" in LONG_RUNNING
+
     def test_no_tool_name_repeats(self) -> None:
         names = [tool.name for tool in server.definitions()]
 
+        assert len(names) == 31
         assert len(names) == len(set(names))
 
     def test_every_schema_declares_its_shape(self) -> None:
@@ -152,6 +165,16 @@ class TestStartTools:
 
         receipt = await server.handle(
             "mcx_start_verify_semantic", {"mission": "m"}, state_dir=tmp_path
+        )
+
+        assert receipt.result_type is ResultType.ACCEPTED
+        assert receipt.structured_content["job"] == "m#2"
+
+    async def test_the_evolve_pair_routes_to_its_synchronous_tool(self, tmp_path: Path) -> None:
+        await _start(tmp_path)
+
+        receipt = await server.handle(
+            "mcx_start_blueprint_evolve", {"mission": "m"}, state_dir=tmp_path
         )
 
         assert receipt.result_type is ResultType.ACCEPTED

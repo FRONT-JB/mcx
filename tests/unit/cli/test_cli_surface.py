@@ -27,6 +27,7 @@ SURFACE: list[tuple[list[str], str, str]] = [
     (["blueprint", "revise", "--draft-file", "d.json"], "blueprint", "revise"),
     (["blueprint", "approve", "s"], "blueprint", "approve"),
     (["blueprint", "gate"], "blueprint", "gate"),
+    (["blueprint", "evolve"], "blueprint", "evolve"),
     (["execute", "next"], "execute", "next"),
     (["execute", "gate"], "execute", "gate"),
     (["verify", "mechanical"], "verify", "mechanical"),

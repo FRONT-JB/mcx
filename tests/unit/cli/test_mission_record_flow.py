@@ -15,6 +15,7 @@ from mission_control.cli import composition
 from mission_control.cli.composition import StateLayout, default_adapters
 from mission_control.cli.main import amain
 from mission_control.domain.errors import StaleWriteError
+from mission_control.domain.evolve.models import EvolutionPhase
 from mission_control.domain.mission import MissionRecord, MissionStatus
 from mission_control.domain.stage import Stage
 
@@ -131,6 +132,85 @@ async def test_verify_gate_clear_outside_verify_warns_not_fails(
     record = await repository(tmp_path).load("m")
     assert record is not None
     assert record.status is MissionStatus.ACTIVE
+
+
+def _evolve_state(*, scope_hold: bool = False) -> SimpleNamespace:
+    finding = SimpleNamespace(kind="goal", current="기존", proposed="다른 목표")
+    return SimpleNamespace(
+        evolutions=[
+            SimpleNamespace(
+                phase=(EvolutionPhase.SEEDING if scope_hold else EvolutionPhase.COMPLETED),
+                successor_generation=2,
+                parent_blueprint_revision=1,
+                result_blueprint_revision=None if scope_hold else 2,
+                scope_change_findings=(finding,) if scope_hold else (),
+            )
+        ]
+    )
+
+
+async def _verify_record(tmp_path: Path, *, complete: bool = False) -> None:
+    record = MissionRecord.create(mission_id="m", workspace="/ws")
+    for destination in (Stage.BLUEPRINT, Stage.EXECUTE, Stage.VERIFY):
+        record = record.transit(destination=destination, at="t", reason="setup")
+    if complete:
+        record = record.complete(at="t")
+    await repository(tmp_path).save(record)
+
+
+async def test_evolve_success_records_verify_to_blueprint_transition(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _verify_record(tmp_path)
+
+    class StubService:
+        async def propose(self, *, mission_id: str) -> SimpleNamespace:
+            return _evolve_state()
+
+    monkeypatch.setattr(composition, "evolve_service", lambda *_: StubService())
+
+    assert await amain(["blueprint", "evolve", *argv("m", tmp_path)], default_adapters()) == 0
+
+    stored = await repository(tmp_path).load("m")
+    assert stored is not None
+    assert stored.current_stage is Stage.BLUEPRINT
+    assert stored.transitions[-1].reason == "mcx blueprint evolve"
+
+
+async def test_evolve_scope_hold_keeps_the_mission_at_verify(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _verify_record(tmp_path)
+
+    class StubService:
+        async def propose(self, *, mission_id: str) -> SimpleNamespace:
+            return _evolve_state(scope_hold=True)
+
+    monkeypatch.setattr(composition, "evolve_service", lambda *_: StubService())
+
+    assert await amain(["blueprint", "evolve", *argv("m", tmp_path)], default_adapters()) == 2
+
+    stored = await repository(tmp_path).load("m")
+    assert stored is not None
+    assert stored.current_stage is Stage.VERIFY
+
+
+async def test_evolve_rejects_a_complete_mission_before_service_dispatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _verify_record(tmp_path, complete=True)
+    dispatched = False
+
+    class StubService:
+        async def propose(self, *, mission_id: str) -> SimpleNamespace:
+            nonlocal dispatched
+            dispatched = True
+            return _evolve_state()
+
+    monkeypatch.setattr(composition, "evolve_service", lambda *_: StubService())
+
+    assert await amain(["blueprint", "evolve", *argv("m", tmp_path)], default_adapters()) == 1
+    assert dispatched is False
 
 
 async def test_status_reports_record_and_mismatch(

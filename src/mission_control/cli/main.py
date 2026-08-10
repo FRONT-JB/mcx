@@ -62,6 +62,7 @@ DEFAULT_STATE_DIR = Path.home() / ".mcx"
 #: 트리거가 없다 — 어긋남은 status가 표시한다.
 _TRANSITION_TRIGGERS: dict[tuple[str, str], Stage] = {
     ("blueprint", "generate"): Stage.BLUEPRINT,
+    ("blueprint", "evolve"): Stage.BLUEPRINT,
     ("execute", "next"): Stage.EXECUTE,
     ("verify", "mechanical"): Stage.VERIFY,
     ("verify", "semantic"): Stage.VERIFY,
@@ -262,6 +263,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("statement", help="승인 문장 (`-`로 시작하면 `--` 뒤에 둔다)")
     p.add_argument("--accept-below-threshold", action="store_true")
     blueprint.add_parser("gate", parents=[common], help="Execute 진입 가능 여부를 판정한다")
+    blueprint.add_parser(
+        "evolve",
+        parents=[common],
+        help="Verify HOLD 증거에서 후속 Blueprint generation 하나를 제안한다 (장기)",
+    )
 
     execute = stage_sub.add_parser("execute", help="Execute — bounded work").add_subparsers(
         dest="verb", required=True
@@ -355,6 +361,18 @@ async def _require_workspace(layout: StateLayout, mission_id: str) -> str:
             f"mission {mission_id}의 record가 없다; 먼저 `mcx brief start`를 실행한다"
         )
     return record.workspace
+
+
+async def _require_active_record(layout: StateLayout, mission_id: str) -> MissionRecord:
+    """Evolve surface의 terminal guard — Stage 자격은 여전히 Gate가 판정한다."""
+    record = await _load_record(layout, mission_id)
+    if record is None:
+        raise LookupError(
+            f"mission {mission_id}의 record가 없다; 먼저 `mcx brief start`를 실행한다"
+        )
+    if record.status is MissionStatus.COMPLETE:
+        raise MissionCompletedError(mission_id=mission_id)
+    return record
 
 
 @contextmanager
@@ -572,6 +590,30 @@ async def _dispatch_blueprint(
 ) -> int:
     mission: str = args.mission
     verb: str = args.verb
+    if verb == "evolve":
+        await _require_active_record(layout, mission)
+        state = await composition.evolve_service(layout, adapters).propose(
+            mission_id=mission
+        )
+        if not state.evolutions:
+            raise AssertionError("Evolve command가 EvolutionRecord를 만들지 않았다")
+        evolution = state.evolutions[-1]
+        show(
+            {
+                "mission_id": mission,
+                "evolution_phase": evolution.phase.value,
+                "successor_generation": evolution.successor_generation,
+                "parent_blueprint_revision": evolution.parent_blueprint_revision,
+                "result_blueprint_revision": evolution.result_blueprint_revision,
+                "scope_change_findings": jsonable(evolution.scope_change_findings),
+                "approval_required": evolution.result_blueprint_revision is not None,
+            }
+        )
+        if evolution.scope_change_findings:
+            _note("Evolve HOLD: Goal·Constraint 변경은 Brief에서 사용자가 결정해야 한다.")
+            return 2
+        return 0
+
     # 생성만 workspace를 필요로 한다 — 확인 명령 검출의 대상이다 (ADR-0044 §3).
     # 나머지 verb에서 요구하면 workspace 없는 mission의 채점·승인이 막힌다.
     workspace = await _require_workspace(layout, mission) if verb == "generate" else None

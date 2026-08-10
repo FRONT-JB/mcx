@@ -7,10 +7,13 @@
 from mission_control.cli.journal import JournalEntry
 from mission_control.cli.status_render import ASCII, EMOJI, display_width, render
 from mission_control.cli.status_view import (
+    COMMANDS_WHEN_HOLD,
+    STAGE_LABELS,
     BlockingBlock,
     RowState,
     StageRow,
     StatusSnapshot,
+    _record_mismatch,
 )
 from mission_control.domain.stage import Stage
 
@@ -141,6 +144,24 @@ def test_the_state_vocabulary_is_closed_at_five() -> None:
     assert set(EMOJI) == set(RowState) == set(ASCII)
     assert len(EMOJI) == 5
     assert all(display_width(mark) == 2 for mark in EMOJI.values())
+
+
+def test_verify_hold_exposes_evolve_without_adding_a_stage() -> None:
+    assert "mcx blueprint evolve" in COMMANDS_WHEN_HOLD[Stage.VERIFY]
+    assert len(STAGE_LABELS) == 5
+
+
+def test_evolve_cross_file_gap_is_reported_as_revision_mismatch() -> None:
+    mismatch = _record_mismatch(
+        stage=Stage.VERIFY,
+        stored=True,
+        blueprint_revision=2,
+        verify_blueprint_revision=1,
+    )
+
+    assert mismatch is not None
+    assert "current Blueprint는 2" in mismatch
+    assert "Gate 재계산이 이긴다" in mismatch
 
 
 def test_plain_mode_uses_ascii_only() -> None:

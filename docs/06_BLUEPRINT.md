@@ -509,6 +509,25 @@ schema·index·ontology validation 실패는 phase output으로 저장하지 않
 ([EVOLVE findings §4~§5](./research/EVOLVE_UPSTREAM_FINDINGS.md), pinned
 `evolution/wonder.py`, `evolution/reflect.py`).
 
+### 7.9 CLI/MCP surface
+
+명시적 진입은 `mcx blueprint evolve`다. Evolve가 새 Stage가 아니고 결과가
+Blueprint proposal이므로 최상위 `evolve` 명령은 만들지 않는다. composition은
+Blueprint text lane 하나를 Wonder/Reflect가 공유하게 조립하고, surface가 Mission
+record의 존재와 `ACTIVE`만 먼저 확인한다. stored Stage는 진입 권한이 아니며 실제
+자격은 application의 Blueprint·Execute·Verify Gate 재계산이 결정한다.
+
+successor revision이 생기면 exit 0으로 revision·generation·approval 필요를
+표시하고 Mission record를 Blueprint로 전이한다. scope change finding만 생기면
+exit 2 `HOLD`로 반환하며 revision·전이는 없다. MCP는 같은 parser와 dispatch에서
+`mcx_blueprint_evolve`를 파생하고, Wonder+Reflect 두 primary call을 기다릴 수 있게
+`mcx_start_blueprint_evolve` 비동기 짝을 제공한다.
+
+Blueprint state 저장과 Mission record 전이는 cross-file transaction이 아니다.
+successor 저장 뒤 전이 기록 전에 중단되면 `status` mismatch가 드러나고 Gate
+재계산이 이긴다 ([ADR-0037](./adr/0037-mission-record-and-canonical-stage.md),
+[ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §10).
+
 ---
 
 ## 8. Normal sequence
@@ -561,13 +580,15 @@ sequenceDiagram
 
 ### Gen 2+ Evolve sequence
 
-1. current approved Blueprint와 같은 revision의 Execute·Verify lineage를 검증한다.
-2. Verify Gate가 `HOLD`인지 재계산하고 source snapshot을 저장한다.
-3. Wonder output을 저장한다.
-4. Reflect output을 저장한다.
-5. parent AC key binding, protected keep, delete/reorder 금지, scope 보존을 검사한다.
-6. successor generation의 pending revision과 completed evolution record를 원자 저장한다.
-7. QA와 사용자 승인을 거쳐 Gate를 다시 판정한다.
+1. surface가 Mission `ACTIVE`를 확인하고 `blueprint evolve` 단발 명령을 연다.
+2. current approved Blueprint와 같은 revision의 Execute·Verify lineage를 검증한다.
+3. Verify Gate가 `HOLD`인지 재계산하고 source snapshot을 저장한다.
+4. Wonder output을 저장한다.
+5. Reflect output을 저장한다.
+6. parent AC key binding, protected keep, delete/reorder 금지, scope 보존을 검사한다.
+7. successor generation의 pending revision과 completed evolution record를 원자 저장한다.
+8. surface가 Mission Stage를 Blueprint로 기록한다.
+9. QA와 사용자 승인을 거쳐 Gate를 다시 판정한다.
 
 정상 호출 예산은 Wonder 1 + Reflect 1 = **2 primary calls**다. 기존 Claude
 transient retry 상한을 포함하면 phase당 3 attempts, 전체 최악 6회다.
@@ -758,6 +779,9 @@ Next action:
 | Reflect adapter | parent index 누락·중복·재정렬 또는 add가 중간에 있음 (`upstream 관측`, [EVOLVE findings](./research/EVOLVE_UPSTREAM_FINDINGS.md) §4) | content key 변환 전 거부; unsafe patch checkpoint 금지 |
 | Reflect adapter | protected AC를 revise (`upstream 관측`, pinned `evolution/reflect.py` satisficing backstop) | adapter가 exact keep으로 되돌리고 settled key를 결정적으로 계산 |
 | Reflect adapter | 존재하지 않는 ontology field modify/remove 또는 기존 field add (`upstream 관측`, 위 findings §5) | phase output 저장 전 거부 |
+| Evolve surface | Mission record 없음 또는 `COMPLETE` (`upstream 대응물 없음`, [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §10) | service·LLM 호출 전에 exit 1; terminal Mission을 다시 열지 않음 |
+| Evolve surface | Reflect scope finding으로 successor revision 없음 (`upstream divergence`, 위 ADR §5·§10) | exit 2 `HOLD`; Mission Stage를 Verify에 유지하고 Brief 사용자 결정 안내 |
+| Evolve surface | valid successor + MCP 호출 (`upstream 대응물 없음`, 위 ADR §10) | CLI와 같은 dispatch로 revision 1개·Verify→Blueprint 전이·Completion 2회 원장 기록 |
 | Evolve replay | Wonder 저장 뒤 process 중단 (`upstream 관측`, 위 findings §8) | 같은 successor generation에서 Reflect부터 재개 |
 | Evolve concurrency | 같은 parent에 동시 호출 (`upstream 관측`, 위 findings §10) | single-flight; successor revision 하나만 생성 |
 | Generation | valid structured draft | QA로 진행 |

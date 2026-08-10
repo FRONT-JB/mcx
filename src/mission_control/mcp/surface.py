@@ -239,7 +239,12 @@ async def call_tool(
 #: 것은 실행 경로를 따라가지 않은 오류였고, Phase 7 종료 검토가 잡았다
 #: (progress 0007 §1.2).
 LONG_RUNNING: frozenset[str] = frozenset(
-    {"mcx_execute_next", "mcx_verify_semantic", "mcx_recover_dispatch"}
+    {
+        "mcx_blueprint_evolve",
+        "mcx_execute_next",
+        "mcx_verify_semantic",
+        "mcx_recover_dispatch",
+    }
 )
 
 

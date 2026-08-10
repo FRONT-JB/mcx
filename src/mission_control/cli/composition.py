@@ -44,6 +44,10 @@ from mission_control.adapters.text.brief_backends import (
 from mission_control.adapters.text.claude_completion import ClaudeCompletion
 from mission_control.adapters.text.codex_completion import CodexCompletion
 from mission_control.adapters.text.completion_engine import CompletionEngine
+from mission_control.adapters.text.evolve_backends import (
+    PromptedEvolveReflector,
+    PromptedEvolveWonderer,
+)
 from mission_control.adapters.text.mechanical_detector import PromptedMechanicalDetector
 from mission_control.adapters.text.semantic_evaluator import PromptedSemanticEvaluator
 from mission_control.adapters.verification.local_mechanical_runner import (
@@ -57,6 +61,7 @@ from mission_control.adapters.workspace.checkpoint import GitCheckpointRecorder
 from mission_control.adapters.workspace.rollback import GitRollback
 from mission_control.application.blueprint_service import BlueprintService
 from mission_control.application.brief_service import BriefService
+from mission_control.application.evolve_service import EvolveService
 from mission_control.application.execute_service import ExecuteService
 from mission_control.application.ports import ExecutionRuntime, MechanicalRunner
 from mission_control.application.recover_service import RecoverService
@@ -245,6 +250,19 @@ def blueprint_service(
             proposer=PromptedMechanicalDetector(completion=completion)
         ),
         workspace=workspace,
+    )
+
+
+def evolve_service(layout: StateLayout, adapters: Adapters) -> EvolveService:
+    """후속 Blueprint 생산도 Blueprint text routing 행을 쓴다 (ADR-0051 §10)."""
+    completion = adapters.completion_for(Stage.BLUEPRINT)
+    return EvolveService(
+        repository=FileBlueprintRepository(root=layout.state),
+        executes=FileExecuteRepository(root=layout.state),
+        verifies=FileVerifyRepository(root=layout.state),
+        wonderer=PromptedEvolveWonderer(completion=completion),
+        reflector=PromptedEvolveReflector(completion=completion),
+        policy=SEMANTIC_POLICY,
     )
 
 
