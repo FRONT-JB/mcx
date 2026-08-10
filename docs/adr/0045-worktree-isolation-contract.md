@@ -3,8 +3,8 @@
 - Status: **Accepted** (사용자 승인 2026-08-09 — 우회 플래그 없음 · 항상 격리 ·
   `mcx cleanup` 도입 · 자동 병합 미도입)
 - Date: 2026-08-09
-- Constitutional basis: [ADR-0004](./0004-stage-capability-boundaries.md)
-  (Stage별 최소 capability), [ADR-0024](./0024-execute-v1-dispatch-contract.md) §6
+- Constitutional basis: [ADR-0004](./0004-stage-scoped-minimum-capability.md)
+  (Stage별 최소 capability), [ADR-0024](./0024-execute-v1-execution-model.md) §6
   (`CapabilityEnvelope`), [ADR-0033](./0033-first-runtime-adapter-contract.md) §4
   (sandbox 경계)
 - Upstream evidence: [WORKTREE findings](../research/WORKTREE_UPSTREAM_FINDINGS.md)

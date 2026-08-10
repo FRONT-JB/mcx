@@ -3,8 +3,8 @@
 - Status: **Accepted** (사용자 결정 2026-08-10 — "upstream과 유사하면서 가장 안전한 방법")
 - Date: 2026-08-10
 - Constitutional basis: [ADR-0015](./0015-requirement-candidate-model.md)
-  (요구사항 후보 모델), [ADR-0016](./0016-handoff-is-derived.md),
-  [ADR-0018](./0018-blueprint-scope-boundary.md) (생성기는 대화를 다시 읽지 않는다)
+  (요구사항 후보 모델), [ADR-0016](./0016-brief-handoff-projection.md),
+  [ADR-0018](./0018-blueprint-generation-contract.md) (생성기는 대화를 다시 읽지 않는다)
 - Upstream evidence: [DOGFOODING_0004](../research/DOGFOODING_0004.md) §2
 - 해소 대상: 도그푸딩 0004가 관측한 **빈 handoff에 `CLEAR`** (Brief Gate)
 

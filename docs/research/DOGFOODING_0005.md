@@ -82,7 +82,7 @@ rollback: 6c9111c로 되돌림
 
 ```
 → command_execution … python3 -c "import unittest,test_roman;
-   n=[redacted](test_roman).countTestCases(); …"
+   n=<redacted>(test_roman).countTestCases(); …"
 ```
 
 `unittest.defaultTestLoader.loadTestsFromModule`이 통째로 지워졌다.
