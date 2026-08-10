@@ -14,10 +14,10 @@ Brief → Blueprint → Execute → Verify
 
 ## 현재 상태
 
-Phase 9 (brownfield·worktree·checkpoint·rollback·진행 관측)까지 완료했고,
-Phase 10 (Reflect/Evolve)의 upstream 연결 경로를 조사하는 단계다. 다섯 Stage
-전부가 실제 AI로 구동되며 실 AI 도그푸딩 5회를 수행했다. 최신 도그푸딩 0005도
-`MISSION COMPLETE`까지 완주했다. 검증된 현재 상태와 알려진 한계는
+Phase 0~11 구현을 완료했다. 다섯 Stage 전부가 실제 AI로 구동되며 실 AI
+도그푸딩 7회를 수행했다. 최신 도그푸딩 0007은 실제 worker 3개 병렬 실행,
+공통 파일 충돌 감지, Coordinator, 독립 Verify를 거쳐 `MISSION COMPLETE`까지
+완주했다. 검증된 현재 상태와 알려진 한계는
 [docs/progress/README.md](docs/progress/README.md)에 있다 — 이 README가 아니라
 그 문서가 상태의 소유자다.
 
@@ -45,7 +45,7 @@ claude mcp add mcx -- uvx --from "$PWD[mcp]" mcx-mcp
 ```bash
 uv sync                      # 개발 환경
 uv run mcx --help            # CLI
-uv run mcx-mcp tools         # MCP tool 목록 (29개)
+uv run mcx-mcp tools         # MCP tool 목록 (33개)
 ```
 
 MCP 서버를 host에 직접 등록하려면 로컬 경로를 가리킨다.

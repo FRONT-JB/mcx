@@ -13,7 +13,8 @@ from mission_control.adapters.persistence.file_mission_repository import (
 )
 from mission_control.cli import composition
 from mission_control.cli.composition import StateLayout, default_adapters
-from mission_control.cli.main import amain
+from mission_control.cli.main import _show_rollback, amain
+from mission_control.domain.checkpoint import Rollback
 from mission_control.domain.errors import StaleWriteError
 from mission_control.domain.evolve.models import EvolutionPhase
 from mission_control.domain.mission import MissionRecord, MissionStatus
@@ -26,6 +27,22 @@ def repository(tmp_path: Path) -> FileMissionRepository:
 
 def argv(mission: str, tmp_path: Path) -> list[str]:
     return ["--mission", mission, "--state-dir", str(tmp_path)]
+
+
+def test_rollback_display_names_the_removed_files(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _show_rollback(
+        Rollback(
+            reverted=True,
+            commit="abc1234",
+            removed_files=("proven.py", "failed_attempt.py", "nested/trace.txt"),
+        )
+    )
+
+    output = capsys.readouterr().err
+    assert "rollback: abc1234로 되돌림" in output
+    assert "제거 3건: proven.py, failed_attempt.py, nested/trace.txt" in output
 
 
 async def test_brief_start_creates_record_with_workspace(tmp_path: Path) -> None:

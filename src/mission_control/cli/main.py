@@ -32,6 +32,7 @@ from uuid import uuid4
 from pydantic import BaseModel
 
 from mission_control.adapters.workspace import worktree
+from mission_control.application.execute_service import ParallelExecutionHoldError
 from mission_control.cancellation import cancel_when
 from mission_control.cli import backend_profile, composition, status_render, status_view
 from mission_control.cli.calls import CallCounter
@@ -47,6 +48,8 @@ from mission_control.domain.brief.requirement import (
     ConfirmationAuthority,
     RequirementSection,
 )
+from mission_control.domain.checkpoint import Rollback
+from mission_control.domain.execute.state import StageRunStatus
 from mission_control.domain.mission import (
     InvalidStageTransitionError,
     MissionCompletedError,
@@ -64,6 +67,7 @@ _TRANSITION_TRIGGERS: dict[tuple[str, str], Stage] = {
     ("blueprint", "generate"): Stage.BLUEPRINT,
     ("blueprint", "evolve"): Stage.BLUEPRINT,
     ("execute", "next"): Stage.EXECUTE,
+    ("execute", "stage"): Stage.EXECUTE,
     ("verify", "mechanical"): Stage.VERIFY,
     ("verify", "semantic"): Stage.VERIFY,
     ("recover", "dispatch"): Stage.RECOVER,
@@ -130,6 +134,19 @@ def _note(message: str) -> None:
         print(message, file=sys.stderr)
     else:
         sink.append(("note", message))
+
+
+def _show_rollback(rewound: Rollback) -> None:
+    """rollback 지점과 실제 제거 집합을 같은 사용자 메시지로 보인다."""
+    _note(
+        f"rollback: {rewound.commit}로 되돌림"
+        if rewound.reverted
+        else f"rollback 없음: {rewound.skipped}"
+    )
+    if rewound.reverted and rewound.removed_files_error is not None:
+        _note(f"  제거 목록 없음: {rewound.removed_files_error}")
+    elif rewound.reverted and rewound.removed_files:
+        _note(f"  제거 {len(rewound.removed_files)}건: {', '.join(rewound.removed_files)}")
 
 
 def _progress_sink(tail: ProgressTail) -> Callable[[RuntimeActivity], None]:
@@ -275,6 +292,12 @@ def build_parser() -> argparse.ArgumentParser:
     execute.add_parser(
         "next", parents=[common], help="다음 미실행 수용 기준 하나를 실행한다 (장기 — 침묵 900초)"
     )
+    p = execute.add_parser(
+        "stage",
+        parents=[common],
+        help="다음 dependency stage를 실행한다 (장기 — 2 이상 명시 시 병렬)",
+    )
+    p.add_argument("--max-workers", type=int, default=None)
     execute.add_parser("gate", parents=[common], help="Verify 진입 가능 여부를 판정한다")
 
     verify = stage_sub.add_parser("verify", help="Verify — evidence로 판정").add_subparsers(
@@ -674,6 +697,20 @@ async def _dispatch_execute(
             service = composition.execute_service(layout, adapters, workspace=effective)
             state = await service.dispatch_next(mission_id=args.mission)
         show(state.attempts[-1])
+    elif args.verb == "stage":
+        with _isolated(layout, args.mission, workspace) as effective:
+            service = composition.execute_service(layout, adapters, workspace=effective)
+            try:
+                state = await service.dispatch_stage(
+                    mission_id=args.mission, max_workers=args.max_workers
+                )
+            except ParallelExecutionHoldError as error:
+                show({"outcome": "HOLD", "reason": error.reason})
+                return 2
+        run = state.stage_runs[-1]
+        show(run)
+        if run.status is StageRunStatus.HOLD:
+            return 2
     elif args.verb == "gate":
         service = composition.execute_service(layout, adapters, workspace=workspace)
         decision = await service.decide_gate(mission_id=args.mission)
@@ -738,11 +775,7 @@ async def _dispatch_recover(
             # (ADR-0047 §1). 순서를 정하는 자리가 조율 계층이라 여기 있다.
             rewound = service.rewind(mission_id=args.mission)
             if rewound is not None:
-                _note(
-                    f"rollback: {rewound.commit}로 되돌림"
-                    if rewound.reverted
-                    else f"rollback 없음: {rewound.skipped}"
-                )
+                _show_rollback(rewound)
             state = await service.dispatch_correction(mission_id=args.mission)
         show(state.attempts[-1])
         return 0

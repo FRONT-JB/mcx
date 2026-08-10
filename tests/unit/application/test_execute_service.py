@@ -5,6 +5,9 @@ Test Matrix: Entry·Dispatch·Runtime·Sequence·Attempt·Telemetry 행
 (docs/07_EXECUTE.md §13)
 """
 
+import asyncio
+import dataclasses
+
 import pytest
 
 from mission_control.application.blueprint_service import BlueprintNotFoundError
@@ -13,8 +16,15 @@ from mission_control.application.execute_service import (
     AllCriteriaExecutedError,
     BlueprintNotClearedError,
     ExecuteService,
+    ParallelExecutionHoldError,
 )
-from mission_control.application.ports import ExecutionOutcome, ExecutionRequest
+from mission_control.application.ports import (
+    CoordinatorOutcome,
+    CoordinatorRequest,
+    DependencyAnalysisRequest,
+    ExecutionOutcome,
+    ExecutionRequest,
+)
 from mission_control.domain.blueprint.qa import QaAssessment, QaPolicy
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
 from mission_control.domain.blueprint.state import BlueprintState
@@ -33,11 +43,15 @@ from mission_control.domain.brief.closure import (
 )
 from mission_control.domain.brief.state import BriefState
 from mission_control.domain.execute.gate import ExecuteGateBlockingCondition
+from mission_control.domain.execute.plan import CriterionDependency, build_parallel_plan
 from mission_control.domain.execute.state import (
     AttemptStatus,
     CapabilityEnvelope,
     ExecuteState,
+    StageRunStatus,
+    WriteTelemetryStatus,
 )
+from mission_control.domain.verify.evidence import CommandExecution
 
 BRIEF_POLICY = ClarityPolicy.greenfield_v1()
 QA_POLICY = QaPolicy.blueprint_v1()
@@ -381,6 +395,374 @@ class TestGate:
         service, _, _, _, _ = _service()
         decision = await service.decide_gate(mission_id="m-1")
         assert decision.outcome == "HOLD"
+
+
+class FakeDependencyAnalyzer:
+    backend = "fake_text"
+
+    def __init__(self, dependencies: tuple[CriterionDependency, ...] | None = None) -> None:
+        self.dependencies = dependencies
+        self.calls = 0
+
+    async def analyze(
+        self, request: DependencyAnalysisRequest
+    ) -> tuple[CriterionDependency, ...]:
+        self.calls += 1
+        return self.dependencies or tuple(
+            CriterionDependency(ac_key=item.key) for item in request.acceptance_criteria
+        )
+
+
+class ConcurrentRuntime:
+    backend = "parallel_fake"
+
+    def __init__(
+        self,
+        outcomes: dict[str, ExecutionOutcome],
+        repository: InMemoryExecuteRepository,
+    ) -> None:
+        self.outcomes = outcomes
+        self.repository = repository
+        self.requests: list[ExecutionRequest] = []
+        self.active = 0
+        self.max_active = 0
+        self.persisted_open_counts: list[int] = []
+
+    async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:
+        self.requests.append(request)
+        stored = self.repository.states["m-1"]
+        self.persisted_open_counts.append(len(stored.open_attempts))
+        self.active += 1
+        self.max_active = max(self.max_active, self.active)
+        await asyncio.sleep(0.02)
+        self.active -= 1
+        return self.outcomes[request.criterion.key]
+
+
+class QuotaRuntime(ConcurrentRuntime):
+    def __init__(self, repository: InMemoryExecuteRepository) -> None:
+        super().__init__({}, repository)
+        self.sibling_started = asyncio.Event()
+        self.sibling_cancelled = False
+
+    async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:
+        self.requests.append(request)
+        if request.criterion.key == FIRST.key:
+            await self.sibling_started.wait()
+            return ExecutionOutcome(succeeded=False, error="429 rate limit")
+        self.sibling_started.set()
+        try:
+            await asyncio.sleep(60)
+        except asyncio.CancelledError:
+            self.sibling_cancelled = True
+            raise
+        raise AssertionError("quota sibling should have been cancelled")
+
+
+class RecordingCoordinator:
+    backend = "parallel_fake"
+
+    def __init__(self, repository: InMemoryExecuteRepository) -> None:
+        self.repository = repository
+        self.requests: list[CoordinatorRequest] = []
+        self.observed_durable_dispatch = False
+        self.outcome = CoordinatorOutcome(succeeded=True, result_summary="reconciled")
+
+    async def coordinate(self, request: CoordinatorRequest) -> CoordinatorOutcome:
+        self.requests.append(request)
+        stored = self.repository.states["m-1"]
+        self.observed_durable_dispatch = (
+            stored.stage_runs[-1].status is StageRunStatus.COORDINATOR_DISPATCHED
+        )
+        return self.outcome
+
+
+class PassingRunner:
+    def __init__(self) -> None:
+        self.commands: list[str] = []
+        self.exit_code = 0
+        self.output = "passed"
+
+    async def missing_artifacts(
+        self, *, workspace: str, artifacts: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        return ()
+
+    async def run(
+        self, *, command: str, workspace: str, timeout_seconds: int
+    ) -> CommandExecution:
+        self.commands.append(command)
+        return CommandExecution(exit_code=self.exit_code, output=self.output)
+
+
+def _parallel_service(
+    outcomes: dict[str, ExecutionOutcome],
+) -> tuple[
+    ExecuteService,
+    InMemoryExecuteRepository,
+    ConcurrentRuntime,
+    RecordingCoordinator,
+    PassingRunner,
+    FakeDependencyAnalyzer,
+]:
+    briefs = InMemoryBriefRepository()
+    briefs.states["m-1"] = _cleared_brief()
+    blueprints = InMemoryBlueprintRepository()
+    blueprints.states["m-1"] = _approved_blueprint(briefs.states["m-1"].revision)
+    repository = InMemoryExecuteRepository()
+    runtime = ConcurrentRuntime(outcomes, repository)
+    coordinator = RecordingCoordinator(repository)
+    runner = PassingRunner()
+    analyzer = FakeDependencyAnalyzer()
+    service = ExecuteService(
+        briefs=briefs,
+        blueprints=blueprints,
+        repository=repository,
+        runtime=runtime,
+        envelope=ENVELOPE,
+        analyzer=analyzer,
+        coordinator=coordinator,
+        runner=runner,
+    )
+    return service, repository, runtime, coordinator, runner, analyzer
+
+
+class TestParallelStage:
+    async def test_grouped_attempts_precede_real_fanout_and_results_bind_by_id(self) -> None:
+        service, _, runtime, coordinator, runner, analyzer = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/shared.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+                SECOND.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/shared.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+            }
+        )
+
+        state = await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        assert runtime.max_active == 2
+        assert runtime.persisted_open_counts == [2, 2]
+        assert analyzer.calls == 1
+        assert len(coordinator.requests) == 1
+        assert coordinator.requests[0].conflict_files == ("src/shared.py",)
+        assert coordinator.observed_durable_dispatch is True
+        assert set(runner.commands) == {"pytest -k list", "pytest -k empty"}
+        assert state.stage_runs[-1].status is StageRunStatus.EXECUTED_UNVERIFIED
+        assert all(item.status is AttemptStatus.EXECUTED_UNVERIFIED for item in state.attempts)
+
+    async def test_incomplete_write_attribution_triggers_full_stage_coordination(self) -> None:
+        service, _, _, coordinator, _, _ = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(
+                    succeeded=True, write_telemetry=WriteTelemetryStatus.INCOMPLETE
+                ),
+                SECOND.key: ExecutionOutcome(
+                    succeeded=True, write_telemetry=WriteTelemetryStatus.COMPLETE
+                ),
+            }
+        )
+
+        await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        assert coordinator.requests[0].conflict_files == ()
+        assert coordinator.requests[0].uncertain_ac_keys == (FIRST.key,)
+
+    async def test_exact_disjoint_complete_writes_skip_the_coordinator(self) -> None:
+        service, _, runtime, coordinator, runner, _ = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/a.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+                SECOND.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/b.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+            }
+        )
+
+        state = await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        assert runtime.max_active == 2
+        assert coordinator.requests == []
+        assert runner.commands == []
+        assert state.stage_runs[-1].status is StageRunStatus.EXECUTED_UNVERIFIED
+
+    async def test_one_worker_failure_does_not_cancel_its_sibling(self) -> None:
+        service, _, runtime, _, _, _ = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(
+                    succeeded=False,
+                    error="first broke",
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+                SECOND.key: ExecutionOutcome(
+                    succeeded=True, write_telemetry=WriteTelemetryStatus.COMPLETE
+                ),
+            }
+        )
+
+        state = await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        assert len(runtime.requests) == 2
+        assert state.stage_runs[-1].status is StageRunStatus.EXECUTION_FAILED
+        assert state.latest_for(ac_key=SECOND.key, blueprint_revision=1).status is (
+            AttemptStatus.EXECUTED_UNVERIFIED
+        )
+
+    async def test_partial_crash_never_redispatches_completed_or_unknown_workers(self) -> None:
+        service, repository, runtime, _, _, analyzer = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(succeeded=True),
+                SECOND.key: ExecutionOutcome(succeeded=True),
+            }
+        )
+        blueprint = (await service._cleared_blueprint("m-1")).current  # noqa: SLF001
+        plan = build_parallel_plan(
+            blueprint=blueprint,
+            analyzer_backend=analyzer.backend,
+            dependencies=tuple(
+                CriterionDependency(ac_key=item.key) for item in blueprint.acceptance_criteria
+            ),
+        )
+        state = ExecuteState.start(mission_id="m-1").add_plan(plan)
+        state = state.dispatch_stage(
+            plan=plan,
+            stage_index=0,
+            ac_keys=blueprint.criterion_keys,
+            runtime_backend=runtime.backend,
+            envelope=ENVELOPE,
+            requested_workers=2,
+            effective_workers=2,
+        )
+        state = state.record_result_for(
+            execution_id=state.stage_runs[-1].attempt_execution_ids[0], succeeded=True
+        )
+        repository.states["m-1"] = state
+
+        with pytest.raises(ParallelExecutionHoldError, match="결과 불명 worker"):
+            await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        assert runtime.requests == []
+
+    async def test_closed_workers_resume_at_coordination_without_redispatch(self) -> None:
+        service, repository, runtime, coordinator, runner, analyzer = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(succeeded=True),
+                SECOND.key: ExecutionOutcome(succeeded=True),
+            }
+        )
+        blueprint = (await service._cleared_blueprint("m-1")).current  # noqa: SLF001
+        plan = build_parallel_plan(
+            blueprint=blueprint,
+            analyzer_backend=analyzer.backend,
+            dependencies=tuple(
+                CriterionDependency(ac_key=item.key) for item in blueprint.acceptance_criteria
+            ),
+        )
+        state = ExecuteState.start(mission_id="m-1").add_plan(plan)
+        state = state.dispatch_stage(
+            plan=plan,
+            stage_index=0,
+            ac_keys=blueprint.criterion_keys,
+            runtime_backend=runtime.backend,
+            envelope=ENVELOPE,
+            requested_workers=2,
+            effective_workers=2,
+        )
+        for execution_id in state.stage_runs[-1].attempt_execution_ids:
+            state = state.record_result_for(
+                execution_id=execution_id,
+                succeeded=True,
+                changed_files=("src/shared.py",),
+                write_telemetry=WriteTelemetryStatus.COMPLETE,
+            )
+        repository.states["m-1"] = state
+
+        resumed = await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        assert runtime.requests == []
+        assert len(coordinator.requests) == 1
+        assert set(runner.commands) == {"pytest -k list", "pytest -k empty"}
+        assert resumed.stage_runs[-1].status is StageRunStatus.EXECUTED_UNVERIFIED
+
+    async def test_coordinator_failure_holds_and_is_not_called_twice(self) -> None:
+        service, repository, _, coordinator, _, _ = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/shared.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+                SECOND.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/shared.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+            }
+        )
+        coordinator.outcome = CoordinatorOutcome(succeeded=False, error="merge failed")
+
+        state = await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        assert state.stage_runs[-1].status is StageRunStatus.HOLD
+        with pytest.raises(ParallelExecutionHoldError, match="merge failed"):
+            await service.dispatch_stage(mission_id="m-1", max_workers=2)
+        assert len(coordinator.requests) == 1
+        assert repository.states["m-1"] == state
+
+    async def test_failed_settled_revalidation_holds_execute_gate(self) -> None:
+        service, _, _, _, runner, _ = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/shared.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+                SECOND.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/shared.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+            }
+        )
+        runner.exit_code = 1
+        runner.output = "assertion failed"
+
+        state = await service.dispatch_stage(mission_id="m-1", max_workers=2)
+        decision = await service.decide_gate(mission_id="m-1")
+
+        assert state.stage_runs[-1].status is StageRunStatus.HOLD
+        assert decision.outcome == "HOLD"
+        assert ExecuteGateBlockingCondition.STAGE_UNSETTLED in tuple(
+            blocker.condition for blocker in decision.gate_blockers
+        )
+
+    async def test_shared_quota_cancels_running_sibling_and_holds_incomplete_stage(self) -> None:
+        service, repository, _, _, _, _ = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(succeeded=True),
+                SECOND.key: ExecutionOutcome(succeeded=True),
+            }
+        )
+        runtime = QuotaRuntime(repository)
+        service = dataclasses.replace(service, runtime=runtime)
+
+        with pytest.raises(ParallelExecutionHoldError, match="quota"):
+            await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        state = repository.states["m-1"]
+        assert runtime.sibling_cancelled is True
+        assert state.stage_runs[-1].status is StageRunStatus.HOLD
+        assert any(item.status is AttemptStatus.DISPATCHED for item in state.attempts)
 
     async def test_the_gate_rechecks_the_entry(self) -> None:
         service, briefs, _, _, _ = _service()

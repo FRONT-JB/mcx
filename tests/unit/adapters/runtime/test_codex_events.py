@@ -7,7 +7,12 @@
 
 import json
 
-from mission_control.adapters.runtime.codex_events import activity
+from mission_control.adapters.runtime.codex_events import (
+    activity,
+    completed_command_observed,
+    file_change,
+    turn_completed,
+)
 from mission_control.progress import MAX_DETAIL
 
 
@@ -79,6 +84,36 @@ class TestWhatIsNotProjected:
 
     def test_an_item_that_is_not_an_object_is_ignored(self) -> None:
         assert activity(json.dumps({"type": "item.started", "item": "nope"})) is None
+
+
+class TestWriteTelemetryProjection:
+    def test_completed_file_change_keeps_identity_and_paths(self) -> None:
+        line = json.dumps(
+            {
+                "type": "item.completed",
+                "item": {
+                    "id": "item_7",
+                    "type": "file_change",
+                    "changes": [{"path": "/workspace/src/a.py"}],
+                },
+            }
+        )
+        found = file_change(line)
+
+        assert found is not None
+        assert found.phase == "completed"
+        assert found.item_id == "item_7"
+        assert found.paths == ("/workspace/src/a.py",)
+
+    def test_command_and_terminal_events_are_distinguished(self) -> None:
+        command = json.dumps(
+            {"type": "item.completed", "item": {"type": "command_execution"}}
+        )
+        terminal = json.dumps({"type": "turn.completed"})
+
+        assert completed_command_observed(command) is True
+        assert turn_completed(command) is False
+        assert turn_completed(terminal) is True
 
 
 class TestTheStorageProfileIsAlreadyOn:

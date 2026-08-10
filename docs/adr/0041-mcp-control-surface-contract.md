@@ -181,7 +181,7 @@ SDK가 없어도 `mcx` CLI와 tool 표면 테스트가 그대로 선다. **인�
 
 ### Cost
 
-- tool 25개 + 비동기 4개·job 2개가 host 도구 목록에 올라간다. upstream도 비슷한 규모라
+- 최초 tool 25개 + 비동기 4개·job 2개가 host 도구 목록에 올라간다. upstream도 비슷한 규모라
   (약 35) 이례적이지 않지만, host의 컨텍스트를 그만큼 쓴다.
 - 원장 재사용은 job 개념을 mission에 묶는다 — mission 없는 작업은 job이 될 수
   없다. 현재 그런 작업은 없다.
@@ -234,3 +234,11 @@ SDK가 없어도 `mcx` CLI와 tool 표면 테스트가 그대로 선다. **인�
   방향만 정의하고 Core→worker→Core 방향을 다루지 않았다.
   [Open Questions §8](../research/OPEN_QUESTIONS.md)에 등록했고 시한은 Phase 8
   이다(그 Phase가 `mcx-mcp`를 host·worker 설정에 등록해 경로를 실제로 연다).
+
+## Amendment — parallel stage tool (2026-08-10)
+
+ADR-0053이 `mcx execute stage`를 추가했고 parser 파생 규칙에 따라
+`mcx_execute_stage`도 자동으로 생겼다. 이 명령은 dependency AI + worker N개 +
+조건부 Coordinator를 호출할 수 있는 장기 명령이므로 `mcx_start_execute_stage`
+짝도 둔다. 현재 표면은 **CLI 파생 26 + 비동기 5 + job 2 = 33 tools**다. 별도
+handler나 상태는 추가하지 않고 기존 `dispatch`·원장·취소 경계를 그대로 쓴다.

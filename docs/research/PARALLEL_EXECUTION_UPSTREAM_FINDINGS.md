@@ -190,3 +190,37 @@ true parallel을 열 수 있는 검증 가능한 안전 경로는 둘뿐이다.
 역할·추가 호출 비용·AC attempt와 1:1이 아닌 level repair authority를 새로
 확정해야 한다.
 결정 전까지 현재 순차 실행은 유지한다.
+
+## 10. 선택 뒤 Codex JSONL 실물 관측
+
+- 관측일: 2026-08-10
+- 대상: 현재 설치된 `codex exec --json`, 격리된 임시 git 저장소
+- Evidence level: **Observed — local runtime transcript**
+- 공식 표면: Codex CLI reference는 `--json`을 “newline-delimited JSON events,
+  one per state change”로 설명하지만 개별 item payload schema는 규범으로
+  공개하지 않는다.
+
+### 편집 도구 write
+
+`observed.txt` 하나를 만드는 실행은 다음 순서를 냈다.
+
+```text
+item.started   file_change changes=[{path=<absolute>/observed.txt, kind=add}]
+item.completed file_change changes=[{path=<absolute>/observed.txt, kind=add}]
+turn.completed
+```
+
+따라서 durable write Telemetry는 effect 전인 `item.started`가 아니라 completed
+event를 소비하고, 절대경로를 mission workspace 기준 상대경로로 정규화해야 한다.
+
+### shell redirection write
+
+`printf %s shell-write > shell-write.txt`를 명시적으로 요구한 실행은
+`command_execution` started/completed만 냈고 `file_change`는 전혀 없었다. 파일은
+실제로 생겼다.
+
+이 결과 때문에 “file_change가 겹치지 않음”은 “실제 write가 겹치지 않음”의
+증거가 아니다. 선택된 [ADR-0053](../adr/0053-parallel-coordinator-execution-contract.md)은
+exact overlap 외에 command event·terminal 누락·workspace 밖 경로를 attribution
+불완전으로 보고 full-stage Coordinator를 연다. 이것은 upstream의 Write/Edit
+overlap trigger보다 보수적인 deliberate divergence다.

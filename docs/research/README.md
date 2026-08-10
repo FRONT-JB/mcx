@@ -36,6 +36,7 @@
 - [DOGFOODING_0004.md](./DOGFOODING_0004.md) — Phase 9 첫 실물 관측, Brief에서 중단하고 과제 선정 오류·빈 handoff 결함을 처분한 기록
 - [DOGFOODING_0005.md](./DOGFOODING_0005.md) — Phase 9 다섯 층과 rollback·checkpoint를 검증하고 `MISSION COMPLETE`까지 완주한 기록
 - [DOGFOODING_0006.md](./DOGFOODING_0006.md) — Phase 10 Verify HOLD→Evolve Gen 2→재승인→Execute/Verify `MISSION COMPLETE`와 cross-generation 결함 수정 기록
+- [DOGFOODING_0007.md](./DOGFOODING_0007.md) — Phase 11 real parallel worker 3개→공통 파일 conflict→Coordinator→settled revalidation→독립 Verify `MISSION COMPLETE`, 강제 fixture 2건 처분 기록
 
 ## Evidence levels
 

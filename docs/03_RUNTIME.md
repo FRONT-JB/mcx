@@ -701,6 +701,22 @@ Codex adapter는 다음을 조사하고 계약에 매핑해야 한다.
 조사 결과가 공통 capability를 충족하지 못하면 adapter에서 이를 명시하고 Core 정책이
 dispatch 여부를 결정한다. prompt 문구로 강제 기능을 가장하지 않는다.
 
+#### 13.1.1 Phase 11 parallel amendment — VERIFIED
+
+Codex `--json` 실물에서 편집 도구는 paired `item.started`/`item.completed`
+`file_change`와 경로를 냈지만, 셸 리다이렉션 write는 `command_execution`만 냈다.
+따라서 Runtime 결과는 workspace 상대 `changed_files`와
+`write_telemetry=COMPLETE|INCOMPLETE`를 반환한다. terminal 누락, command event,
+unpaired file-change, workspace 밖 경로는 전부 `INCOMPLETE`다. application은
+동시 worker의 exact overlap 또는 incomplete attribution이 있으면 같은 Codex
+adapter를 별도 Coordinator authority로 한 번 호출한다. 취소 시 process group을
+종료하며 Coordinator도 worker와 같은 sandbox·재귀 차단을 쓴다.
+
+이 vendor event projection은 adapter 안에만 있고 Core에는 Codex item type이
+새지 않는다. exact 계약과 로컬 probe는 [ADR-0053](./adr/0053-parallel-coordinator-execution-contract.md)과
+[parallel findings](./research/PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md), 대표 실경로는
+[DOGFOODING_0007](./research/DOGFOODING_0007.md)이 소유한다.
+
 ### 13.2 OpenCode Adapter 방향
 
 OpenCode adapter도 동일한 공통 계약과 conformance suite를 따라야 한다. 다음 차이를

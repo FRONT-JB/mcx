@@ -250,8 +250,12 @@ Application Service가 Acceptance Criteria를 임의로 만들거나 domain inva
 - runtime request에 immutable input revision을 연결한다.
 - 취소, timeout, adapter error를 공통 실패로 정규화한다.
 
-정확한 작업 분해 알고리즘과 병렬 dispatch는 **TBD**다. v1은 순차 dispatch만으로
-시작할 수 있다.
+순차 `execute next`는 선언 순서의 AC 하나를 고른다. 병렬 `execute stage`는
+현재 승인 Blueprint revision 전체에 고정된 direct-dependency plan을 결정적
+topological stage로 만들고, 한 stage의 grouped attempts를 첫 effect 전에 저장한
+뒤 bounded fan-out한다. shared-worktree conflict나 write attribution 불완전은
+별도 Coordinator가 수습하고 settled workspace를 재검증한다
+([ADR-0053](./adr/0053-parallel-coordinator-execution-contract.md)).
 
 ### 6.3 Domain Layer
 

@@ -7,7 +7,7 @@
 |---|---|
 | 문서 지위 | Draft implementation guide |
 | 선행 문서 | [Constitution](./00_MISSION_CONTROL.md), [Architecture](./01_ARCHITECTURE.md), [Mission Lifecycle](./02_MISSION_LIFECYCLE.md), [Runtime](./03_RUNTIME.md), [Blueprint](./06_BLUEPRINT.md) |
-| 계획된 canonical CLI 명령 | `mcx execute` — 명칭 확정, 아직 미구현 |
+| canonical CLI 명령 | `mcx execute next`, `mcx execute stage`, `mcx execute gate` |
 | 진입 전제 | 승인된 Blueprint/Seed revision |
 | 성공 시 목적지 | `CLEAR — Clear for Verify` |
 | 내부 산출물 상태 | 실행됨, 아직 공식 검증되지 않음 |
@@ -222,8 +222,8 @@ EU-01 API contract
 의존 artifact가 존재하지 않거나 명백히 실패한 상태에서 후속 작업을 실행해서는
 안 된다.
 
-**v1 확정 (2026-08-08)**: dependency 파생을 도입하지 않는다 — 선언 순서 순차
-실행이고, 직전 attempt가 실행 실패면 후속 dispatch를 거부한다
+**순차 경로 확정 (2026-08-08)**: `execute next`는 dependency를 파생하지 않고
+선언 순서로 실행하며, 직전 attempt가 실행 실패면 후속 dispatch를 거부한다
 ([ADR-0024](./adr/0024-execute-v1-execution-model.md) §3). upstream은 선언
 신호와 LLM 추론의 합집합으로 의존을 만들고 결정적 토폴로지로 ready를 계산하는데
 (`upstream 관측` —
@@ -241,14 +241,20 @@ upstream도 신호가 없으면 의존 없음으로 진행한다.
 
 이는 영구적인 제한이 아니라 검증 가능한 최소 구현 순서다.
 
-**Phase 11 Gate 판정 (2026-08-10)**: 현재 병렬 implementation은 `HOLD`다.
+**Phase 11 Gate 판정 (2026-08-10)**: 최초 병렬 implementation은 `HOLD`였다.
 pinned upstream의 shared-worktree 병렬 안전은 dependency level만이 아니라
 worker별 Write/Edit Telemetry·충돌 시 별도 Coordinator repair·settled workspace
-재검증·level checkpoint를 함께 요구한다. 현재 mcx에는 conflict authority와
-grouped attempt durability가 없으므로 단순 fan-out을 금지한다
+재검증·level checkpoint를 함께 요구한다. Gate 판정 당시 mcx에는 conflict
+authority와 grouped attempt durability가 없었으므로 단순 fan-out을 금지했다
 ([ADR-0052](./adr/0052-parallel-execution-introduction-gate.md),
-[upstream findings](./research/PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md)). 순차
-baseline은 Gate가 `CLEAR`될 때까지 현재 규범이다.
+[upstream findings](./research/PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md)). 사용자는
+upstream Coordinator 경로를 선택했고, `execute next`를 유지한 채 별도
+`execute stage`에서 immutable plan·grouped attempt·bounded fan-out·Coordinator·
+settled revalidation을 한 묶음으로 도입한다
+([ADR-0053](./adr/0053-parallel-coordinator-execution-contract.md)). fake vertical
+slice와 [DOGFOODING_0007](./research/DOGFOODING_0007.md)의 실제 worker 3개·공통
+파일 conflict·Coordinator·독립 Verify가 모두 통과해 Phase 11 Gate는 `CLEAR`다.
+순차 baseline도 정상 경로로 유지한다.
 
 ---
 
@@ -431,8 +437,8 @@ transport failure에만 같은 attempt에서 허용된다. 그 밖의 실패는 
 
 ## 12. CLI experience
 
-`mcx execute`는 확정된 planned public command 이름이지만 아직 구현되지 않았다. 아래는
-목표 UX 예시이며, 확정된 command 이름 외의 옵션은 아직 정의하지 않는다.
+현재 public surface는 `execute next`(순차 AC 하나), `execute stage`
+(`--max-workers N`을 명시하면 bounded parallel stage), `execute gate`다.
 
 ```text
 $ mcx execute
@@ -494,6 +500,16 @@ Next action:
 | Attempt | 결과 수신 전 프로세스 종료 후 재개 (`upstream 대응물 없음` — upstream은 stall/resume, 우리 v1은 상태 자체가 의미, [ADR-0024](./adr/0024-execute-v1-execution-model.md) §4) | `DISPATCHED`로 남은 attempt가 "결과 불명"으로 드러난다 |
 | Attempt | 열린 attempt가 있는 상태의 새 dispatch (`upstream 대응물 없음`, [ADR-0024](./adr/0024-execute-v1-execution-model.md) §7) | 거부 |
 | Telemetry | provenance 네 항목 중 누락 (`upstream 대응물 없음` — upstream은 payload 관례, [ADR-0023](./adr/0023-execute-entry-and-provenance.md) §3) | 기록 생성 거부 |
+| Parallel plan | AC 누락·중복·unknown dependency·cycle | Runtime effect 없이 HOLD |
+| Parallel attempt | stage worker 전체의 durable 기록 전 | worker Runtime 호출 금지 |
+| Parallel result | sibling 완료 순서가 dispatch 순서와 다름 | `execution_id`로 exact attempt에 결합 |
+| Parallel failure | 한 sibling 실패, 독립 branch 성공 | sibling 결과 수집, 실패 의존자만 BLOCKED |
+| Write Telemetry | completed `file_change`의 같은 상대경로 writer 2명 이상 | bounded Coordinator 실행 |
+| Write Telemetry | command event·terminal 누락·workspace 밖 경로 | attribution 불완전, full-stage Coordinator 실행 |
+| Coordinator | effect 전 durable record 실패 | Coordinator 호출 금지 |
+| Coordinator | 결과 불명 또는 1회 실패 | 자동 재호출 없이 HOLD |
+| Settled revalidation | Coordinator 뒤 success contract 실패 | 후속 stage와 Execute Gate HOLD |
+| Resume | 일부 worker 완료, 일부 `DISPATCHED` | 완료 worker와 결과 불명 worker 모두 자동 재호출 금지 |
 
 ### Contract tests
 
@@ -594,10 +610,10 @@ Execute 구현 전에 다음을 ADR 또는 Runtime/Lifecycle 문서에서 확정
 - ~~작업 크기 판정과 최대 분해 깊이~~ → v1 분해 미도입, 도입 시 upstream
   한도와 대조 ([ADR-0024](./adr/0024-execute-v1-execution-model.md) §2,
   [ADR-0025](./adr/0025-execute-deliberate-divergences.md) 보류)
-- ~~dependency graph 표현~~ → v1 미도입 — 선언 순서 순차 + 실패 중단
-  ([ADR-0024](./adr/0024-execute-v1-execution-model.md) §3). 도입 시 순환
-  처리는 upstream과 달리 HOLD
-  ([ADR-0025](./adr/0025-execute-deliberate-divergences.md) Divergence)
+- ~~dependency graph 표현~~ → 순차 `execute next`는 선언 순서 유지. 병렬
+  `execute stage`는 현재 revision AC 전체의 strict direct-dependency plan과
+  결정적 topological stage를 저장하며 cycle·분석 불능은 HOLD
+  ([ADR-0053](./adr/0053-parallel-coordinator-execution-contract.md) §2)
 - 첫 concrete Runtime Adapter의 순서
 - 기본 timeout과 cancellation grace period
 - read/write/tool capability 표현 (v1 envelope는 workspace + 도구 목록 —
@@ -609,7 +625,9 @@ Execute 구현 전에 다음을 ADR 또는 Runtime/Lifecycle 문서에서 확정
   [ADR-0024](./adr/0024-execute-v1-execution-model.md) §7 — key schema 결정을
   대체하지 않는다)
 - ~~병렬 실행을 도입할 Gate~~ → [ADR-0052](./adr/0052-parallel-execution-introduction-gate.md)로
-  확정. 현재 결과는 `HOLD`; 아래 §17.1 조건이 전부 입증되기 전에는 순차 실행 유지
+  확정했고 사용자가 upstream Coordinator 경로를 선택했다. exact 계약은
+  [ADR-0053](./adr/0053-parallel-coordinator-execution-contract.md). 아래 §17.1의
+  구현·실경로 evidence가 모두 생길 때 Phase 11 Gate를 다시 `CLEAR`로 판정한다.
 - 실행 workspace 격리 방식
 - command output 크기와 계층별 exact redaction field policy
 
@@ -637,7 +655,9 @@ Execute 구현 전에 다음을 ADR 또는 Runtime/Lifecycle 문서에서 확정
 8. 공통 파일을 건드리는 AC와 독립 AC가 함께 있는 representative brownfield
    dogfood가 상태·파일·Verify lineage를 입증한다.
 
-현재 막는 것은 1·3·4·5·6·8번이다. exact 간극과 upstream 근거는
+선택된 구현은 1~7을 [ADR-0053](./adr/0053-parallel-coordinator-execution-contract.md)의
+계약으로 채웠고 8번도 [DOGFOODING_0007](./research/DOGFOODING_0007.md)에서
+통과했다. Phase 11은 `COMPLETE`다. exact 간극과 upstream 근거는
 [PARALLEL_EXECUTION_UPSTREAM_FINDINGS](./research/PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md)에
 있다.
 

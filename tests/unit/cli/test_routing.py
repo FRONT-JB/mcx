@@ -89,8 +89,7 @@ def test_resolution_falls_through_to_the_assembly_default(tmp_path: Path) -> Non
 def test_reading_a_lane_a_stage_does_not_use_is_an_error() -> None:
     with pytest.raises(RoutingConfigError):
         RoutingTable.empty().backend(Stage.BRIEF, Lane.EXECUTION)
-    with pytest.raises(RoutingConfigError):
-        RoutingTable.empty().backend(Stage.EXECUTE, Lane.TEXT)
+    assert RoutingTable.empty().backend(Stage.EXECUTE, Lane.TEXT) is None
 
 
 def test_binding_a_lane_a_stage_does_not_use_is_rejected(tmp_path: Path) -> None:

@@ -26,7 +26,7 @@
 |---|---|---|---|
 | 세밀한 실패 분류 (FABRICATION_SUSPECTED, SCOPE_CREEP, EVIDENCE 계열) | verifier 증거 계약 위의 분류 | **시한 도과 — 재지정 대기** (2026-08-09 발견): Phase 5에서 verifier(실제 semantic 평가자)가 실체화됐으나 분류는 미도입. 도입 시 정책 테이블(§2) 대조 | [REPAIR_UPSTREAM_FINDINGS §1~§2](../research/REPAIR_UPSTREAM_FINDINGS.md) |
 | ESCALATE_MODEL (상위 tier 재실행) | FABRICATION의 처방 | 모델 라우팅 부재 — **조건 유지, 로드맵 미배치** (Phase 5는 라우팅을 만들지 않고 지나갔다) | 위 findings §2 |
-| REDISPATCH_ALT_HARNESS (vendor 교체 재실행) | meta-harness 고유 수단 | **Phase 11**에서 재평가 — 다중 runtime 실물(OpenCode adapter)이 이연이라 그 전에는 대상이 없다 (2026-08-09) | 위 findings §2 |
+| REDISPATCH_ALT_HARNESS (vendor 교체 재실행) | meta-harness 고유 수단 | **Phase 11 재평가 완료 — 미발동.** 병렬 worker가 늘었지만 concrete execution Runtime은 Codex 하나라 교체 대상이 없다. OpenCode adapter 실물 활성화 시점에 다시 본다 (2026-08-10) | 위 findings §2, [progress 0011](../progress/0011_PARALLEL_EXECUTION_GATE.md) |
 | lateral 전환 (persona 선택, 개입 예산 1회) | RecoveryPlanner | v1 미도입 — 접근 전환은 마지막 재시도의 지시문까지 | [ADR-0031](./0031-recover-v1-failure-and-retry-contract.md) §5, findings §5 |
 | OSCILLATION·NO_DRIFT·DIMINISHING_RETURNS 탐지 | 4패턴 해시·이력 기반 | v1은 SPINNING(동일 오류 3회)만 — 나머지는 실행 이력 축적 후 | findings §4 |
 | rollback / worktree 복구 | ~~`core/worktree.py`~~ → **정정 2026-08-09**: 그 파일에 되돌리기는 없다. 실제 위치는 `scripts/ralph.sh`(파일)와 `core/lineage.py`(계보) 둘이다 ([ROLLBACK findings](../research/ROLLBACK_UPSTREAM_FINDINGS.md) §0) | **해소 2026-08-09** ([ADR-0047](./0047-rollback-to-the-last-proven-point.md) Proposed) — 재투입 전 마지막 입증 지점으로 되돌린다. 태그 없이 HEAD가 지점이며, dirty 가드는 격리·checkpoint가 대신하므로 이식하지 않는다 | [Open Questions §6](../research/OPEN_QUESTIONS.md) |

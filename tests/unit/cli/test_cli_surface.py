@@ -9,6 +9,7 @@ import pytest
 from mission_control.cli import composition
 from mission_control.cli.composition import default_adapters
 from mission_control.cli.main import _load_draft, amain, build_parser
+from mission_control.domain.execute.state import StageRunStatus
 
 #: ADR-0038 §1의 명령 표면 전체. 여기 없는 명령이 생기거나 여기 있는 명령이
 #: 사라지면 ADR 개정이 먼저다.
@@ -30,6 +31,7 @@ SURFACE: list[tuple[list[str], str, str]] = [
     (["blueprint", "gate"], "blueprint", "gate"),
     (["blueprint", "evolve"], "blueprint", "evolve"),
     (["execute", "next"], "execute", "next"),
+    (["execute", "stage", "--max-workers", "2"], "execute", "stage"),
     (["execute", "gate"], "execute", "gate"),
     (["verify", "mechanical"], "verify", "mechanical"),
     (["verify", "semantic"], "verify", "semantic"),
@@ -157,6 +159,40 @@ async def test_gate_clear_exits_zero(
     adapters = default_adapters()
     assert await amain(["brief", "start", "g", *argv], adapters) == 0
     assert await amain(["execute", "gate", *argv], adapters) == 0
+
+
+async def test_execute_stage_hold_exits_two(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class StubService:
+        async def dispatch_stage(
+            self, *, mission_id: str, max_workers: int | None
+        ) -> SimpleNamespace:
+            return SimpleNamespace(
+                stage_runs=(SimpleNamespace(status=StageRunStatus.HOLD),)
+            )
+
+    monkeypatch.setattr(
+        composition, "execute_service", lambda layout, adapters, *, workspace: StubService()
+    )
+    argv = ["--mission", "stage-hold", "--state-dir", str(tmp_path)]
+    adapters = default_adapters()
+    assert (
+        await amain(
+            [
+                "brief",
+                "start",
+                "g",
+                "--workspace",
+                str(tmp_path),
+                *argv,
+            ],
+            adapters,
+        )
+        == 0
+    )
+
+    assert await amain(["execute", "stage", "--max-workers", "2", *argv], adapters) == 2
 
 
 def test_default_adapters_are_claude_text_and_codex_execution() -> None:

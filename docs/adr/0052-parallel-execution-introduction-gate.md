@@ -144,3 +144,11 @@ state를 덮어쓰거나 optimistic save에서 실패할 때 이미 worker가 �
   부재는 안전 증거가 아니라 Gate blocker로 기록했다.
 - 문서·ADR에는 Phase 11 implementation `HOLD`가 표시되고, 코드에는 병렬
   dispatch 경로를 추가하지 않는다.
+
+## Resolution (2026-08-10)
+
+사용자는 §2의 1번, **upstream coordinator 경로**를 선택했다. exact 구현 계약은
+[ADR-0053](./0053-parallel-coordinator-execution-contract.md)이 소유한다.
+ADR-0052의 `HOLD`는 선택 전 판단으로 보존하며, 구현·테스트·대표 brownfield
+도그푸딩이 표의 evidence를 모두 채우면 Phase 11 progress에서 `CLEAR`로 다시
+판정한다.

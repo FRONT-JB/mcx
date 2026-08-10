@@ -14,6 +14,7 @@ upstream 봉투 형태 채택: ``{"type": "item.started", "item": {"type": …}}
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 from typing import Any
 
@@ -27,6 +28,15 @@ _COMMAND_KEYS = ("command", "cmd", "command_line")
 
 #: 대상 경로가 실릴 수 있는 자리 (upstream ``_extract_tool_input``).
 _PATH_KEYS = ("path", "file_path", "target_file")
+
+
+@dataclass(frozen=True, slots=True)
+class FileChangeEvent:
+    """write attribution에 필요한 file_change lifecycle projection."""
+
+    phase: str
+    item_id: str
+    paths: tuple[str, ...]
 
 
 def activity(line: str) -> RuntimeActivity | None:
@@ -47,6 +57,45 @@ def activity(line: str) -> RuntimeActivity | None:
     if not isinstance(item_type, str) or item_type not in TOOL_ITEM_TYPES:
         return None
     return RuntimeActivity(kind="tool", tool=item_type, detail=_detail(item_type, item))
+
+
+def file_change(line: str) -> FileChangeEvent | None:
+    """started/completed file_change의 id와 경로를 보존한다."""
+    event = _event(line)
+    if event is None or event.get("type") not in {"item.started", "item.completed"}:
+        return None
+    item = event.get("item")
+    if not isinstance(item, dict) or item.get("type") != "file_change":
+        return None
+    item_id = item.get("id")
+    if not isinstance(item_id, str) or not item_id:
+        return None
+    return FileChangeEvent(
+        phase="started" if event["type"] == "item.started" else "completed",
+        item_id=item_id,
+        paths=_changed_path_tuple(item),
+    )
+
+
+def completed_command_observed(line: str) -> bool:
+    event = _event(line)
+    if event is None or event.get("type") != "item.completed":
+        return False
+    item = event.get("item")
+    return isinstance(item, dict) and item.get("type") == "command_execution"
+
+
+def turn_completed(line: str) -> bool:
+    event = _event(line)
+    return event is not None and event.get("type") == "turn.completed"
+
+
+def _event(line: str) -> dict[str, Any] | None:
+    try:
+        event = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    return event if isinstance(event, dict) else None
 
 
 def _detail(item_type: str, item: dict[str, Any]) -> str:
@@ -77,6 +126,10 @@ def _first_command(item: dict[str, Any]) -> str:
 
 
 def _changed_paths(item: dict[str, Any]) -> str:
+    return " ".join(_changed_path_tuple(item))
+
+
+def _changed_path_tuple(item: dict[str, Any]) -> tuple[str, ...]:
     changes = item.get("changes")
     paths: list[str] = []
     if isinstance(changes, list):
@@ -89,4 +142,4 @@ def _changed_paths(item: dict[str, Any]) -> str:
                 )
     if not paths:
         paths = [str(item[key]) for key in _PATH_KEYS if isinstance(item.get(key), str)]
-    return " ".join(paths)
+    return tuple(dict.fromkeys(paths))

@@ -31,8 +31,14 @@ import tempfile
 
 from mission_control import progress
 from mission_control.adapters.runtime import codex_events
-from mission_control.application.ports import ExecutionOutcome, ExecutionRequest
+from mission_control.application.ports import (
+    CoordinatorOutcome,
+    CoordinatorRequest,
+    ExecutionOutcome,
+    ExecutionRequest,
+)
 from mission_control.cancellation import is_cancelled, observed
+from mission_control.domain.execute.state import WriteTelemetryStatus
 
 #: upstream `STALL_TIMEOUT_SECONDS` 채택 — 침묵 기준이지 총 시간이 아니다.
 SILENCE_TIMEOUT_SECONDS = 900.0
@@ -101,10 +107,56 @@ def render_prompt(request: ExecutionRequest) -> str:
     return "\n\n".join(parts)
 
 
+def render_coordinator_prompt(request: CoordinatorRequest) -> str:
+    """stage conflict repair의 bounded prompt."""
+    criteria = "\n".join(
+        f"- {item.key}: {item.description}" for item in request.acceptance_criteria
+    )
+    results = "\n".join(
+        f"- {item.ac_key}: {'succeeded' if item.succeeded else 'failed'}; "
+        f"files={', '.join(item.changed_files) or 'unattributed'}; "
+        f"report={item.result_summary or item.error or 'none'}"
+        for item in request.worker_results
+    )
+    conflicts = ", ".join(request.conflict_files) or "none identified exactly"
+    uncertain = ", ".join(request.uncertain_ac_keys) or "none"
+    constraints = "\n".join(f"- {item}" for item in request.constraints) or "- none"
+    non_goals = "\n".join(f"- {item}" for item in request.non_goals) or "- none"
+    return f"""You are the Flight Controller coordinating one completed parallel stage.
+
+Review the settled workspace and repair only conflicts or integration damage between the
+listed sibling acceptance criteria. Preserve every valid sibling change. Do not add product
+requirements, expand scope, commit, push, deploy, call Mission Control, or claim verification.
+The Verify stage remains authoritative. Finish after the listed criteria can coexist.
+
+## Goal
+{request.goal}
+
+## Constraints
+{constraints}
+
+## Non-goals
+{non_goals}
+
+## Stage acceptance criteria
+{criteria}
+
+## Worker results
+{results}
+
+## Exact overlapping files
+{conflicts}
+
+## Workers with incomplete write attribution
+{uncertain}
+"""
+
+
 class CodexExecutionRuntime:
     """``codex exec`` 단발 호출로 AC 하나를 실행한다."""
 
     backend = "codex_cli"
+    supports_coordination = True
 
     def __init__(
         self,
@@ -176,13 +228,39 @@ class CodexExecutionRuntime:
         os.close(descriptor)
         last_message_path = Path(last_message_name)
         try:
-            return await self._run(request, last_message_path)
+            return await self._run_prompt(
+                prompt=render_prompt(request),
+                workspace=request.workspace,
+                last_message_path=last_message_path,
+            )
         finally:
             last_message_path.unlink(missing_ok=True)
 
-    async def _run(self, request: ExecutionRequest, last_message_path: Path) -> ExecutionOutcome:
+    async def coordinate(self, request: CoordinatorRequest) -> CoordinatorOutcome:
+        descriptor, last_message_name = tempfile.mkstemp(suffix=".codex-last-message.txt")
+        os.close(descriptor)
+        last_message_path = Path(last_message_name)
+        try:
+            outcome = await self._run_prompt(
+                prompt=render_coordinator_prompt(request),
+                workspace=request.workspace,
+                last_message_path=last_message_path,
+            )
+        finally:
+            last_message_path.unlink(missing_ok=True)
+        return CoordinatorOutcome(
+            succeeded=outcome.succeeded,
+            native_session_id=outcome.native_session_id,
+            result_summary=outcome.result_summary,
+            changed_files=outcome.changed_files,
+            error=outcome.error,
+        )
+
+    async def _run_prompt(
+        self, *, prompt: str, workspace: str, last_message_path: Path
+    ) -> ExecutionOutcome:
         command = self.build_command(
-            workspace=request.workspace, last_message_path=str(last_message_path)
+            workspace=workspace, last_message_path=str(last_message_path)
         )
         process = await asyncio.create_subprocess_exec(
             *command,
@@ -191,14 +269,38 @@ class CodexExecutionRuntime:
             stderr=asyncio.subprocess.STDOUT,
             start_new_session=os.name != "nt",
         )
+        try:
+            return await self._consume_process(
+                process=process,
+                prompt=prompt,
+                workspace=workspace,
+                last_message_path=last_message_path,
+            )
+        except asyncio.CancelledError:
+            await self._terminate(process)
+            raise
+
+    async def _consume_process(
+        self,
+        *,
+        process: asyncio.subprocess.Process,
+        prompt: str,
+        workspace: str,
+        last_message_path: Path,
+    ) -> ExecutionOutcome:
         assert process.stdin is not None and process.stdout is not None
 
-        process.stdin.write(render_prompt(request).encode("utf-8"))
+        process.stdin.write(prompt.encode("utf-8"))
         await process.stdin.drain()
         process.stdin.close()
 
         native_session_id: str | None = None
         output_tail = ""
+        started_file_changes: set[str] = set()
+        completed_file_changes: set[str] = set()
+        raw_changed_paths: list[str] = []
+        command_observed = False
+        terminal_observed = False
         # 취소 관측이 설치되어 있을 때만 짧게 깨어난다 — 없으면 침묵 기준
         # 그대로라 기존 동작이 한 글자도 바뀌지 않는다 (ADR-0041 §5).
         poll = self._cancel_poll_seconds if observed() else self._silence_timeout_seconds
@@ -212,6 +314,7 @@ class CodexExecutionRuntime:
                     return ExecutionOutcome(
                         succeeded=False,
                         native_session_id=native_session_id,
+                        write_telemetry=WriteTelemetryStatus.INCOMPLETE,
                         error="cancelled by request; the process group was terminated",
                     )
                 silent += poll
@@ -221,6 +324,7 @@ class CodexExecutionRuntime:
                 return ExecutionOutcome(
                     succeeded=False,
                     native_session_id=native_session_id,
+                    write_telemetry=WriteTelemetryStatus.INCOMPLETE,
                     error=(
                         f"codex exec went silent for {self._silence_timeout_seconds:.0f}s; "
                         "the process group was terminated"
@@ -232,6 +336,15 @@ class CodexExecutionRuntime:
             text = line.decode("utf-8", errors="replace")
             output_tail = (output_tail + text)[-_OUTPUT_TAIL_CHARS:]
             native_session_id = self._thread_id_from(text) or native_session_id
+            change = codex_events.file_change(text)
+            if change is not None:
+                if change.phase == "started":
+                    started_file_changes.add(change.item_id)
+                else:
+                    completed_file_changes.add(change.item_id)
+                    raw_changed_paths.extend(change.paths)
+            command_observed = command_observed or codex_events.completed_command_observed(text)
+            terminal_observed = terminal_observed or codex_events.turn_completed(text)
             # 진행 관측이 설치되어 있을 때만 접는다 — 없으면 파싱도 하지 않는다
             # (ADR-0049 §5, 취소 관측과 같은 규율).
             if progress.observed():
@@ -248,13 +361,26 @@ class CodexExecutionRuntime:
             return ExecutionOutcome(
                 succeeded=False,
                 native_session_id=native_session_id,
+                changed_files=self._normalize_changed_paths(raw_changed_paths, workspace)[0],
+                write_telemetry=WriteTelemetryStatus.INCOMPLETE,
                 error="codex exec closed its output but did not exit; terminated",
             )
 
+        changed_files, invalid_path = self._normalize_changed_paths(raw_changed_paths, workspace)
+        telemetry = (
+            WriteTelemetryStatus.COMPLETE
+            if terminal_observed
+            and not command_observed
+            and not invalid_path
+            and started_file_changes == completed_file_changes
+            else WriteTelemetryStatus.INCOMPLETE
+        )
         if exit_code != 0:
             return ExecutionOutcome(
                 succeeded=False,
                 native_session_id=native_session_id,
+                changed_files=changed_files,
+                write_telemetry=telemetry,
                 error=f"codex exec exited with status {exit_code}: {output_tail.strip()}",
             )
 
@@ -263,7 +389,30 @@ class CodexExecutionRuntime:
             succeeded=True,
             native_session_id=native_session_id,
             result_summary=summary or None,
+            changed_files=changed_files,
+            write_telemetry=telemetry,
         )
+
+    @staticmethod
+    def _normalize_changed_paths(
+        paths: list[str], workspace: str
+    ) -> tuple[tuple[str, ...], bool]:
+        """vendor 절대경로를 workspace 상대경로로 바꾸고 scope drift를 표시한다."""
+        root = Path(workspace).resolve()
+        normalized: list[str] = []
+        invalid = False
+        for raw in paths:
+            candidate = Path(raw)
+            if not candidate.is_absolute():
+                candidate = root / candidate
+            try:
+                relative = candidate.resolve().relative_to(root).as_posix()
+            except ValueError:
+                invalid = True
+                continue
+            if relative and relative not in normalized:
+                normalized.append(relative)
+        return tuple(normalized), invalid
 
     @staticmethod
     def _thread_id_from(line: str) -> str | None:

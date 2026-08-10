@@ -43,6 +43,18 @@ from mission_control.domain.brief.requirement import (
     RequirementSection,
     evaluate_promotion,
 )
+from mission_control.domain.errors import MissionControlError
+
+
+class DuplicateRequirementCandidateError(MissionControlError):
+    """같은 section과 exact 원문인 후보가 이미 있다."""
+
+    def __init__(self, *, existing_number: int, section: RequirementSection) -> None:
+        super().__init__(
+            f"{section.value}의 같은 요구사항 후보가 이미 {existing_number}번에 있다"
+        )
+        self.existing_number = existing_number
+        self.section = section
 
 
 class BriefApproval(BaseModel):
@@ -255,13 +267,26 @@ class BriefState(BaseModel):
         기본값은 "아직 확인되지 않았고 권위가 없음"이다. 확인은 별도의 사건이며
         기록과 동시에 일어나지 않는다.
         """
-        if not text.strip():
+        normalized = text.strip()
+        if not normalized:
             raise ValueError("후보 문장이 비어 있을 수 없다")
+        existing = next(
+            (
+                item
+                for item in self.candidates
+                if item.section is section and item.text.strip() == normalized
+            ),
+            None,
+        )
+        if existing is not None:
+            raise DuplicateRequirementCandidateError(
+                existing_number=existing.number, section=section
+            )
 
         candidate = RequirementCandidate(
             number=len(self.candidates) + 1,
             section=section,
-            text=text,
+            text=normalized,
             content_source=content_source,
             resolution=resolution,
             confirmation_authority=confirmation_authority,

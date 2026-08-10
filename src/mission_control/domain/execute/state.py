@@ -30,6 +30,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from mission_control.domain.errors import MissionControlError
+from mission_control.domain.execute.plan import ParallelExecutionPlan
 from mission_control.security import redact_credentials
 
 
@@ -88,6 +89,17 @@ class AttemptStatus(StrEnum):
     EXECUTION_FAILED = "execution_failed"
 
 
+class WriteTelemetryStatus(StrEnum):
+    """worker write attribution의 완전성.
+
+    ``INCOMPLETE``는 write가 있었다는 뜻이 아니라, write가 없었다고 증명할 수
+    없다는 뜻이다 (ADR-0053 §4).
+    """
+
+    COMPLETE = "complete"
+    INCOMPLETE = "incomplete"
+
+
 class CapabilityEnvelope(BaseModel):
     """dispatch에 명시되는 실행 경계 (ADR-0024 §6).
 
@@ -124,6 +136,17 @@ class ExecutionAttempt(BaseModel):
     status: AttemptStatus = AttemptStatus.DISPATCHED
     result_summary: str | None = None
     error: str | None = None
+    changed_files: tuple[str, ...] = ()
+    write_telemetry: WriteTelemetryStatus | None = None
+
+    @field_validator("changed_files", mode="after")
+    @classmethod
+    def _changed_files_are_unique(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("changed_files는 중복될 수 없다")
+        if any(not item for item in value):
+            raise ValueError("changed_files는 빈 경로를 담을 수 없다")
+        return value
 
     @field_validator("error", "result_summary", mode="after")
     @classmethod
@@ -144,12 +167,91 @@ class ExecutionAttempt(BaseModel):
         attempt는 아직 아무 결과도 가질 수 없다.
         """
         if self.status is AttemptStatus.DISPATCHED:
-            if self.result_summary is not None or self.error is not None:
+            if (
+                self.result_summary is not None
+                or self.error is not None
+                or self.changed_files
+                or self.write_telemetry is not None
+            ):
                 raise ValueError("dispatch된 시도는 아직 결과를 담을 수 없다")
         if self.status is AttemptStatus.EXECUTED_UNVERIFIED and self.error is not None:
             raise ValueError("실행에 성공한 시도는 오류를 담을 수 없다")
         if self.status is AttemptStatus.EXECUTION_FAILED and not self.error:
             raise ValueError("실패한 시도에는 오류가 필요하다")
+        return self
+
+
+class StageRunStatus(StrEnum):
+    """parallel stage의 durable resume 경계."""
+
+    WORKERS_DISPATCHED = "workers_dispatched"
+    COORDINATOR_DISPATCHED = "coordinator_dispatched"
+    REVALIDATING = "revalidating"
+    EXECUTED_UNVERIFIED = "executed_unverified"
+    EXECUTION_FAILED = "execution_failed"
+    HOLD = "hold"
+
+
+class SettledRevalidation(BaseModel):
+    """Coordinator 뒤 settled workspace의 Execute 안전 검사."""
+
+    model_config = ConfigDict(frozen=True)
+
+    ac_key: str = Field(min_length=1)
+    passed: bool
+    command: str | None = None
+    exit_code: int | None = None
+    timed_out: bool = False
+    missing_artifacts: tuple[str, ...] = ()
+    output_tail: str = ""
+
+    @field_validator("output_tail", "command", mode="after")
+    @classmethod
+    def _mask_revalidation_output(cls, value: str | None) -> str | None:
+        return value if value is None else redact_credentials(value)
+
+
+class StageRun(BaseModel):
+    """한 immutable plan stage의 grouped dispatch와 reconciliation lineage."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    run_id: str = Field(min_length=1)
+    plan_id: str = Field(min_length=1)
+    blueprint_revision: int = Field(ge=1)
+    stage_index: int = Field(ge=0)
+    ac_keys: tuple[str, ...] = Field(min_length=1)
+    attempt_execution_ids: tuple[str, ...] = Field(min_length=1)
+    requested_workers: int | None = Field(default=None, ge=1)
+    effective_workers: int = Field(ge=1)
+    status: StageRunStatus = StageRunStatus.WORKERS_DISPATCHED
+    conflict_files: tuple[str, ...] = ()
+    uncertain_ac_keys: tuple[str, ...] = ()
+    coordinator_execution_id: str | None = None
+    coordinator_native_session_id: str | None = None
+    coordinator_changed_files: tuple[str, ...] = ()
+    coordinator_error: str | None = None
+    revalidations: tuple[SettledRevalidation, ...] = ()
+    error: str | None = None
+
+    @field_validator("coordinator_error", "error", mode="after")
+    @classmethod
+    def _mask_stage_errors(cls, value: str | None) -> str | None:
+        return value if value is None else redact_credentials(value)
+
+    @model_validator(mode="after")
+    def _identity_sets_match(self) -> StageRun:
+        if len(self.ac_keys) != len(set(self.ac_keys)):
+            raise ValueError("stage run의 AC key가 중복된다")
+        if len(self.attempt_execution_ids) != len(self.ac_keys):
+            raise ValueError("stage run은 AC마다 attempt id 하나를 가져야 한다")
+        if len(self.attempt_execution_ids) != len(set(self.attempt_execution_ids)):
+            raise ValueError("stage run의 attempt id가 중복된다")
+        if self.effective_workers > len(self.ac_keys):
+            raise ValueError("effective_workers는 stage AC 수보다 클 수 없다")
+        if self.status is StageRunStatus.COORDINATOR_DISPATCHED:
+            if self.coordinator_execution_id is None:
+                raise ValueError("dispatch된 Coordinator에는 execution id가 필요하다")
         return self
 
 
@@ -162,23 +264,50 @@ class ExecuteState(BaseModel):
     #: 쓰기 순서. 저장소는 이 값으로 덮어쓰기를 판정한다 (ADR-0014와 같은 축).
     sequence: int = 1
     attempts: tuple[ExecutionAttempt, ...] = ()
+    plans: tuple[ParallelExecutionPlan, ...] = ()
+    stage_runs: tuple[StageRun, ...] = ()
 
     @model_validator(mode="after")
-    def _attempts_are_ordered_and_singly_open(self) -> ExecuteState:
-        """attempt 번호의 연속성과 "열린 attempt는 마지막 하나"를 확인한다.
+    def _attempts_are_ordered_and_owned_when_open(self) -> ExecuteState:
+        """attempt 번호의 연속성과 복수 open의 durable stage ownership을 확인한다.
 
         번호에 빈틈이 있으면 provenance의 시도 번호가 검증 불가능해지고, 열린
         attempt가 중간에 있으면 그 뒤의 기록이 결과 없는 시도 위에 쌓인 것이
         된다.
         """
+        open_ids: set[str] = set()
         for index, item in enumerate(self.attempts):
             if item.number != index + 1:
                 raise ValueError(
                     f"시도 번호는 1부터 연속이어야 한다: "
                     f"{index}번 자리에 번호 {item.number}이 있다"
                 )
-            if item.status is AttemptStatus.DISPATCHED and index != len(self.attempts) - 1:
-                raise ValueError("dispatch 상태로 남을 수 있는 것은 마지막 시도뿐이다")
+            if item.status is AttemptStatus.DISPATCHED:
+                open_ids.add(item.execution_id)
+
+        if open_ids:
+            owners = [
+                run
+                for run in self.stage_runs
+                if run.status in {StageRunStatus.WORKERS_DISPATCHED, StageRunStatus.HOLD}
+                and open_ids.issubset(set(run.attempt_execution_ids))
+            ]
+            only_last = (
+                len(open_ids) == 1
+                and self.attempts[-1].status is AttemptStatus.DISPATCHED
+            )
+            if not only_last and len(owners) != 1:
+                raise ValueError(
+                    "dispatch 상태로 남을 수 있는 것은 마지막 시도뿐이거나 "
+                    "하나의 active stage owner가 소유한 시도들뿐이다"
+                )
+
+        plan_ids = [item.plan_id for item in self.plans]
+        if len(plan_ids) != len(set(plan_ids)):
+            raise ValueError("parallel plan id가 중복된다")
+        run_ids = [item.run_id for item in self.stage_runs]
+        if len(run_ids) != len(set(run_ids)):
+            raise ValueError("stage run id가 중복된다")
         return self
 
     @classmethod
@@ -188,8 +317,40 @@ class ExecuteState(BaseModel):
     @property
     def open_attempt(self) -> ExecutionAttempt | None:
         """결과를 기다리는 attempt. 없으면 ``None``."""
-        if self.attempts and self.attempts[-1].status is AttemptStatus.DISPATCHED:
-            return self.attempts[-1]
+        return self.open_attempts[-1] if self.open_attempts else None
+
+    @property
+    def open_attempts(self) -> tuple[ExecutionAttempt, ...]:
+        return tuple(item for item in self.attempts if item.status is AttemptStatus.DISPATCHED)
+
+    def plan_for(self, *, blueprint_revision: int) -> ParallelExecutionPlan | None:
+        for item in reversed(self.plans):
+            if item.blueprint_revision == blueprint_revision:
+                return item
+        return None
+
+    def add_plan(self, plan: ParallelExecutionPlan) -> ExecuteState:
+        existing = self.plan_for(blueprint_revision=plan.blueprint_revision)
+        if existing is not None:
+            if existing != plan:
+                raise ValueError("같은 Blueprint revision의 parallel plan은 바꿀 수 없다")
+            return self
+        return ExecuteState.model_validate(
+            self.model_copy(
+                update={"sequence": self.sequence + 1, "plans": (*self.plans, plan)}
+            ).model_dump()
+        )
+
+    def stage_run(self, run_id: str) -> StageRun:
+        for item in self.stage_runs:
+            if item.run_id == run_id:
+                return item
+        raise KeyError(run_id)
+
+    def latest_stage_run(self, *, plan_id: str) -> StageRun | None:
+        for item in reversed(self.stage_runs):
+            if item.plan_id == plan_id:
+                return item
         return None
 
     def latest_for(self, *, ac_key: str, blueprint_revision: int) -> ExecutionAttempt | None:
@@ -254,6 +415,8 @@ class ExecuteState(BaseModel):
         native_session_id: str | None = None,
         result_summary: str | None = None,
         error: str | None = None,
+        changed_files: tuple[str, ...] = (),
+        write_telemetry: WriteTelemetryStatus | None = None,
     ) -> ExecuteState:
         """열린 attempt의 결과를 기록한다.
 
@@ -274,6 +437,8 @@ class ExecuteState(BaseModel):
                 "native_session_id": native_session_id,
                 "result_summary": result_summary,
                 "error": error,
+                "changed_files": changed_files,
+                "write_telemetry": write_telemetry,
             }
         )
         # model_copy는 validator를 다시 돌리지 않으므로 상태-결과 일관성을
@@ -285,4 +450,211 @@ class ExecuteState(BaseModel):
                 "sequence": self.sequence + 1,
                 "attempts": (*self.attempts[:-1], resolved),
             }
+        )
+
+    def dispatch_stage(
+        self,
+        *,
+        plan: ParallelExecutionPlan,
+        stage_index: int,
+        ac_keys: tuple[str, ...],
+        runtime_backend: str,
+        envelope: CapabilityEnvelope,
+        requested_workers: int | None,
+        effective_workers: int,
+    ) -> ExecuteState:
+        """한 stage의 attempt 전체와 owner를 한 상태 전이로 연다."""
+        if self.open_attempts:
+            raise OpenAttemptError(
+                mission_id=self.mission_id, ac_key=self.open_attempts[-1].ac_key
+            )
+        if not ac_keys:
+            raise ValueError("빈 stage는 dispatch할 수 없다")
+        if plan not in self.plans:
+            raise ValueError("durable하게 저장되지 않은 plan으로 stage를 열 수 없다")
+        if stage_index >= len(plan.stages) or not set(ac_keys).issubset(
+            set(plan.stages[stage_index])
+        ):
+            raise ValueError("stage AC가 plan과 일치하지 않는다")
+
+        start = len(self.attempts) + 1
+        attempts = tuple(
+            ExecutionAttempt(
+                number=start + offset,
+                execution_id=f"exec-{self.mission_id}-{start + offset:04d}",
+                runtime_backend=runtime_backend,
+                blueprint_revision=plan.blueprint_revision,
+                ac_key=ac_key,
+                envelope=envelope,
+            )
+            for offset, ac_key in enumerate(ac_keys)
+        )
+        run_number = len(self.stage_runs) + 1
+        run = StageRun(
+            run_id=f"stage-{self.mission_id}-{run_number:04d}",
+            plan_id=plan.plan_id,
+            blueprint_revision=plan.blueprint_revision,
+            stage_index=stage_index,
+            ac_keys=ac_keys,
+            attempt_execution_ids=tuple(item.execution_id for item in attempts),
+            requested_workers=requested_workers,
+            effective_workers=effective_workers,
+        )
+        return ExecuteState.model_validate(
+            self.model_copy(
+                update={
+                    "sequence": self.sequence + 1,
+                    "attempts": (*self.attempts, *attempts),
+                    "stage_runs": (*self.stage_runs, run),
+                }
+            ).model_dump()
+        )
+
+    def record_result_for(
+        self,
+        *,
+        execution_id: str,
+        succeeded: bool,
+        native_session_id: str | None = None,
+        result_summary: str | None = None,
+        error: str | None = None,
+        changed_files: tuple[str, ...] = (),
+        write_telemetry: WriteTelemetryStatus | None = None,
+    ) -> ExecuteState:
+        """완료 순서와 무관하게 exact execution id의 worker 결과를 닫는다."""
+        index = next(
+            (
+                offset
+                for offset, item in enumerate(self.attempts)
+                if item.execution_id == execution_id
+            ),
+            None,
+        )
+        if index is None or self.attempts[index].status is not AttemptStatus.DISPATCHED:
+            raise NoOpenAttemptError(mission_id=self.mission_id)
+        current = self.attempts[index]
+        resolved = ExecutionAttempt.model_validate(
+            current.model_copy(
+                update={
+                    "status": (
+                        AttemptStatus.EXECUTED_UNVERIFIED
+                        if succeeded
+                        else AttemptStatus.EXECUTION_FAILED
+                    ),
+                    "native_session_id": native_session_id,
+                    "result_summary": result_summary,
+                    "error": error,
+                    "changed_files": changed_files,
+                    "write_telemetry": write_telemetry,
+                }
+            ).model_dump()
+        )
+        attempts = list(self.attempts)
+        attempts[index] = resolved
+        return ExecuteState.model_validate(
+            self.model_copy(
+                update={"sequence": self.sequence + 1, "attempts": tuple(attempts)}
+            ).model_dump()
+        )
+
+    def begin_coordination(
+        self,
+        *,
+        run_id: str,
+        conflict_files: tuple[str, ...],
+        uncertain_ac_keys: tuple[str, ...],
+    ) -> ExecuteState:
+        run = self.stage_run(run_id)
+        if run.status is not StageRunStatus.WORKERS_DISPATCHED:
+            raise ValueError("worker 수집 단계에서만 Coordinator를 시작할 수 있다")
+        if any(
+            item.status is AttemptStatus.DISPATCHED
+            for item in self.attempts
+            if item.execution_id in run.attempt_execution_ids
+        ):
+            raise ValueError("모든 worker 결과가 닫히기 전에는 Coordinator를 시작할 수 없다")
+        execution_id = f"coord-{run.run_id}"
+        updated = StageRun.model_validate(
+            run.model_copy(
+                update={
+                    "status": StageRunStatus.COORDINATOR_DISPATCHED,
+                    "conflict_files": conflict_files,
+                    "uncertain_ac_keys": uncertain_ac_keys,
+                    "coordinator_execution_id": execution_id,
+                }
+            ).model_dump()
+        )
+        return self._replace_stage_run(updated)
+
+    def record_coordination_result(
+        self,
+        *,
+        run_id: str,
+        succeeded: bool,
+        native_session_id: str | None = None,
+        changed_files: tuple[str, ...] = (),
+        error: str | None = None,
+    ) -> ExecuteState:
+        run = self.stage_run(run_id)
+        if run.status is not StageRunStatus.COORDINATOR_DISPATCHED:
+            raise ValueError("dispatch된 Coordinator가 없다")
+        updated = StageRun.model_validate(
+            run.model_copy(
+                update={
+                    "status": (
+                        StageRunStatus.REVALIDATING if succeeded else StageRunStatus.HOLD
+                    ),
+                    "coordinator_native_session_id": native_session_id,
+                    "coordinator_changed_files": changed_files,
+                    "coordinator_error": error,
+                    "error": error,
+                }
+            ).model_dump()
+        )
+        return self._replace_stage_run(updated)
+
+    def finalize_stage(
+        self,
+        *,
+        run_id: str,
+        revalidations: tuple[SettledRevalidation, ...] = (),
+        hold_error: str | None = None,
+    ) -> ExecuteState:
+        run = self.stage_run(run_id)
+        attempts = tuple(
+            item for item in self.attempts if item.execution_id in run.attempt_execution_ids
+        )
+        if any(item.status is AttemptStatus.DISPATCHED for item in attempts):
+            raise ValueError("열린 worker가 있는 stage는 닫을 수 없다")
+        if hold_error is not None or any(not item.passed for item in revalidations):
+            status = StageRunStatus.HOLD
+        elif any(item.status is AttemptStatus.EXECUTION_FAILED for item in attempts):
+            status = StageRunStatus.EXECUTION_FAILED
+        else:
+            status = StageRunStatus.EXECUTED_UNVERIFIED
+        updated = StageRun.model_validate(
+            run.model_copy(
+                update={
+                    "status": status,
+                    "revalidations": revalidations,
+                    "error": hold_error,
+                }
+            ).model_dump()
+        )
+        return self._replace_stage_run(updated)
+
+    def hold_stage(self, *, run_id: str, error: str) -> ExecuteState:
+        """quota·shared runtime 실패로 incomplete stage를 durable HOLD한다."""
+        run = self.stage_run(run_id)
+        updated = StageRun.model_validate(
+            run.model_copy(update={"status": StageRunStatus.HOLD, "error": error}).model_dump()
+        )
+        return self._replace_stage_run(updated)
+
+    def _replace_stage_run(self, updated: StageRun) -> ExecuteState:
+        runs = tuple(updated if item.run_id == updated.run_id else item for item in self.stage_runs)
+        return ExecuteState.model_validate(
+            self.model_copy(
+                update={"sequence": self.sequence + 1, "stage_runs": runs}
+            ).model_dump()
         )

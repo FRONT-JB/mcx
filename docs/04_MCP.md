@@ -380,6 +380,14 @@ sequenceDiagram
 - Runtime invocation의 완료/실패를 durable state에 저장하기 전에 Stage 전이를
   발표하지 않는다.
 - host가 polling을 중단하거나 연결을 닫아도 Runtime 취소로 간주하지 않는다.
+
+**Phase 11 구현 amendment.** 단일 AC의 `mcx_execute_next`와 별도로
+`mcx_execute_stage`가 같은 application boundary에서 immutable plan·grouped
+attempt·bounded stage fan-out을 연다. 장기 짝은 `mcx_start_execute_stage`이며,
+별도 handler 상태를 만들지 않고 기존 원장·job status·cancel 경계를 재사용한다.
+현재 표면은 CLI 파생 26 + 비동기 5 + job 2 = **33 tools**다
+([ADR-0041](./adr/0041-mcp-control-surface-contract.md) amendment,
+[ADR-0053](./adr/0053-parallel-coordinator-execution-contract.md)).
 - cancellation은 별도 명시적 command와 authorization을 요구한다.
 - Execute `CLEAR`는 Clear for Verify일 뿐 `MISSION COMPLETE`가 아니다.
 

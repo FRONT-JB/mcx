@@ -48,6 +48,8 @@ class TestReverting:
         result = rollback(repo)
 
         assert result.reverted
+        assert result.removed_files == ("proven.py", "garbage.py")
+        assert result.removed_files_error is None
         assert (repo / "proven.py").read_text() == "좋다\n"
         assert not (repo / "garbage.py").exists()
 

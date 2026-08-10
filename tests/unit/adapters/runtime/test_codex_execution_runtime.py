@@ -16,11 +16,17 @@ import pytest
 
 from mission_control.adapters.runtime.codex_execution_runtime import (
     CodexExecutionRuntime,
+    render_coordinator_prompt,
     render_prompt,
 )
-from mission_control.application.ports import ExecutionRequest
+from mission_control.application.ports import (
+    CoordinatorRequest,
+    ExecutionRequest,
+    WorkerExecutionSummary,
+)
 from mission_control.cancellation import cancel_when
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
+from mission_control.domain.execute.state import WriteTelemetryStatus
 from mission_control.domain.recover.packet import (
     FailureClassification,
     FailureSource,
@@ -167,6 +173,31 @@ class TestPrompt:
         prompt = render_prompt(_request(previous_failure=failure))
         assert "Do not repeat the failed path." in prompt
 
+    def test_coordinator_prompt_is_stage_bounded_and_not_verification(self) -> None:
+        prompt = render_coordinator_prompt(
+            CoordinatorRequest(
+                goal="댓글 기능",
+                constraints=("로그인 사용자만",),
+                non_goals=("수정·삭제 제외",),
+                acceptance_criteria=(CONTRACTED,),
+                worker_results=(
+                    WorkerExecutionSummary(
+                        ac_key=CONTRACTED.key,
+                        succeeded=True,
+                        changed_files=("src/comments.py",),
+                        write_telemetry=WriteTelemetryStatus.COMPLETE,
+                    ),
+                ),
+                conflict_files=("src/comments.py",),
+                workspace="/tmp/mission",
+                allowed_tools=("edit", "shell"),
+            )
+        )
+
+        assert "repair only conflicts" in prompt
+        assert "Do not add product" in prompt and "requirements" in prompt
+        assert "The Verify stage remains authoritative" in prompt
+
 
 def _write_stub(directory: Path, name: str, body: str) -> str:
     """stub codex 실행 파일을 만든다 — 진짜 subprocess로 실행 계약을 고정한다."""
@@ -211,6 +242,34 @@ SILENT_STUB = """
     sys.stdin.read()
     print('{"type": "thread.started", "thread_id": "th-slow"}', flush=True)
     time.sleep(60)
+"""
+
+TELEMETRY_STUB = """
+    import json, sys
+    arguments = sys.argv[1:]
+    last_message_path = arguments[arguments.index("--output-last-message") + 1]
+    workspace = arguments[arguments.index("-C") + 1]
+    sys.stdin.read()
+    path = f"{workspace}/src/auth.py"
+    item = {"id": "item_1", "type": "file_change", "changes": [{"path": path}]}
+    print(json.dumps({"type": "thread.started", "thread_id": "th-write"}))
+    print(json.dumps({"type": "item.started", "item": item}))
+    print(json.dumps({"type": "item.completed", "item": item}))
+    print(json.dumps({"type": "turn.completed"}))
+    with open(last_message_path, "w") as handle:
+        handle.write("done")
+"""
+
+COMMAND_WRITE_RISK_STUB = """
+    import json, sys
+    arguments = sys.argv[1:]
+    last_message_path = arguments[arguments.index("--output-last-message") + 1]
+    sys.stdin.read()
+    print(json.dumps({"type": "thread.started", "thread_id": "th-command"}))
+    print(json.dumps({"type": "item.completed", "item": {"type": "command_execution"}}))
+    print(json.dumps({"type": "turn.completed"}))
+    with open(last_message_path, "w") as handle:
+        handle.write("done")
 """
 
 
@@ -308,6 +367,34 @@ class TestExecute:
         runtime = CodexExecutionRuntime(cli_path=str(tmp_path / "missing-codex"))
         with pytest.raises(FileNotFoundError):
             await runtime.execute(_request(workspace=str(tmp_path)))
+
+    async def test_completed_file_changes_are_workspace_relative_and_complete(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        (workspace / "src").mkdir(parents=True)
+        runtime = CodexExecutionRuntime(
+            cli_path=_write_stub(tmp_path, "codex-write", TELEMETRY_STUB)
+        )
+
+        outcome = await runtime.execute(_request(workspace=str(workspace)))
+
+        assert outcome.changed_files == ("src/auth.py",)
+        assert outcome.write_telemetry is WriteTelemetryStatus.COMPLETE
+
+    async def test_a_command_event_makes_write_attribution_incomplete(
+        self, tmp_path: Path
+    ) -> None:
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        runtime = CodexExecutionRuntime(
+            cli_path=_write_stub(tmp_path, "codex-command", COMMAND_WRITE_RISK_STUB)
+        )
+
+        outcome = await runtime.execute(_request(workspace=str(workspace)))
+
+        assert outcome.changed_files == ()
+        assert outcome.write_telemetry is WriteTelemetryStatus.INCOMPLETE
 
 
 PROGRESS_STUB = """

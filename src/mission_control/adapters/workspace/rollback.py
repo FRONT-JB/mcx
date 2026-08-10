@@ -16,6 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 
+from mission_control.adapters.workspace.changes import GitWorkspaceChanges
 from mission_control.domain.checkpoint import Rollback
 
 _GIT_TIMEOUT_SECONDS = 30
@@ -70,8 +71,14 @@ class GitRollback:
             # 지점으로는 되돌리지 않는다 — 입증된 것이 하나도 없다는 뜻이다.
             return Rollback(reverted=False, skipped="되돌릴 입증 지점이 아직 없다")
 
+        changes = GitWorkspaceChanges().collect(str(repo))
         # upstream `rollback_to_previous`와 같은 세 걸음.
         _require(repo, "checkout", "HEAD", "--", ".")
         _git(repo, "reset", "HEAD")
         _require(repo, "clean", "-fd")
-        return Rollback(reverted=True, commit=_require(repo, "rev-parse", "--short", "HEAD"))
+        return Rollback(
+            reverted=True,
+            commit=_require(repo, "rev-parse", "--short", "HEAD"),
+            removed_files=changes.paths,
+            removed_files_error=changes.error,
+        )

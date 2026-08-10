@@ -189,3 +189,25 @@ divergence(stage당 lane별 라우팅)를 해소하지는 않는다 — upstream
 - 레지스트리 키는 전송을 담은 이름이다 — 실행 lane의 등록 이름이 `codex`가 아니라
   `codex_cli`이고, 이 이름이 provenance(`ExecuteState.runtime_backend`)와 원장
   호출 계수 키에서 동일하다 (§7).
+
+## Amendment — Execute dependency analysis text lane (2026-08-10)
+
+[ADR-0053](./0053-parallel-coordinator-execution-contract.md)이 parallel stage plan을
+도입하면서 Execute도 text lane을 사용한다. 실행 worker·Coordinator는 계속
+ExecutionRuntime lane이고, dependency analyzer만 tool-less `CompletionEngine`이다.
+
+upstream은 active execution adapter의 `llm_backend`를 읽어 dependency analyzer용
+LLM adapter를 새로 만든다(`runner.py:6995-7063`). mcx는 ADR-0034·0036이 이미
+text generation과 workspace-write execution을 별도 port와 routing lane으로
+분리했으므로, 그 경계를 되합치지 않고 **Execute의 text lane**을 조회한다.
+
+따라서 Stage별 lane 집합은 다음처럼 바뀐다.
+
+```text
+Execute = text + execution
+```
+
+설정 우선순위·backend registry·fail-fast 규칙은 바뀌지 않는다. 설정이 없으면
+기존 기본 조립(Claude text + Codex execution)을 그대로 쓴다. dependency plan의
+analyzer backend는 durable plan에 기록되어 execution backend와 달라도 조용히
+숨지 않는다.

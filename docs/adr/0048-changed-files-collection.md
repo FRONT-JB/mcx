@@ -147,3 +147,8 @@ upstream은 세 명령을 캡처해 세 파일로 남긴다 (findings §3). 우�
   ADR-0047과 함께 **Phase 11 종료 전 targeted dirty-rollback fixture**로
   재지정한다. 자연 발동이 없어도 실행해 닫는다
   ([progress 0010](../progress/0010_REFLECT_EVOLVE.md) §2.7).
+  **최종 처분 (2026-08-10): 필요성이 실물로 확인되어 도입한다.** fixture에서
+  수집된 `proven.py`, `failed_attempt.py`, `nested/trace.txt` 세 경로가 rollback
+  뒤 사라졌지만 기존 CLI는 commit만 표시했다. rollback 직전 같은 porcelain
+  수집기를 사용해 결과와 CLI에 이 exact 목록을 남긴다. 별도 `--stat`이나 원문
+  보존은 여전히 필요하지 않다.

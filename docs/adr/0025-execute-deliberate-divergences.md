@@ -22,14 +22,15 @@
 | Telemetry provenance의 위치 | 이벤트 payload(JSON) 안의 emitter 관례. events 스키마에 actor 컬럼 없음 | 생성 경로·실행 주체·lineage·시도 네 항목을 1급 선언 필드로 강제 | [ADR-0023](./0023-execute-entry-and-provenance.md) §3 (이관 완료) |
 | 순환 의존의 처리 | 경고 후 남은 AC 전부를 같은 level로 실행 (hard fail 아님) | 현재 dependency 파생이 없어 발생 경로는 없고, 도입 Gate에서는 **명시적 HOLD** — 순환을 조용히 병렬로 바꾸면 의존 신호 자체가 사라진다 | [ADR-0052](./0052-parallel-execution-introduction-gate.md) §1·§3 |
 | dependency analysis 불능 | 모든 AC를 dependency 없는 단일 parallel level로 fallback | unknown을 독립성 증거로 쓰지 않는다. 불완전 plan·분석 실패는 순차 fallback 또는 병렬 `HOLD` | [ADR-0052](./0052-parallel-execution-introduction-gate.md) §3 |
+| Codex worker write attribution 불완전 | Write/Edit tool trace에서 같은 파일 writer를 찾아 Coordinator 실행 | 실 Codex에서 셸 write가 `command_execution`만 남기는 것을 관측했다. exact overlap뿐 아니라 command event·terminal 누락·workspace 밖 경로도 full-stage Coordinator trigger로 취급 | [ADR-0053](./0053-parallel-coordinator-execution-contract.md) §4 |
 
 ### Deferrals — 보류. 차이가 아니라 미구현
 
 | 항목 | upstream | 상태 | 기록 |
 |---|---|---|---|
 | AC 분해 (preflight/bounce, 자식 2~5, 라이브 깊이 2, repair 1) | 예외 경로로 존재 | v1 미도입 — atomic-first의 1단계만. 도입 시 upstream 한도와 대조 | [ADR-0024](./0024-execute-v1-execution-model.md) §2 |
-| dependency 파생 (선언 신호 ∪ LLM 추론, 토폴로지 level) | 존재 | v1 미도입 — 선언 순서 순차 + 실패 시 중단 | [ADR-0024](./0024-execute-v1-execution-model.md) §3 |
-| 병렬 실행 (stage 안 병렬, serial-only 분리) | 존재 | **Phase 11 Gate 적용, 현재 implementation `HOLD`**. worker별 write Telemetry·shared-worktree conflict authority·grouped attempt durability가 없어 순차 실행 유지. OpenCode와는 독립 항목 | [ADR-0052](./0052-parallel-execution-introduction-gate.md), [Execute Guide](../07_EXECUTE.md) §17.1 |
+| dependency 파생 (선언 신호 ∪ LLM 추론, 토폴로지 level) | 존재 | **Phase 11 구현 결정 완료** — 현재 Blueprint에는 선언 metadata가 없어 LLM direct dependency를 strict schema로 받고 결정적 stage를 계산. 실패·불완전·cycle은 HOLD | [ADR-0053](./0053-parallel-coordinator-execution-contract.md) §2 |
+| 병렬 실행 (stage 안 병렬, serial-only 분리) | 존재 | **Phase 11 구현 결정 완료** — 기존 `execute next`는 유지하고 `execute stage`에서 grouped attempt·bounded fan-out·Coordinator·settled revalidation을 도입. 구현 evidence는 progress 0011이 추적 | [ADR-0053](./0053-parallel-coordinator-execution-contract.md) |
 | cancelled/timeout attempt 상태 | 존재 (stall scope, cancel) | **Phase 9로 재지정** (2026-08-09, Phase 7 종료 검토). Phase 7 시한은 **무처분 도과**했다 — 취소가 프로세스는 죽이지만 attempt는 여전히 일반 실패로 닫힌다. 오작동을 확인했다: `error`가 상수 문자열이라 **같은 AC를 세 번 취소하면 `_classify`가 `STALL`로 판정한다**(`domain/recover/packet.py:143-147`) — 의도적 중단이 "정체"로 읽힌다. 되돌리기 층(rollback·checkpoint)이 "중단된 작업을 어떻게 되돌리는가"를 같은 자리에서 정하므로 그리로 보낸다 ([progress 0007](../progress/0007_MCP_CONTROL_SURFACE.md) §2.3) | [ADR-0024](./0024-execute-v1-execution-model.md) §4 |
 | capability의 실제 차단 | runtime 계층에서 tools 목록·approval mode 전달 | **Phase 5 부분 이행** — 실행측은 sandbox 수준(`--sandbox workspace-write`), 텍스트 lane은 도구 카탈로그(ADR-0036 §4)까지. **도구 단위 allowlist 차단은 Codex CLI에 표면이 없어 보류 유지** (ADR-0033 §6 표) | [ADR-0024](./0024-execute-v1-execution-model.md) §6 |
 | context reference 예산 (참조 256개, 12,000자) | 존재 | v1 미도입 — dispatch 입력이 AC 하나라 예산 문제가 아직 없다 | 이 표 |

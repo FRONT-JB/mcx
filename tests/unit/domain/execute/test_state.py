@@ -7,6 +7,8 @@ Test Matrix: Sequence·Attempt·Telemetry 행 (docs/07_EXECUTE.md §13)
 from pydantic import ValidationError
 import pytest
 
+from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
+from mission_control.domain.execute.plan import CriterionDependency, build_parallel_plan
 from mission_control.domain.execute.state import (
     AttemptStatus,
     CapabilityEnvelope,
@@ -15,6 +17,7 @@ from mission_control.domain.execute.state import (
     HaltedByFailedCriterionError,
     NoOpenAttemptError,
     OpenAttemptError,
+    WriteTelemetryStatus,
 )
 
 ENVELOPE = CapabilityEnvelope(workspace="/tmp/mission", allowed_tools=("edit", "bash"))
@@ -180,3 +183,53 @@ class TestStructuralInvariants:
 
         assert state.latest_for(ac_key="ac_a", blueprint_revision=1) is not None
         assert state.latest_for(ac_key="ac_a", blueprint_revision=2) is None
+
+
+class TestGroupedStageAttempts:
+    def test_stage_owner_allows_multiple_open_attempts_and_exact_result_binding(self) -> None:
+        first = AcceptanceCriterion(description="first", verify_command="true")
+        second = AcceptanceCriterion(description="second", verify_command="true")
+        blueprint = Blueprint(
+            mission_id="m-1",
+            revision=1,
+            brief_revision=1,
+            goal="parallel",
+            acceptance_criteria=(first, second),
+        )
+        plan = build_parallel_plan(
+            blueprint=blueprint,
+            analyzer_backend="fake",
+            dependencies=(
+                CriterionDependency(ac_key=first.key),
+                CriterionDependency(ac_key=second.key),
+            ),
+        )
+        state = ExecuteState.start(mission_id="m-1").add_plan(plan)
+        state = state.dispatch_stage(
+            plan=plan,
+            stage_index=0,
+            ac_keys=(first.key, second.key),
+            runtime_backend="fake",
+            envelope=ENVELOPE,
+            requested_workers=2,
+            effective_workers=2,
+        )
+
+        assert len(state.open_attempts) == 2
+        first_id, second_id = state.stage_runs[-1].attempt_execution_ids
+        state = state.record_result_for(
+            execution_id=second_id,
+            succeeded=True,
+            changed_files=("second.py",),
+            write_telemetry=WriteTelemetryStatus.COMPLETE,
+        )
+        state = state.record_result_for(
+            execution_id=first_id,
+            succeeded=True,
+            changed_files=("first.py",),
+            write_telemetry=WriteTelemetryStatus.COMPLETE,
+        )
+
+        assert state.attempts[0].changed_files == ("first.py",)
+        assert state.attempts[1].changed_files == ("second.py",)
+        assert state.open_attempts == ()

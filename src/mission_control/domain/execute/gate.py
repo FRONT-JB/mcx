@@ -24,7 +24,11 @@ from enum import StrEnum
 
 from mission_control.domain.blueprint.spec import Blueprint
 from mission_control.domain.brief.gate import GateOutcome
-from mission_control.domain.execute.state import AttemptStatus, ExecuteState
+from mission_control.domain.execute.state import (
+    AttemptStatus,
+    ExecuteState,
+    StageRunStatus,
+)
 from mission_control.domain.stage import Stage
 
 
@@ -34,6 +38,7 @@ class ExecuteGateBlockingCondition(StrEnum):
     ATTEMPT_OPEN = "attempt_open"
     CRITERION_UNEXECUTED = "criterion_unexecuted"
     CRITERION_FAILED = "criterion_failed"
+    STAGE_UNSETTLED = "stage_unsettled"
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +83,25 @@ def evaluate_execute_gate(*, state: ExecuteState, blueprint: Blueprint) -> Execu
                 ),
             )
         )
+
+    for run in state.stage_runs:
+        if run.blueprint_revision != blueprint.revision:
+            continue
+        if run.status in {
+            StageRunStatus.WORKERS_DISPATCHED,
+            StageRunStatus.COORDINATOR_DISPATCHED,
+            StageRunStatus.REVALIDATING,
+            StageRunStatus.HOLD,
+        }:
+            gate_blockers.append(
+                ExecuteGateBlocker(
+                    condition=ExecuteGateBlockingCondition.STAGE_UNSETTLED,
+                    detail=(
+                        f"{run.run_id}이 settled되지 않았다: {run.status.value}"
+                        + (f" — {run.error}" if run.error else "")
+                    ),
+                )
+            )
 
     for criterion in blueprint.acceptance_criteria:
         latest = state.latest_for(ac_key=criterion.key, blueprint_revision=blueprint.revision)

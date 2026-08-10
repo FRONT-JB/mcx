@@ -36,7 +36,8 @@ from mission_control.domain.evolve.models import (
     ReflectOutput,
     WonderOutput,
 )
-from mission_control.domain.execute.state import ExecuteState
+from mission_control.domain.execute.plan import CriterionDependency
+from mission_control.domain.execute.state import ExecuteState, WriteTelemetryStatus
 from mission_control.domain.mechanical import MechanicalCommands
 from mission_control.domain.recover.packet import PreviousFailure
 from mission_control.domain.verify.evidence import (
@@ -151,6 +152,8 @@ class ExecutionOutcome(BaseModel):
     native_session_id: str | None = None
     result_summary: str | None = None
     error: str | None = None
+    changed_files: tuple[str, ...] = ()
+    write_telemetry: WriteTelemetryStatus | None = None
 
     @model_validator(mode="after")
     def _error_matches_the_outcome(self) -> ExecutionOutcome:
@@ -159,6 +162,90 @@ class ExecutionOutcome(BaseModel):
         if not self.succeeded and not self.error:
             raise ValueError("실패한 결과에는 오류가 필요하다")
         return self
+
+
+class DependencyAnalysisRequest(BaseModel):
+    """승인된 Blueprint revision 전체의 logical dependency 분석 입력."""
+
+    model_config = ConfigDict(frozen=True)
+
+    goal: str
+    constraints: tuple[str, ...]
+    non_goals: tuple[str, ...]
+    acceptance_criteria: tuple[AcceptanceCriterion, ...]
+
+
+class DependencyAnalyzer(Protocol):
+    """도구 없이 AC direct dependency만 구조화해 반환하는 역할."""
+
+    @property
+    def backend(self) -> str:
+        ...
+
+    async def analyze(
+        self, request: DependencyAnalysisRequest
+    ) -> tuple[CriterionDependency, ...]:
+        ...
+
+
+class WorkerExecutionSummary(BaseModel):
+    """Coordinator가 받는 sibling 결과의 bounded projection."""
+
+    model_config = ConfigDict(frozen=True)
+
+    ac_key: str = Field(min_length=1)
+    succeeded: bool
+    result_summary: str | None = None
+    error: str | None = None
+    changed_files: tuple[str, ...] = ()
+    write_telemetry: WriteTelemetryStatus | None = None
+
+
+class CoordinatorRequest(BaseModel):
+    """한 parallel stage의 충돌만 수습하는 Flight Controller 입력."""
+
+    model_config = ConfigDict(frozen=True)
+
+    goal: str
+    constraints: tuple[str, ...]
+    non_goals: tuple[str, ...]
+    acceptance_criteria: tuple[AcceptanceCriterion, ...]
+    worker_results: tuple[WorkerExecutionSummary, ...]
+    conflict_files: tuple[str, ...] = ()
+    uncertain_ac_keys: tuple[str, ...] = ()
+    workspace: str
+    allowed_tools: tuple[str, ...]
+
+
+class CoordinatorOutcome(BaseModel):
+    """Coordinator invocation 결과. Verify verdict가 아니다."""
+
+    model_config = ConfigDict(frozen=True)
+
+    succeeded: bool
+    native_session_id: str | None = None
+    result_summary: str | None = None
+    changed_files: tuple[str, ...] = ()
+    error: str | None = None
+
+    @model_validator(mode="after")
+    def _error_matches_the_outcome(self) -> CoordinatorOutcome:
+        if self.succeeded and self.error is not None:
+            raise ValueError("성공한 Coordinator 결과는 오류를 담을 수 없다")
+        if not self.succeeded and not self.error:
+            raise ValueError("실패한 Coordinator 결과에는 오류가 필요하다")
+        return self
+
+
+class CoordinatorRuntime(Protocol):
+    """stage conflict를 한 번 수습하는 mutating Runtime authority."""
+
+    @property
+    def backend(self) -> str:
+        ...
+
+    async def coordinate(self, request: CoordinatorRequest) -> CoordinatorOutcome:
+        ...
 
 
 class ExecutionRuntime(Protocol):

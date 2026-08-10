@@ -35,13 +35,14 @@ class Lane(StrEnum):
     EXECUTION = "execution"
 
 
-#: Stage가 실제로 쓰는 lane. Execute·Recover는 실행만, 나머지는 텍스트만
-#: 쓴다. 안 쓰는 lane을 조회하는 것은 프로그래밍 오류이며 조용히 기본값을
+#: Stage가 실제로 쓰는 lane. Execute는 dependency analysis text + worker
+#: execution을 함께 쓰고, Recover는 실행만 쓴다. 안 쓰는 lane을 조회하는 것은
+#: 프로그래밍 오류이며 조용히 기본값을
 #: 주지 않는다 (§2).
 STAGE_LANES: Mapping[Stage, frozenset[Lane]] = {
     Stage.BRIEF: frozenset({Lane.TEXT}),
     Stage.BLUEPRINT: frozenset({Lane.TEXT}),
-    Stage.EXECUTE: frozenset({Lane.EXECUTION}),
+    Stage.EXECUTE: frozenset({Lane.TEXT, Lane.EXECUTION}),
     Stage.VERIFY: frozenset({Lane.TEXT}),
     Stage.RECOVER: frozenset({Lane.EXECUTION}),
 }

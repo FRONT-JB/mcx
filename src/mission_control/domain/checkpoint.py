@@ -37,5 +37,9 @@ class Rollback:
     reverted: bool
     #: 되돌아간 지점. 우리 브랜치의 커밋은 checkpoint뿐이므로 곧 HEAD다.
     commit: str | None = None
+    #: effect 직전에 관찰한, rollback으로 사라지는 경로들 (ADR-0047 §미결 처분).
+    removed_files: tuple[str, ...] = ()
+    #: 빈 목록과 수집 실패를 구분한다 (ADR-0048 §4).
+    removed_files_error: str | None = None
     #: 되돌리지 않은 이유. 실패는 미션을 죽이지 않으므로 여기로만 드러난다.
     skipped: str | None = None

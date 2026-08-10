@@ -136,7 +136,7 @@ def tool_definitions() -> tuple[ToolDefinition, ...]:
             continue
         helps = _helps(stage_parser)
         for verb, verb_parser in verbs.items():
-            # 이름의 반복은 description이 아니다 — host는 29개 중 무엇을 부를지
+            # 이름의 반복은 description이 아니다 — host는 여러 tool 중 무엇을 부를지
             # 이것만 보고 고른다. 원천은 CLI의 `help=`이며, 없으면 그 사실이
             # 드러나도록 이름으로 떨어진다(테스트가 그 상태를 거부한다).
             tools.append(
@@ -242,6 +242,7 @@ LONG_RUNNING: frozenset[str] = frozenset(
     {
         "mcx_blueprint_evolve",
         "mcx_execute_next",
+        "mcx_execute_stage",
         "mcx_verify_semantic",
         "mcx_recover_dispatch",
     }

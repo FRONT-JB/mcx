@@ -53,7 +53,7 @@ FORWARD_STAGES: tuple[Stage, ...] = (
 #: CLEAR일 때 다음에 할 일. 표시이지 결정이 아니다 (ADR-0038 §1).
 NEXT_WHEN_CLEAR: dict[Stage, str] = {
     Stage.BRIEF: "mcx blueprint generate",
-    Stage.BLUEPRINT: "mcx execute next",
+    Stage.BLUEPRINT: "mcx execute stage --max-workers 2",
     Stage.EXECUTE: "mcx verify mechanical",
     Stage.RECOVER: "mcx verify mechanical",
     Stage.VERIFY: "mcx verify gate — CLEAR면 MISSION COMPLETE",
@@ -67,7 +67,11 @@ COMMANDS_WHEN_HOLD: dict[Stage, tuple[str, ...]] = {
         "mcx blueprint revise --draft-file <파일>",
         'mcx blueprint approve "<문장>"',
     ),
-    Stage.EXECUTE: ("mcx execute next", "mcx recover plan"),
+    Stage.EXECUTE: (
+        "mcx execute stage --max-workers 2",
+        "mcx execute next",
+        "mcx recover plan",
+    ),
     Stage.VERIFY: (
         "mcx verify semantic",
         "mcx recover plan",

@@ -14,7 +14,12 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 
-from mission_control.application.ports import ExecutionOutcome, ExecutionRequest
+from mission_control.application.ports import (
+    CoordinatorOutcome,
+    CoordinatorRequest,
+    ExecutionOutcome,
+    ExecutionRequest,
+)
 from mission_control.cli.composition import Adapters
 
 
@@ -80,7 +85,16 @@ class _CountedRuntime:
     def backend(self) -> str:
         return str(self._inner.backend)
 
+    @property
+    def supports_coordination(self) -> bool:
+        return bool(getattr(self._inner, "supports_coordination", False))
+
     async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:
         self._counter.record(self.backend)
         outcome: ExecutionOutcome = await self._inner.execute(request)
+        return outcome
+
+    async def coordinate(self, request: CoordinatorRequest) -> CoordinatorOutcome:
+        self._counter.record(self.backend)
+        outcome: CoordinatorOutcome = await self._inner.coordinate(request)
         return outcome

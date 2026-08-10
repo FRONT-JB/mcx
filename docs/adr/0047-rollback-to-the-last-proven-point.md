@@ -199,6 +199,13 @@ ADR-0045 §2·ADR-0046 §5와 같은 판단이다: 유도되는 것을 저장하
   재지정한다. 자연 발동이 없어도 fixture를 실행해 실제 삭제 목록 표시의 필요를
   채택 또는 기각하고 닫는다 ([progress 0010](../progress/0010_REFLECT_EVOLVE.md)
   §2.7).
+  **최종 처분 (2026-08-10, Phase 11 fixture): 채택.** tracked 수정 1개와
+  untracked 파일 2개가 실제로 제거됐지만 기존 `Rollback` 결과는 commit만
+  반환해 CLI가 무엇이 사라졌는지 말할 수 없었다. rollback effect 전에
+  ADR-0048의 동일한 HEAD 기준 목록을 수집하고 `removed_files`로 반환한다.
+  수집 실패는 빈 목록으로 가장하지 않고 `removed_files_error`로 구분하며,
+  되돌리기 자체는 계속 진행한다. ignored 파일은 `git clean -fd` 계약대로 목록과
+  제거 대상에서 제외한다.
 - **§4 divergence의 근거 유지 여부** — 격리(ADR-0045)나 checkpoint(ADR-0046)의
   전제가 바뀌면 dirty 가드가 다시 필요해진다. 두 ADR을 고칠 때 이 절을 함께
   본다.

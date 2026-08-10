@@ -15,6 +15,7 @@ from collections.abc import Callable, Mapping
 import dataclasses
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 from mission_control.adapters.persistence.file_blueprint_repository import (
     FileBlueprintRepository,
@@ -44,6 +45,7 @@ from mission_control.adapters.text.brief_backends import (
 from mission_control.adapters.text.claude_completion import ClaudeCompletion
 from mission_control.adapters.text.codex_completion import CodexCompletion
 from mission_control.adapters.text.completion_engine import CompletionEngine
+from mission_control.adapters.text.dependency_analyzer import PromptedDependencyAnalyzer
 from mission_control.adapters.text.evolve_backends import (
     PromptedEvolveReflector,
     PromptedEvolveWonderer,
@@ -63,7 +65,11 @@ from mission_control.application.blueprint_service import BlueprintService
 from mission_control.application.brief_service import BriefService
 from mission_control.application.evolve_service import EvolveService
 from mission_control.application.execute_service import ExecuteService
-from mission_control.application.ports import ExecutionRuntime, MechanicalRunner
+from mission_control.application.ports import (
+    CoordinatorRuntime,
+    ExecutionRuntime,
+    MechanicalRunner,
+)
 from mission_control.application.recover_service import RecoverService
 from mission_control.application.verify_service import VerifyService
 from mission_control.cli.backend_profile import BackendProfile, load_codex_profile
@@ -274,12 +280,25 @@ def execute_service(
     stage: Stage = Stage.EXECUTE,
 ) -> ExecuteService:
     """``stage``는 실행 lane의 라우팅 키다 — Recover의 재투입은 Recover 행이다."""
+    runtime = adapters.runtime_for(stage)
+    coordinator = (
+        cast(CoordinatorRuntime, runtime)
+        if getattr(runtime, "supports_coordination", False)
+        else None
+    )
     return ExecuteService(
         briefs=FileBriefRepository(root=layout.state),
         blueprints=FileBlueprintRepository(root=layout.state),
         repository=FileExecuteRepository(root=layout.state),
-        runtime=adapters.runtime_for(stage),
+        runtime=runtime,
         envelope=CapabilityEnvelope(workspace=workspace, allowed_tools=EXECUTE_ALLOWED_TOOLS),
+        analyzer=(
+            PromptedDependencyAnalyzer(completion=adapters.completion_for(Stage.EXECUTE))
+            if stage is Stage.EXECUTE
+            else None
+        ),
+        coordinator=coordinator,
+        runner=adapters.runner,
     )
 
 

@@ -25,7 +25,7 @@ async def _start(root: Path) -> None:
 
 class TestToolCatalogue:
     def test_only_job_and_start_tools_are_not_derived_from_the_cli(self) -> None:
-        """CLI에 없는 tool은 job 둘과 start 넷뿐이다 — 나머지는 파서 파생이다."""
+        """CLI에 없는 tool은 job 둘과 start 다섯뿐이다 — 나머지는 파서 파생이다."""
         from mission_control.mcp.surface import tool_definitions
 
         derived = {tool.name for tool in tool_definitions()}
@@ -36,6 +36,7 @@ class TestToolCatalogue:
             "mcx_cancel_job",
             "mcx_start_blueprint_evolve",
             "mcx_start_execute_next",
+            "mcx_start_execute_stage",
             "mcx_start_verify_semantic",
             "mcx_start_recover_dispatch",
         }
@@ -60,6 +61,7 @@ class TestToolCatalogue:
         assert starts == {
             "mcx_start_blueprint_evolve",
             "mcx_start_execute_next",
+            "mcx_start_execute_stage",
             "mcx_start_verify_semantic",
             "mcx_start_recover_dispatch",
         }
@@ -89,7 +91,7 @@ class TestToolCatalogue:
     def test_no_tool_name_repeats(self) -> None:
         names = [tool.name for tool in server.definitions()]
 
-        assert len(names) == 31
+        assert len(names) == 33
         assert len(names) == len(set(names))
 
     def test_every_schema_declares_its_shape(self) -> None:

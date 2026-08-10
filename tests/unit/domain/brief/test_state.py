@@ -6,7 +6,16 @@ Test Matrix: B-008, B-014
 
 import pytest
 
-from mission_control.domain.brief.state import BriefState
+from mission_control.domain.brief.requirement import (
+    CandidateContentSource,
+    CandidateResolution,
+    ConfirmationAuthority,
+    RequirementSection,
+)
+from mission_control.domain.brief.state import (
+    BriefState,
+    DuplicateRequirementCandidateError,
+)
 
 
 def _started() -> BriefState:
@@ -137,6 +146,40 @@ class TestPendingQuestion:
         answered = state.record_answer(answer="JWT 사용 중", authority="observation")
 
         assert answered.rounds[0].authority == "observation"
+
+
+class TestCandidateIdentity:
+    def test_an_exact_manual_duplicate_of_a_derived_candidate_is_rejected(self) -> None:
+        text = "필수 요구 사항은 429를 재시도해야 합니다"
+        state = _started().record_answer(question="완료 조건은?", answer=text, authority="decision")
+
+        with pytest.raises(DuplicateRequirementCandidateError, match="2번") as raised:
+            state.record_candidate(
+                section=RequirementSection.ACCEPTANCE_CRITERION,
+                text=f"  {text}  ",
+                content_source=CandidateContentSource.USER_STATED,
+                resolution=CandidateResolution.CONFIRMED,
+                confirmation_authority=ConfirmationAuthority.USER,
+                required=True,
+            )
+
+        assert raised.value.existing_number == 2
+
+    def test_the_same_text_in_a_different_section_remains_distinct(self) -> None:
+        state = _started()
+        first = state.record_candidate(
+            section=RequirementSection.CONTEXT,
+            text="기존 API를 유지한다",
+            content_source=CandidateContentSource.USER_STATED,
+        )
+
+        second = first.record_candidate(
+            section=RequirementSection.CONSTRAINT,
+            text="기존 API를 유지한다",
+            content_source=CandidateContentSource.USER_STATED,
+        )
+
+        assert len(second.candidates) == 3
 
 
 class TestApprovalBindsToRevision:
