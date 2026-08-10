@@ -125,11 +125,13 @@ class TestSourceSnapshot:
             semantic_uncertainty=0.1,
             reward_hacking_risk=0.0,
             semantic_reasoning="api_key=hunter2 was exposed",
+            evidence_refs=("Authorization: Bearer ghp_abcdefghijklmnopqrstuvwxyz0123",),
             proven=False,
         )
 
         assert "ghp_" not in (outcome.mechanical_detail or "")
         assert "hunter2" not in outcome.semantic_reasoning
+        assert "ghp_" not in outcome.evidence_refs[0]
 
 
 class TestProposalShapes:

@@ -1,8 +1,10 @@
-"""Evolve domain/state vertical slice — fake Wonder/Reflect와 durable replay."""
+"""Evolve source projection + fake Wonder/Reflect durable replay."""
+
+from dataclasses import dataclass
 
 import pytest
 
-from mission_control.application.evolve_service import EvolveService
+from mission_control.application.evolve_service import EvolveEntryError, EvolveService
 from mission_control.application.ports import ReflectRequest, WonderRequest
 from mission_control.domain.blueprint.qa import QaAssessment, QaPolicy
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
@@ -15,15 +17,26 @@ from mission_control.domain.evolve.models import (
     AcceptanceCriterionPatch,
     AcPatchOperation,
     ChallengeKind,
-    CriterionOutcomeSnapshot,
     EvolutionPhase,
-    EvolveSourceSnapshot,
     ReflectOutput,
     WonderChallenge,
     WonderOutput,
 )
+from mission_control.domain.execute.state import CapabilityEnvelope, ExecuteState
+from mission_control.domain.verify.evidence import (
+    VerificationEvidence,
+    VerificationRun,
+    VerifyState,
+)
+from mission_control.domain.verify.verdict import (
+    CriterionVerdict,
+    SemanticAssessment,
+    SemanticPolicy,
+)
 
 POLICY = QaPolicy.blueprint_v1()
+SEMANTIC_POLICY = SemanticPolicy.verify_v1()
+ENVELOPE = CapabilityEnvelope(workspace="/tmp/mission")
 
 
 def _blueprint() -> Blueprint:
@@ -55,29 +68,60 @@ def _approved_state(*, exhausted: bool = False) -> BlueprintState:
     return state.approve(statement="실행 승인", policy=POLICY)
 
 
-def _source(state: BlueprintState) -> EvolveSourceSnapshot:
+def _execute_state(state: BlueprintState) -> ExecuteState:
     criterion = state.current.acceptance_criteria[0]
-    return EvolveSourceSnapshot(
-        mission_id=state.mission_id,
+    execute = ExecuteState.start(mission_id=state.mission_id).dispatch(
+        execution_id="exec-1",
+        runtime_backend="fake",
         blueprint_revision=state.revision,
-        blueprint_generation=state.generation,
-        verify_sequence=4,
-        gate_blockers=(f"{criterion.key} verification failed",),
-        execution_attempt_numbers=(2,),
-        criteria=(
-            CriterionOutcomeSnapshot(
-                ac_key=criterion.key,
-                mechanical_passed=False,
-                mechanical_detail="retry test status 1",
-                semantic_passed=False,
-                semantic_score=0.35,
-                semantic_uncertainty=0.1,
-                reward_hacking_risk=0.05,
-                semantic_reasoning="Retry-After 경계가 구현되지 않았다",
-                evidence_refs=("verify/m-1/4",),
-                proven=False,
+        ac_key=criterion.key,
+        envelope=ENVELOPE,
+    )
+    return execute.record_result(succeeded=True, result_summary="worker finished")
+
+
+def _verify_state(
+    state: BlueprintState,
+    *,
+    passed: bool = False,
+    attempt_numbers: tuple[int, ...] = (1,),
+) -> VerifyState:
+    criterion = state.current.acceptance_criteria[0]
+    verify = VerifyState.start(mission_id=state.mission_id).record(
+        VerificationEvidence(
+            mission_id=state.mission_id,
+            blueprint_revision=state.revision,
+            execution_attempt_numbers=attempt_numbers,
+            runs=(
+                VerificationRun(
+                    ac_key=criterion.key,
+                    command=criterion.verify_command,
+                    exit_code=0 if passed else 1,
+                    passed=passed,
+                    output_ref="/tmp/verify-output.txt",
+                    output_tail="1 passed" if passed else "retry test failed",
+                ),
             ),
-        ),
+        )
+    )
+    return verify.record_verdicts(
+        SemanticAssessment(
+            blueprint_revision=state.revision,
+            policy_version=SEMANTIC_POLICY.version,
+            verdicts=(
+                CriterionVerdict(
+                    ac_key=criterion.key,
+                    satisfied=passed,
+                    score=0.95 if passed else 0.35,
+                    uncertainty=0.1,
+                    reward_hacking_risk=0.05,
+                    reasoning=(
+                        "계약이 입증됐다" if passed else "Retry-After 경계가 구현되지 않았다"
+                    ),
+                    evidence=("semantic-report.json",),
+                ),
+            ),
+        )
     )
 
 
@@ -145,53 +189,92 @@ class ScriptedReflector:
         )
 
 
+class InMemoryReadRepository:
+    def __init__(self, state: object) -> None:
+        self.state = state
+
+    async def load(self, mission_id: str):
+        return self.state if mission_id == self.state.mission_id else None
+
+    async def save(self, state: object) -> None:
+        self.state = state
+
+
+@dataclass(frozen=True)
+class Harness:
+    service: EvolveService
+    blueprints: InMemoryBlueprintRepository
+    executes: InMemoryReadRepository
+    verifies: InMemoryReadRepository
+    wonderer: ScriptedWonderer
+    reflector: ScriptedReflector
+
+
 def _service(
     state: BlueprintState,
     *,
+    execute: ExecuteState | None = None,
+    verify: VerifyState | None = None,
     reflector: ScriptedReflector | None = None,
-) -> tuple[
-    EvolveService,
-    InMemoryBlueprintRepository,
-    ScriptedWonderer,
-    ScriptedReflector,
-]:
-    repository = InMemoryBlueprintRepository(state)
+) -> Harness:
+    blueprints = InMemoryBlueprintRepository(state)
+    executes = InMemoryReadRepository(execute or _execute_state(state))
+    verifies = InMemoryReadRepository(verify or _verify_state(state))
     wonderer = ScriptedWonderer()
     chosen_reflector = reflector or ScriptedReflector()
-    return (
-        EvolveService(
-            repository=repository,
-            wonderer=wonderer,
-            reflector=chosen_reflector,
-        ),
-        repository,
-        wonderer,
-        chosen_reflector,
+    service = EvolveService(
+        repository=blueprints,
+        executes=executes,
+        verifies=verifies,
+        wonderer=wonderer,
+        reflector=chosen_reflector,
+        policy=SEMANTIC_POLICY,
+    )
+    return Harness(
+        service=service,
+        blueprints=blueprints,
+        executes=executes,
+        verifies=verifies,
+        wonderer=wonderer,
+        reflector=chosen_reflector,
     )
 
 
 class TestEvolveProposal:
     async def test_normal_flow_stops_at_an_unapproved_successor(self) -> None:
         parent = _approved_state()
-        service, repository, wonderer, reflector = _service(parent)
+        harness = _service(parent)
 
-        result = await service.propose(mission_id="m-1", source=_source(parent))
+        result = await harness.service.propose(mission_id="m-1")
 
-        assert len(wonderer.requests) == 1
-        assert len(reflector.requests) == 1
+        assert len(harness.wonderer.requests) == 1
+        assert len(harness.reflector.requests) == 1
         assert result.revision == 2
         assert result.generation == 2
         assert result.current.evolved_from_revision == 1
         assert not result.has_current_approval
         assert result.evolutions[-1].phase is EvolutionPhase.COMPLETED
         assert result.evolutions[-1].result_blueprint_revision == 2
-        assert repository.state == result
-        assert len(repository.saved) == 4  # start, Wonder, Reflect, atomic completion
+        assert harness.blueprints.state == result
+        assert len(harness.blueprints.saved) == 4  # start, Wonder, Reflect, atomic completion
+
+        source = harness.wonderer.requests[0].source
+        outcome = source.criteria[0]
+        assert source.verify_sequence == 3
+        assert source.execution_attempt_numbers == (1,)
+        assert outcome.mechanical_passed is False
+        assert outcome.mechanical_detail is not None
+        assert "status 1" in outcome.mechanical_detail
+        assert outcome.semantic_passed is False
+        assert outcome.evidence_refs == (
+            "/tmp/verify-output.txt",
+            "semantic-report.json",
+        )
 
     async def test_qa_budget_resets_only_for_the_successor_generation(self) -> None:
         parent = _approved_state(exhausted=True)
-        service, _, _, _ = _service(parent)
-        result = await service.propose(mission_id="m-1", source=_source(parent))
+        harness = _service(parent)
+        result = await harness.service.propose(mission_id="m-1")
 
         for _ in range(POLICY.max_iterations):
             result = result.record_qa(assessment=QaAssessment(score=0.85), policy=POLICY)
@@ -205,36 +288,34 @@ class TestEvolveProposal:
         parent = _approved_state()
         reflector = ScriptedReflector()
         reflector.fail_next = True
-        service, repository, wonderer, _ = _service(parent, reflector=reflector)
-        source = _source(parent)
+        harness = _service(parent, reflector=reflector)
 
         with pytest.raises(RuntimeError, match="reflect crashed"):
-            await service.propose(mission_id="m-1", source=source)
-        assert repository.state.active_evolution is not None
-        assert repository.state.active_evolution.phase is EvolutionPhase.REFLECTING
+            await harness.service.propose(mission_id="m-1")
+        assert harness.blueprints.state.active_evolution is not None
+        assert harness.blueprints.state.active_evolution.phase is EvolutionPhase.REFLECTING
 
-        result = await service.propose(mission_id="m-1", source=source)
+        result = await harness.service.propose(mission_id="m-1")
         assert result.generation == 2
-        assert len(wonderer.requests) == 1
+        assert len(harness.wonderer.requests) == 1
         assert len(reflector.requests) == 2
 
     async def test_failed_start_save_happens_before_wonder_dispatch(self) -> None:
         parent = _approved_state()
-        service, repository, wonderer, _ = _service(parent)
-        repository.fail_next_save = True
+        harness = _service(parent)
+        harness.blueprints.fail_next_save = True
 
         with pytest.raises(OSError, match="disk unavailable"):
-            await service.propose(mission_id="m-1", source=_source(parent))
-        assert repository.state == parent
-        assert wonderer.requests == []
+            await harness.service.propose(mission_id="m-1")
+        assert harness.blueprints.state == parent
+        assert harness.wonderer.requests == []
 
     async def test_scope_change_is_durable_hold_without_a_revision(self) -> None:
         parent = _approved_state()
         reflector = ScriptedReflector(change_scope=True)
-        service, repository, wonderer, _ = _service(parent, reflector=reflector)
-        source = _source(parent)
+        harness = _service(parent, reflector=reflector)
 
-        held = await service.propose(mission_id="m-1", source=source)
+        held = await harness.service.propose(mission_id="m-1")
         assert held.revision == 1
         assert held.active_evolution is not None
         assert held.active_evolution.phase is EvolutionPhase.SEEDING
@@ -245,15 +326,117 @@ class TestEvolveProposal:
         with pytest.raises(EvolutionNotAllowedError, match="Evolve 진행 중"):
             held.revise(blueprint=manual_revision)
 
-        same = await service.propose(mission_id="m-1", source=source)
-        assert same == repository.state
-        assert len(wonderer.requests) == 1
+        same = await harness.service.propose(mission_id="m-1")
+        assert same == harness.blueprints.state
+        assert len(harness.wonderer.requests) == 1
         assert len(reflector.requests) == 1
 
     async def test_unapproved_parent_is_rejected_before_dispatch(self) -> None:
         parent = BlueprintState.start(blueprint=_blueprint())
-        service, _, wonderer, _ = _service(parent)
+        harness = _service(parent)
 
-        with pytest.raises(EvolutionNotAllowedError, match="승인된 current"):
-            await service.propose(mission_id="m-1", source=_source(parent))
-        assert wonderer.requests == []
+        with pytest.raises(EvolveEntryError, match="exact user approval"):
+            await harness.service.propose(mission_id="m-1")
+        assert harness.wonderer.requests == []
+
+
+class TestEvolveEntryProjection:
+    async def test_execute_hold_is_rejected_before_wonder(self) -> None:
+        parent = _approved_state()
+        criterion = parent.current.acceptance_criteria[0]
+        open_execute = ExecuteState.start(mission_id="m-1").dispatch(
+            execution_id="exec-open",
+            runtime_backend="fake",
+            blueprint_revision=parent.revision,
+            ac_key=criterion.key,
+            envelope=ENVELOPE,
+        )
+        harness = _service(parent, execute=open_execute)
+
+        with pytest.raises(EvolveEntryError, match="Execute Gate가 CLEAR가 아니다"):
+            await harness.service.propose(mission_id="m-1")
+        assert harness.wonderer.requests == []
+
+    async def test_verify_clear_is_rejected_before_wonder(self) -> None:
+        parent = _approved_state()
+        harness = _service(parent, verify=_verify_state(parent, passed=True))
+
+        with pytest.raises(EvolveEntryError, match="재계산 결과가 HOLD가 아니다"):
+            await harness.service.propose(mission_id="m-1")
+        assert harness.wonderer.requests == []
+
+    async def test_stale_execution_attempt_lineage_is_rejected(self) -> None:
+        parent = _approved_state()
+        harness = _service(parent, verify=_verify_state(parent, attempt_numbers=(2,)))
+
+        with pytest.raises(EvolveEntryError, match="attempt lineage"):
+            await harness.service.propose(mission_id="m-1")
+        assert harness.wonderer.requests == []
+
+    async def test_missing_mechanical_run_is_rejected_as_incomplete_source(self) -> None:
+        parent = _approved_state()
+        complete = _verify_state(parent)
+        assert complete.evidence is not None
+        incomplete = VerifyState(
+            mission_id=complete.mission_id,
+            sequence=complete.sequence,
+            evidence=complete.evidence.model_copy(update={"runs": ()}),
+            verdicts=complete.verdicts,
+        )
+        harness = _service(parent, verify=incomplete)
+
+        with pytest.raises(EvolveEntryError, match="mechanical AC별 run"):
+            await harness.service.propose(mission_id="m-1")
+        assert harness.wonderer.requests == []
+
+    async def test_missing_semantic_assessment_is_rejected(self) -> None:
+        parent = _approved_state()
+        complete = _verify_state(parent)
+        assert complete.evidence is not None
+        incomplete = VerifyState.start(mission_id="m-1").record(complete.evidence)
+        harness = _service(parent, verify=incomplete)
+
+        with pytest.raises(EvolveEntryError, match="semantic assessment가 없다"):
+            await harness.service.propose(mission_id="m-1")
+        assert harness.wonderer.requests == []
+
+    async def test_unknown_semantic_key_is_rejected_as_incomplete_source(self) -> None:
+        parent = _approved_state()
+        complete = _verify_state(parent)
+        assert complete.evidence is not None
+        assert complete.verdicts is not None
+        unknown = CriterionVerdict(
+            ac_key="ac_unknown",
+            satisfied=False,
+            score=0.2,
+            uncertainty=0.1,
+            reward_hacking_risk=0.0,
+            reasoning="다른 계약을 평가했다",
+        )
+        assessment = complete.verdicts.model_copy(update={"verdicts": (unknown,)})
+        invalid = VerifyState(
+            mission_id=complete.mission_id,
+            sequence=complete.sequence,
+            evidence=complete.evidence,
+            verdicts=assessment,
+        )
+        harness = _service(parent, verify=invalid)
+
+        with pytest.raises(EvolveEntryError, match="AC별 semantic verdict"):
+            await harness.service.propose(mission_id="m-1")
+        assert harness.wonderer.requests == []
+
+    async def test_changed_source_cannot_resume_an_existing_checkpoint(self) -> None:
+        parent = _approved_state()
+        reflector = ScriptedReflector()
+        reflector.fail_next = True
+        harness = _service(parent, reflector=reflector)
+
+        with pytest.raises(RuntimeError, match="reflect crashed"):
+            await harness.service.propose(mission_id="m-1")
+        changed = _verify_state(parent)
+        harness.verifies.state = changed.model_copy(update={"sequence": changed.sequence + 1})
+
+        with pytest.raises(EvolutionNotAllowedError, match="checkpoint와 source가 다르다"):
+            await harness.service.propose(mission_id="m-1")
+        assert len(harness.wonderer.requests) == 1

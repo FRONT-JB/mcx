@@ -36,6 +36,11 @@ class CriterionOutcomeSnapshot(BaseModel):
     def _mask_credentials(cls, value: str | None) -> str | None:
         return value if value is None else redact_credentials(value)
 
+    @field_validator("evidence_refs", mode="after")
+    @classmethod
+    def _mask_evidence_credentials(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(redact_credentials(item) for item in value)
+
     @model_validator(mode="after")
     def _proven_means_both_required_layers_passed(self) -> CriterionOutcomeSnapshot:
         if self.proven and (not self.semantic_passed or self.mechanical_passed is False):

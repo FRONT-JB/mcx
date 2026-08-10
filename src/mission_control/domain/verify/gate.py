@@ -61,7 +61,7 @@ class VerifyGateDecision:
         return tuple(blocker.detail for blocker in self.gate_blockers)
 
 
-def _mechanical_failure_reason(ac_key: str, run: VerificationRun) -> str:
+def mechanical_failure_reason(ac_key: str, run: VerificationRun) -> str:
     """run의 필드에서 실패 이유를 결정적으로 파생한다.
 
     exit code 0인데 실패라면 남은 가능성은 output_assertion 불일치뿐이다 —
@@ -103,7 +103,7 @@ def _criterion_blockers(
             gate_blockers.append(
                 VerifyGateBlocker(
                     condition=VerifyGateBlockingCondition.VERIFICATION_FAILED,
-                    detail=_mechanical_failure_reason(criterion.key, run),
+                    detail=mechanical_failure_reason(criterion.key, run),
                 )
             )
 

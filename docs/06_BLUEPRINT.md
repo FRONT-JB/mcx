@@ -439,6 +439,41 @@ key로 바꾸어 durable patch를 저장한다.
 원자적으로 기록한다. 자세한 계약은
 [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md)이다.
 
+### 7.7 Evolve source projection
+
+Evolve application은 호출자가 만든 snapshot을 신뢰하지 않는다. Blueprint·
+Execute·Verify durable 상태를 같은 `mission_id`로 읽어 Wonder 호출 **전에**
+source를 재구성한다.
+
+- Mission `ACTIVE` 확인과 Verify→Blueprint 전이 기록은 합성 surface가 소유한다.
+  Stage service는 Mission record를 읽지 않고 저장된 Stage보다 Gate 재계산이 이긴다
+  ([ADR-0037](./adr/0037-mission-record-and-canonical-stage.md) §2).
+- current Blueprint revision에 exact user approval이 있다.
+- 그 revision에 대해 Execute Gate를 다시 계산한 결과가 `CLEAR`다.
+- Verify evidence와 semantic assessment가 current revision을 가리킨다.
+- evidence의 execution attempt 번호는 Execute state에 있는 current revision의
+  성공 attempt 번호 전체와 순서까지 같다.
+- mechanically verifiable AC마다 mechanical run이 정확히 하나, 모든 AC마다
+  semantic verdict가 정확히 하나 있으며 unknown key도 없다.
+- 위 객체와 현재 semantic policy로 Verify Gate를 다시 계산한 결과가 `HOLD`다.
+
+projection은 `VerifyState.sequence`를 `source_verify_sequence`로, evidence의
+attempt 번호를 source lineage로 쓴다. AC별 snapshot은 mechanical run의 pass와
+결정적 실패 이유, semantic verdict의 pass·score·uncertainty·reward-hacking
+risk·reasoning, 원문 output reference와 semantic evidence reference를 담는다.
+`proven`은 별도 계산을 만들지 않고 Verify Gate와 같은 `proven_criteria()` 결과를
+쓴다.
+
+따라서 application 단위가 직접 거부하는 terminal 입력은 Verify Gate `CLEAR`다.
+Mission record의 `COMPLETE`는 이후 CLI/MCP surface가 service 호출 전에 거부한다.
+이 분리는 완료 Mission을 다시 연다는 뜻이 아니라, 합성 상태의 enforcement를
+Stage service에 복제하지 않는다는 뜻이다.
+
+이 exact projection은 upstream이 다음 generation을 대화 기억이 아니라 완료
+event의 Seed·execution output·evaluation summary에서 재구성하고, 불완전한 phase를
+fail-closed하는 의도를 파일 상태에 옮긴 것이다
+([EVOLVE findings §7~§8](./research/EVOLVE_UPSTREAM_FINDINGS.md)).
+
 ---
 
 ## 8. Normal sequence
@@ -682,6 +717,8 @@ Next action:
 | Entry | stale Brief revision | 재평가 요구 |
 | Evolve entry | Verify `CLEAR` 또는 `MISSION COMPLETE` (`upstream 대응물 없음`, [ADR-0051](./adr/0051-evolve-successor-blueprint-contract.md) §1) | LLM 호출 전 거부; 완료 Mission을 다시 열지 않음 |
 | Evolve entry | current revision의 Execute/Verify snapshot 누락 (`upstream 관측`, [EVOLVE findings](./research/EVOLVE_UPSTREAM_FINDINGS.md) §7~§8) | successor를 만들지 않고 HOLD |
+| Evolve entry | evidence attempt 번호가 current Execute lineage와 다름 (`upstream 관측`, 위 findings §7~§8) | 오래되거나 일부인 snapshot으로 Wonder를 호출하지 않음 |
+| Evolve entry | mechanical AC run 또는 AC별 semantic verdict 누락·unknown key (`upstream 관측`, 위 findings §8) | 불완전한 source를 저장하지 않고 HOLD |
 | Evolve replay | Wonder 저장 뒤 process 중단 (`upstream 관측`, 위 findings §8) | 같은 successor generation에서 Reflect부터 재개 |
 | Evolve concurrency | 같은 parent에 동시 호출 (`upstream 관측`, 위 findings §10) | single-flight; successor revision 하나만 생성 |
 | Generation | valid structured draft | QA로 진행 |
