@@ -4,11 +4,11 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | **Phase 9 COMPLETE (2026-08-10)** — 실사용 진입·되돌리기·관측 층, 종료 검토 포함 ([progress 0009](./0009_RECOVERY_LAYERS.md)). **Phase 10 Reflect/Evolve source projection 구현·text adapter integration 대기** |
+| Project phase | **Phase 9 COMPLETE (2026-08-10)** — 실사용 진입·되돌리기·관측 층, 종료 검토 포함 ([progress 0009](./0009_RECOVERY_LAYERS.md)). **Phase 10 Reflect/Evolve source projection·text adapter 구현, surface integration 대기** |
 | Mission status | ACTIVE |
-| Gate | **Phase 0~9 COMPLETE.** Phase 10 ADR-0051 + domain/state + 실 Blueprint·Execute·Verify source projection 완료. Wonder/Reflect adapter integration 진입 가능 |
-| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 29종 — CLI 파서 파생, 원장 유도 job, stdio, entry point `mcx-mcp`) |
-| Automated tests | 1002 passed (unit + integration, 2026-08-10 실측) |
+| Gate | **Phase 0~9 COMPLETE.** Phase 10 ADR-0051 + domain/state + 실 source projection + Wonder/Reflect `CompletionEngine` adapter 완료. CLI/MCP surface 진입 가능 |
+| Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 10종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 29종 — CLI 파서 파생, 원장 유도 job, stdio, entry point `mcx-mcp`) |
+| Automated tests | 1013 passed (unit + integration, 2026-08-10 실측) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-10 |
 
@@ -29,6 +29,10 @@
   exact attempt lineage·AC별 evidence·semantic verdict와 Verify Gate `HOLD`를
   재계산해 source snapshot을 만든다. Mission record는 ADR-0037에 따라 Stage
   service가 읽지 않으며 `ACTIVE` 확인·전이 기록은 surface integration 소관이다.
+- Wonder/Reflect text adapter는 도구 없는 `CompletionEngine` lane에서 parent
+  방향·실 Verify evidence·이전 Wonder lineage를 받고, Wonder 1-based ref와
+  Reflect 0-based index를 durable content key로 즉시 바꾼다. protected AC·ordered
+  patch·ontology mutation은 checkpoint 전에 결정적으로 검증한다.
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
@@ -40,12 +44,12 @@
 | 문서 | 상태 | 다음 Gate |
 |---|---|---|
 | `00_MISSION_CONTROL.md` | Active Draft | 구현 evidence로 검증 (사용자 검토 완료) |
-| `01_ARCHITECTURE.md` | Draft | Phase 1~9 경계 + Phase 10 Evolve domain/state·source projection 경계 검증; text adapter·surface·dogfood 대기 |
+| `01_ARCHITECTURE.md` | Draft | Phase 1~9 경계 + Phase 10 Evolve domain/state·source projection·text adapter 경계 검증; surface·dogfood 대기 |
 | `02_MISSION_LIFECYCLE.md` | Draft | 다섯 Stage 전이는 구현으로 검증; Evolve는 새 Stage 없이 Verify HOLD→후속 Blueprint generation으로 설계 확정 |
 | `03_RUNTIME.md` | Draft | Codex 실행·Claude/Codex 텍스트 계약 검증; OpenCode 실물 이연, Hermes는 Phase 10 A/B 후 최초 범위 제외 |
 | `04_MCP.md` | Draft | tool 29종·stdio·job/cancel은 ADR-0041로 검증; worker 재귀 경계와 host 합성 책임은 ADR-0042로 검증 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
-| `06_BLUEPRINT.md` | Draft | Gen 1 schema·QA·revision + Gen 2 generation·ontology·patch·checkpoint·실 source projection 검증; text adapter·surface·dogfood 대기 |
+| `06_BLUEPRINT.md` | Draft | Gen 1 schema·QA·revision + Gen 2 generation·ontology·patch·checkpoint·실 source projection·text adapter 검증; surface·dogfood 대기 |
 | `07_EXECUTE.md` | Draft | v1 실행·Runtime·worktree·checkpoint 계약을 Phase 3·5·9에서 검증; 병렬 실행은 Phase 11 |
 | `08_VERIFY.md` | Draft | 진입·mechanical·semantic·`changed_files`·MISSION COMPLETE 계약을 Phase 4·9에서 검증 |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도·rollback 계약을 Phase 4·9에서 검증; spec-gap classifier는 ADR-0051에서 미도입 확정 |
@@ -690,9 +694,12 @@ upstream 실물 (2026-08-09 확인, Evidence: **Verified** — 소스):
   - [x] 실 Blueprint·Execute·Verify state에서 `EvolveSourceSnapshot`을 구성하고
     Execute Gate `CLEAR`·Verify Gate `HOLD`, exact attempt·AC evidence lineage를
     LLM 호출 전에 재계산하는 application integration. 파일 저장소 round-trip
-    integration 포함 (`test_evolve_flow.py`, 1002 passed)
-  - [ ] 기존 vendor-neutral `CompletionEngine` + `ClaudeCompletion` Wonder/Reflect
-    adapter. Hermes adapter는 A/B 결과에 따라 최초 범위에서 제외
+    integration 포함 (`test_evolve_flow.py`)
+  - [x] 기존 vendor-neutral `CompletionEngine` Wonder/Reflect adapter — 도구 없는
+    호출, grounded Wonder ref와 ordered Reflect index의 content-key 변환,
+    protected keep·ontology mutation의 checkpoint 전 검증을 파일 저장소 흐름까지
+    고정 (`test_evolve_backends.py`, `test_evolve_flow.py`, 1013 passed).
+    기본 `ClaudeCompletion`을 유지하고 Hermes adapter는 A/B 결과에 따라 제외
   - [ ] CLI/MCP surface — Mission `ACTIVE` 확인, Verify→Blueprint 전이 기록,
     단발 한 generation 호출. Mission record는 application이 읽지 않음 (ADR-0037)
   - [ ] Gen 2 대표 실사용 dogfood + Phase 10 종료 검토
@@ -1030,12 +1037,11 @@ worktree 격리(ADR-0045). 둘 다 **뒤 항목의 선행이었다는 점이 같
 `context` 공백을, 후자는 checkpoint·rollback·`changed_files`가 딛고 설 git
 경계를 열었다.
 
-다음 검증 가능한 목표 한 개: **기존 vendor-neutral `CompletionEngine` 위에
-Wonder/Reflect text adapter를 구현한다.** parent AC 표시 index는 adapter 경계에서
-content key로 즉시 바꾸고, challenge/gap·keep/revise/add·ontology mutation의
-구조화 응답을 기존 domain 모델로 parse한다. backend는
-[A/B 실측](../research/EVOLVE_BACKEND_AB.md)으로 Claude 유지·Hermes 최초 범위
-제외까지 확정됐으므로 다시 열지 않는다.
+다음 검증 가능한 목표 한 개: **Evolve 단발 한 generation 호출을 CLI/MCP
+surface에 연결한다.** composition root에서 Blueprint text lane의
+`CompletionEngine`을 Wonder/Reflect가 공유하고, surface가 Mission `ACTIVE`를
+확인한 뒤 Verify→Blueprint 전이와 successor revision을 함께 기록한다. application
+`EvolveService`가 Mission record를 읽는 역방향 의존은 만들지 않는다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -1302,7 +1308,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 7 — MCP control surface | **충족 (2026-08-09)** — 로드맵 체크리스트 9항목이 이행 5·부분 2·미이행 2였음을 드러냈다. 미조립 부품 1건 수정(Recover 비동기 짝 — `recover dispatch`가 같은 `codex exec`를 돈다), 무처분 도과 3건 재지정(host 자기 도구 경로·승인 actor→Phase 8, cancelled 상태·resume→Phase 9), 미표시 보류 2건 등재(취소된 attempt, 재귀 경계), 미등록 이탈 1건 등록(서버가 사람에게 직접 묻지 않음, `upstream 미확인`) | [progress 0007](./0007_MCP_CONTROL_SURFACE.md) |
 | Phase 8 — plugin 패키징 (합성 계층) | **충족 (2026-08-09)** — tool description이 이름의 반복이던 것을 검토에서 이행(CLI `help=` 파생, 24명령). 미이행 2건 재지정(stale write 재확인·host 자기 도구 경로 → Phase 9, 전자는 **발동 조건과 종료 조건을 함께 걸어** 무한 연기를 끊었다), 표시 없던 보류 1건 등록(skill 6종의 근거), 산문 강제 1건 확인(질문 형태 규칙) | [progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | **충족 (2026-08-10)** — 두 번의 도그푸딩이 결함 6건을 잡았고 전부 조사·테스트로는 드러나지 않았다. 가장 큰 소득은 개별 결함이 아니라 **셋이 같은 뿌리를 갖는다는 것** — *"upstream과 같다"고 적어 놓고 원문과 대조하지 않았다*(§1.3). ADR README에 절차 한 줄을 넣었다. 검토가 직접 잡은 것 1건 수정(`changed_files`를 만들어 놓고 표시하지 않았다), 미결 11건 처분(닫음 6·재지정 3·구현 1·해소 1, **무처분 통과 0**). Phase 5를 시한으로 쓴 마지막 항목(telemetry event 층)도 종결됐다 | [progress 0009](./0009_RECOVERY_LAYERS.md) |
-| Phase 10 — Reflect/Evolve | **진행 중** — Gen 2+ 전체 연결·backend A/B·ADR-0051 + domain/state + 실 source projection 완료(1002 tests). 다음은 Wonder/Reflect `CompletionEngine` adapter | — |
+| Phase 10 — Reflect/Evolve | **진행 중** — Gen 2+ 전체 연결·backend A/B·ADR-0051 + domain/state + 실 source projection + Wonder/Reflect text adapter 완료(1013 tests). 다음은 CLI/MCP surface | — |
 | Phase 11 — 병렬 실행 | 대기 | — |
 
 ## Update protocol

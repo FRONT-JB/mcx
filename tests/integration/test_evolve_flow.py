@@ -1,6 +1,7 @@
 """파일 상태의 Execute·Verify HOLD에서 Evolve successor를 재구성한다."""
 
 from pathlib import Path
+from typing import Any
 
 from mission_control.adapters.persistence.file_blueprint_repository import (
     FileBlueprintRepository,
@@ -9,20 +10,15 @@ from mission_control.adapters.persistence.file_execute_repository import (
     FileExecuteRepository,
 )
 from mission_control.adapters.persistence.file_verify_repository import FileVerifyRepository
+from mission_control.adapters.text.evolve_backends import (
+    PromptedEvolveReflector,
+    PromptedEvolveWonderer,
+)
 from mission_control.application.evolve_service import EvolveService
-from mission_control.application.ports import ReflectRequest, WonderRequest
 from mission_control.domain.blueprint.qa import QaAssessment, QaPolicy
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
 from mission_control.domain.blueprint.state import BlueprintState
-from mission_control.domain.evolve.models import (
-    AcceptanceCriterionPatch,
-    AcPatchOperation,
-    ChallengeKind,
-    EvolutionPhase,
-    ReflectOutput,
-    WonderChallenge,
-    WonderOutput,
-)
+from mission_control.domain.evolve.models import EvolutionPhase
 from mission_control.domain.execute.state import CapabilityEnvelope, ExecuteState
 from mission_control.domain.verify.evidence import (
     VerificationEvidence,
@@ -39,34 +35,24 @@ QA_POLICY = QaPolicy.blueprint_v1()
 SEMANTIC_POLICY = SemanticPolicy.verify_v1()
 
 
-class FakeWonderer:
-    async def wonder(self, request: WonderRequest) -> WonderOutput:
-        return WonderOutput(
-            challenges=(
-                WonderChallenge(
-                    kind=ChallengeKind.CHALLENGE,
-                    parent_ac_key=request.acceptance_criteria[0].key,
-                    detail="실패한 재시도 경계를 구체화한다",
-                ),
-            ),
-            reasoning="durable Verify evidence를 따른다",
-        )
+class ScriptedCompletion:
+    def __init__(self, responses: list[dict[str, Any]]) -> None:
+        self.responses = responses
+        self.calls: list[tuple[str, dict[str, Any], str | None]] = []
 
+    @property
+    def backend(self) -> str:
+        return "scripted"
 
-class FakeReflector:
-    async def reflect(self, request: ReflectRequest) -> ReflectOutput:
-        return ReflectOutput(
-            refined_goal=request.goal,
-            refined_constraints=request.constraints,
-            ac_patches=(
-                AcceptanceCriterionPatch(
-                    operation=AcPatchOperation.REVISE,
-                    parent_ac_key=request.acceptance_criteria[0].key,
-                    description="429 응답은 Retry-After와 jitter를 지켜 재시도한다",
-                ),
-            ),
-            reasoning="실패한 AC의 의미만 좁힌다",
-        )
+    async def complete_json(
+        self,
+        *,
+        prompt: str,
+        schema: dict[str, Any],
+        workspace: str | None = None,
+    ) -> dict[str, Any]:
+        self.calls.append((prompt, schema, workspace))
+        return self.responses[len(self.calls) - 1]
 
 
 async def test_file_states_project_a_verify_hold_into_one_successor(tmp_path: Path) -> None:
@@ -137,12 +123,40 @@ async def test_file_states_project_a_verify_hold_into_one_successor(tmp_path: Pa
     await execute_repository.save(execute)
     await verify_repository.save(verify)
 
+    completion = ScriptedCompletion(
+        [
+            {
+                "questions": [
+                    {
+                        "question": "Retry-After와 jitter 경계가 필요한가?",
+                        "kind": "challenge",
+                        "ac_refs": [1],
+                    }
+                ],
+                "reasoning": "durable Verify evidence를 따른다",
+            },
+            {
+                "refined_goal": blueprint.goal,
+                "refined_constraints": [],
+                "ac_patches": [
+                    {
+                        "op": "revise",
+                        "index": 0,
+                        "content": "429 응답은 Retry-After와 jitter를 지켜 재시도한다",
+                        "reason": "실패한 AC의 의미만 좁힌다",
+                    }
+                ],
+                "ontology_mutations": [],
+                "reasoning": "실패한 AC의 의미만 좁힌다",
+            },
+        ]
+    )
     result = await EvolveService(
         repository=blueprint_repository,
         executes=execute_repository,
         verifies=verify_repository,
-        wonderer=FakeWonderer(),
-        reflector=FakeReflector(),
+        wonderer=PromptedEvolveWonderer(completion=completion),
+        reflector=PromptedEvolveReflector(completion=completion),
         policy=SEMANTIC_POLICY,
     ).propose(mission_id=mission_id)
 
@@ -155,3 +169,5 @@ async def test_file_states_project_a_verify_hold_into_one_successor(tmp_path: Pa
     assert restored.evolutions[-1].phase is EvolutionPhase.COMPLETED
     assert restored.evolutions[-1].source.execution_attempt_numbers == (1,)
     assert restored.evolutions[-1].source.verify_sequence == verify.sequence
+    assert len(completion.calls) == 2
+    assert all(workspace is None for _, _, workspace in completion.calls)

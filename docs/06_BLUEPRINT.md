@@ -474,6 +474,41 @@ event의 Seed·execution output·evaluation summary에서 재구성하고, 불�
 fail-closed하는 의도를 파일 상태에 옮긴 것이다
 ([EVOLVE findings §7~§8](./research/EVOLVE_UPSTREAM_FINDINGS.md)).
 
+### 7.8 Wonder/Reflect text adapter
+
+두 역할은 기존 vendor-neutral `CompletionEngine.complete_json()`을 workspace 없이
+호출한다. 따라서 Claude 기본 lane은 빈 tool catalog·빈 MCP·빈 setting sources를
+강제하며, adapter는 파일을 읽거나 수정하지 않는다
+([ADR-0036](./adr/0036-claude-text-lane-contract.md),
+[backend A/B §6~§7](./research/EVOLVE_BACKEND_AB.md)). Hermes는 최초 범위에 없다.
+
+Wonder prompt는 parent 방향·AC·ontology, AC별 source outcome·evidence, Verify Gate
+blocker, 이전 Wonder lineage를 담는다. 응답의 challenge는 upstream과 같은 1-based
+`ac_refs`를 쓰고 gap은 빈 refs를 쓴다. adapter는 범위 밖·빈 challenge ref와 ref가
+붙은 gap을 거부하고, 유효 ref를 즉시 parent AC content key로 바꾼다. index는
+durable `WonderOutput`에 남지 않는다.
+
+Reflect prompt는 같은 parent/source에 Wonder output을 더하며 upstream과 같은
+0-based parent `index` patch를 받는다. strict JSON schema에서 모든 property를
+필수로 유지하기 위해 `add`의 index는 transport-only `-1`, `keep`의 content와
+`remove` ontology mutation의 field payload는 빈 문자열 sentinel을 쓴다. adapter는
+다음을 결정적으로 적용한 뒤에만 durable `ReflectOutput`을 반환한다.
+
+- 모든 parent index가 순서대로 정확히 한 번 `keep | revise`되고 add는 뒤에만 온다.
+- protected AC(Verify proven + Wonder challenge 없음)의 revise는 exact keep으로
+  되돌린다. settled key도 모델에게 받지 않고 proven·unchallenged keep에서 계산한다.
+- index와 settled 좌표는 즉시 content key로 바꾼다.
+- add/modify ontology mutation은 replacement field의 name·type·description·required를
+  전부 요구하고, remove는 target name만 사용한다.
+- 현재 ontology에 적용할 수 없는 add/modify/remove는 checkpoint 전에 거부한다.
+
+schema·index·ontology validation 실패는 phase output으로 저장하지 않는다. 다음 Core
+호출은 아직 완료되지 않은 같은 Wonder 또는 Reflect phase를 다시 시도할 수 있다.
+이는 upstream의 grounded Wonder parser·explicit patch identity·satisficing backstop을
+우리 content-key 경계에 옮긴 것이다
+([EVOLVE findings §4~§5](./research/EVOLVE_UPSTREAM_FINDINGS.md), pinned
+`evolution/wonder.py`, `evolution/reflect.py`).
+
 ---
 
 ## 8. Normal sequence
@@ -719,6 +754,10 @@ Next action:
 | Evolve entry | current revision의 Execute/Verify snapshot 누락 (`upstream 관측`, [EVOLVE findings](./research/EVOLVE_UPSTREAM_FINDINGS.md) §7~§8) | successor를 만들지 않고 HOLD |
 | Evolve entry | evidence attempt 번호가 current Execute lineage와 다름 (`upstream 관측`, 위 findings §7~§8) | 오래되거나 일부인 snapshot으로 Wonder를 호출하지 않음 |
 | Evolve entry | mechanical AC run 또는 AC별 semantic verdict 누락·unknown key (`upstream 관측`, 위 findings §8) | 불완전한 source를 저장하지 않고 HOLD |
+| Wonder adapter | challenge의 1-based AC ref가 빈 값·범위 밖이거나 gap에 ref가 붙음 (`upstream 관측`, pinned `evolution/wonder.py`) | phase output을 저장하지 않고 같은 Wonder phase 유지 |
+| Reflect adapter | parent index 누락·중복·재정렬 또는 add가 중간에 있음 (`upstream 관측`, [EVOLVE findings](./research/EVOLVE_UPSTREAM_FINDINGS.md) §4) | content key 변환 전 거부; unsafe patch checkpoint 금지 |
+| Reflect adapter | protected AC를 revise (`upstream 관측`, pinned `evolution/reflect.py` satisficing backstop) | adapter가 exact keep으로 되돌리고 settled key를 결정적으로 계산 |
+| Reflect adapter | 존재하지 않는 ontology field modify/remove 또는 기존 field add (`upstream 관측`, 위 findings §5) | phase output 저장 전 거부 |
 | Evolve replay | Wonder 저장 뒤 process 중단 (`upstream 관측`, 위 findings §8) | 같은 successor generation에서 Reflect부터 재개 |
 | Evolve concurrency | 같은 parent에 동시 호출 (`upstream 관측`, 위 findings §10) | single-flight; successor revision 하나만 생성 |
 | Generation | valid structured draft | QA로 진행 |
