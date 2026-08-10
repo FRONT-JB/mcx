@@ -1,6 +1,7 @@
 # Runtime Upstream Findings — adapter protocol과 Codex 실행 계약
 
-> Checked: 2026-08-08. Baseline: `Q00/ouroboros@9486c78` (v0.50.8), 로컬 clone
+> Checked: 2026-08-08; stream 경계 재확인: 2026-08-11. Baseline:
+> `Q00/ouroboros@9486c78` (v0.50.8), 로컬 clone
 > (`~/.claude/plugins/marketplaces/ouroboros`).<br>
 > Scope: [Open Questions §7](./OPEN_QUESTIONS.md)(protocol method·capability·
 > timeout/cancel/resume·backend 분리)과 Phase 5 첫 adapter 계약의 재료.<br>
@@ -147,6 +148,48 @@ Mission Control 대응: 1은 [ADR-0033](../adr/0033-first-runtime-adapter-contra
    엔진에 `-C` 전달로 정정 (ADR-0034 정정 노트). 정정 후 재실행에서
    평가자가 workspace 안에서 명령을 직접 재현하고 파일 크기까지 검사해
    확신 있는 판정을 반환했다.
+
+### 8.1 Codex-only 도그푸딩에서 확인한 긴 JSONL 경계 (2026-08-11)
+
+> Evidence level: **Observed + Verified** — 로컬 codex-cli 0.147.0 실물 실패와
+> pinned source 직접 대조.
+
+Brief closure audit의 병렬 Codex 호출 중 단일 JSONL event가 Python asyncio
+`StreamReader`의 기본 64 KiB line limit를 넘었다. mcx의 text adapter가
+`readline()`으로 읽다가 `ValueError: Separator is found, but chunk is longer
+than limit`로 중단되었다. 같은 `readline()`을 쓰던 execution adapter도 같은
+잠재 결함을 가졌다.
+
+pinned upstream은 이 입력을 이미 별도 경계로 다룬다.
+
+- `providers/codex_cli_stream.py:21-26,36-85,143-232` — 16 KiB fixed chunk로
+  incremental UTF-8 decode·newline 분리하며, newline 없는 line buffer는
+  50 MiB에서 fail closed 한다.
+- `orchestrator/codex_cli_runtime.py:157,2076-2098` — Codex가 asyncio 기본
+  limit보다 큰 JSONL event를 낼 수 있다고 명시하고 위 reader를 사용한다.
+
+따라서 mcx도 Codex text·execution adapter에서 `readline()`을 제거하고 같은
+50 MiB 상한의 bounded chunk reader를 공유한다. 이는 event 의미나 Runtime
+계층을 바꾸는 divergence가 아니라 누락된 upstream transport guard의 복원이다.
+
+### 8.2 workspace 없는 text lane의 cwd 누출 (2026-08-11)
+
+> Evidence level: **Observed + Verified** — Codex-only Brief closure 실물과
+> pinned `providers/codex_cli_adapter.py:110-126,367-395` 직접 대조.
+
+upstream `CodexCliLLMAdapter`는 `cwd`가 없으면 `os.getcwd()`를 채택하고 모든
+완성 명령에 `-C self._cwd`를 넣는다. mcx Codex adapter도 명시 workspace가
+없을 때 `-C`를 생략해 부모 프로세스 cwd를 상속했다. 그 결과 저장소 조사 권한이
+없는 Brief closure lane이 우연히 mcx 저장소를 읽고, 실제 mission workspace의
+파일이 없다고 잘못 차단했다.
+
+mcx의 Brief 계약은 질문·closure lane이 저장소를 직접 조사하지 않고 선별된
+context만 본다는 의도적 경계다 (Brief Guide §4.3, ADR-0004). 따라서 workspace가
+없는 Codex text 호출은 호출마다 빈 임시 cwd를 만들어 `-C`로 고정한다. 실제
+작업물을 봐야 하는 semantic evaluator처럼 workspace를 명시한 호출은 기존대로
+그 경로를 읽기 전용으로 본다. upstream의 기본 cwd 상속과 다른 점은
+[ADR-0011 §7](../adr/0011-brief-deliberate-divergences.md#7-다른-adr에서-결정된-차이--등록-링크)에
+등록한다.
 
 ## 9. 조사하지 않은 것
 

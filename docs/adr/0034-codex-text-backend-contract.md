@@ -34,6 +34,15 @@ group 정리)은 실행 adapter와 동일하다.
 ADR-0004의 Stage별 최소 capability). 실행 adapter의 `--full-auto`와
 비대칭인 것이 옳다.
 
+> **2026-08-11 Codex-only 도그푸딩 정정 — workspace 없음은 cwd 상속이
+> 아니다.** `CompletionEngine.workspace=None`은 “현재 mcx 저장소를 보라”가
+> 아니라 “작업물을 관찰할 권한이 없다”는 뜻이다. Codex는 호출마다 만든 빈
+> 임시 cwd를 `-C`로 받고, 명시 workspace가 있을 때만 그 경로를 받는다.
+> 그렇지 않으면 Brief closure가 부모 cwd의 mcx 파일을 실제 mission의
+> brownfield 사실로 오인한다. upstream adapter는 기본 `os.getcwd()`를
+> 상속하므로 이 최소권한 차이는 Brief divergence register에 등록한다
+> ([findings §8.2](../research/RUNTIME_UPSTREAM_FINDINGS.md#82-workspace-없는-text-lane의-cwd-누출-2026-08-11)).
+
 ### 3. 재시도는 완성에만 있다 — upstream 계약 채택
 
 transient 패턴(공용 코어의 부분집합)만, 최대 3회, `2**attempt` backoff,
@@ -46,6 +55,12 @@ transient 패턴(공용 코어의 부분집합)만, 최대 3회, `2**attempt` ba
 검증(0..1 범위 등) 실패는 전부 **예외로 드러낸다** — 재시도하지 않는다
 (transient가 아니다). Verify Guide §12 "Parser | evaluator 구조화 출력
 손상 | 성공으로 해석하지 않음"의 이행이다.
+
+> **2026-08-11 Codex-only 도그푸딩 정정**: 구조화된 최종 결과 파일과 별개로
+> `codex exec --json`의 진행 event 한 줄은 asyncio 기본 64 KiB보다 클 수 있다.
+> `readline()` 실패를 LLM 실패로 오분류하지 않도록 ADR-0033의 16 KiB bounded
+> chunk reader를 공유한다. 한 줄 상한은 pinned upstream과 같은 50 MiB이며,
+> 초과는 성공이나 transient retry가 아니라 명시적 adapter 오류다.
 
 ### 5. 첫 port는 SemanticEvaluator다
 
@@ -107,9 +122,13 @@ closure 3-lane)은 같은 엔진 위에 port별 ADR 없이 구현하되, **프�
 ## Verification
 
 - 완성 명령이 `--sandbox read-only`를 포함하고 쓰기 권한 플래그가 없다.
+- workspace 없는 Codex text 호출은 부모 cwd가 아니라 빈 임시 cwd에서 돌고,
+  명시 workspace가 있는 호출만 그 작업물을 관찰한다.
 - transient 실패가 최대 3회 재시도되고, timeout·파싱 실패는 재시도되지
   않는다.
 - schema 파일이 strict(전 필드 required, additionalProperties false)로
   전달된다.
 - verdict의 `ac_key`가 항상 요청된 criterion에서 온다.
 - 손상된 JSON 출력이 satisfied verdict로 변환되는 경로가 없다.
+- asyncio 기본 line limit보다 큰 진행 event가 최종 구조화 결과 수집을
+  중단시키지 않고, 50 MiB line 상한 초과는 명시적으로 실패한다.

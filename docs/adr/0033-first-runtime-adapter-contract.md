@@ -93,6 +93,16 @@ v1은 그 축에서 시작한다. 스트리밍(`AgentMessage` 스트림)은 even
 - **timeout**: 총 시간 한도가 아니라 **출력 침묵 900초** — upstream stall
   기준 채택. 초과 시 process group 종료 후 실패 outcome (Verify runner와
   같은 기법).
+
+  > **2026-08-11 Codex-only 도그푸딩 정정 — JSONL은 bounded chunk로 읽는다.**
+  > Codex 0.147.0이 asyncio 기본 64 KiB를 넘는 단일 event를 냈고,
+  > `StreamReader.readline()`이 closure audit를 중단시켰다. pinned upstream의
+  > `iter_runtime_stream_lines`와 같은 경계로 16 KiB chunk를 읽고 newline을
+  > 조립하며, newline 없는 한 줄은 50 MiB에서 실패로 닫는다
+  > ([RUNTIME_UPSTREAM_FINDINGS §8.1](../research/RUNTIME_UPSTREAM_FINDINGS.md#81-codex-only-도그푸딩에서-확인한-긴-jsonl-경계-2026-08-11)).
+  > execution과 text adapter 모두 같은 전송 결함을 가졌으므로 공용 reader를
+  > 쓴다. 예: 70 KiB `item.completed` 뒤에 정상 `turn.completed`가 와도 이제
+  > 앞 event 크기만으로 mission이 중단되지 않는다.
 - **adapter 자체 재시도 없음**: 실행은 부작용이 프로세스 시작 직후부터
   가능하므로 "side effect 전 transport 실패"를 입증할 수 없다 — 실패는
   outcome으로 반환하고 재시도는 Recover의 것이다 (Execute Guide §11).
@@ -153,6 +163,8 @@ upstream의 대응 블록(선언 계약 제시 + "Prior failure classification" 
   `--output-last-message`) — CLI 실물 없이 검증 가능해야 한다.
 - thread id가 native_session_id로 기록된다.
 - 침묵 timeout 초과 시 process group이 정리되고 실패 outcome이 반환된다.
+- asyncio 기본 line limit보다 큰 JSONL event도 읽고, newline 없는 50 MiB 초과
+  출력은 무제한 누적하지 않고 실패로 닫는다.
 - adapter가 스스로 재시도하지 않는다 — 같은 요청의 재실행은 호출자 기록에만
   존재한다.
 - bypass 권한으로 가는 코드 경로가 없다.

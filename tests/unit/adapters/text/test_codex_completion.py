@@ -3,6 +3,7 @@
 계약: docs/adr/0034-codex-text-backend-contract.md §1~§4
 """
 
+import json
 from pathlib import Path
 import stat
 import sys
@@ -103,6 +104,31 @@ GARBAGE_STUB = """
     sys.exit(0)
 """
 
+LARGE_EVENT_STUB = """
+    import json, sys
+    arguments = sys.argv[1:]
+    last_message_path = arguments[arguments.index("--output-last-message") + 1]
+    sys.stdin.read()
+    print(json.dumps({"type": "item.completed", "payload": "x" * 70_000}))
+    with open(last_message_path, "w") as handle:
+        json.dump({"answer": "큰 event 뒤의 응답"}, handle)
+    sys.exit(0)
+"""
+
+NEUTRAL_WORKSPACE_STUB = """
+    import json, os, sys
+    arguments = sys.argv[1:]
+    last_message_path = arguments[arguments.index("--output-last-message") + 1]
+    workspace = arguments[arguments.index("-C") + 1]
+    sys.stdin.read()
+    with open(last_message_path, "w") as handle:
+        json.dump(
+            {"answer": json.dumps({"workspace": workspace, "entries": os.listdir(workspace)})},
+            handle,
+        )
+    sys.exit(0)
+"""
+
 
 class TestCompleteJson:
     async def test_a_structured_response_round_trips(self, tmp_path: Path) -> None:
@@ -135,3 +161,30 @@ class TestCompleteJson:
         engine = CodexCompletion(cli_path=_write_stub(tmp_path, "codex-junk", GARBAGE_STUB))
         with pytest.raises(CodexCompletionError, match="올바른 JSON이 아니다"):
             await engine.complete_json(prompt="질문", schema=SCHEMA)
+
+    async def test_an_event_larger_than_asyncio_default_line_limit_is_consumed(
+        self, tmp_path: Path
+    ) -> None:
+        """Codex 0.147.0 실물 회귀 — 64 KiB보다 큰 JSONL도 정상 입력이다."""
+        engine = CodexCompletion(
+            cli_path=_write_stub(tmp_path, "codex-large-event", LARGE_EVENT_STUB)
+        )
+
+        result = await engine.complete_json(prompt="질문", schema=SCHEMA)
+
+        assert result == {"answer": "큰 event 뒤의 응답"}
+
+    async def test_an_unspecified_workspace_uses_an_empty_neutral_cwd(
+        self, tmp_path: Path
+    ) -> None:
+        """Brief lane은 mcx 부모 cwd를 mission 사실로 읽지 않는다 (ADR-0034 §2)."""
+        engine = CodexCompletion(
+            cli_path=_write_stub(tmp_path, "codex-neutral-workspace", NEUTRAL_WORKSPACE_STUB)
+        )
+
+        result = await engine.complete_json(prompt="질문", schema=SCHEMA)
+        observed = json.loads(result["answer"])
+
+        assert observed["workspace"] != str(Path.cwd())
+        assert observed["entries"] == []
+        assert not Path(observed["workspace"]).exists()  # 호출 뒤 임시 경계도 제거된다

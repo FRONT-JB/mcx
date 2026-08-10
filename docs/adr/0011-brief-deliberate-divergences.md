@@ -118,6 +118,7 @@ clarity), 그리고 인터뷰 이전의 read-only 코드베이스 탐색 단계�
 | **Brief handoff를 명시적 타입으로 둠** | Seed 생성기가 interview state 전체를 받으며 경계 계약이 없음 | [ADR-0016](./0016-brief-handoff-projection.md) |
 | **QA 루프를 Core에 둠** — 모든 surface가 같은 품질 기준을 거침 | 루프가 skill 계층에만 있고 CLI에는 없음 | [ADR-0019](./0019-blueprint-qa-loop.md) §1 |
 | **dimension floor 회귀 테스트** 추가 | floor는 코드에만 있고 테스트 없음 | 차이가 아니라 검증 보강 ([findings](../research/INTERVIEW_UPSTREAM_FINDINGS.md) §8.5) |
+| workspace 없는 Brief text lane을 **빈 임시 cwd**에 격리 | Codex LLM adapter는 미지정 cwd를 `os.getcwd()`로 채택 | [ADR-0034](./0034-codex-text-backend-contract.md) §2 정정, [runtime findings](../research/RUNTIME_UPSTREAM_FINDINGS.md#82-workspace-없는-text-lane의-cwd-누출-2026-08-11) |
 
 toolchain 차이(mypy strict, 의존성, pytest-xdist)는 Brief 동작이 아니라 개발
 환경이므로 [ADR-0012](./0012-python-toolchain-and-layout.md)에만 둔다.

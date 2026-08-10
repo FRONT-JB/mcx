@@ -272,6 +272,18 @@ COMMAND_WRITE_RISK_STUB = """
         handle.write("done")
 """
 
+LARGE_EVENT_STUB = """
+    import json, sys
+    arguments = sys.argv[1:]
+    last_message_path = arguments[arguments.index("--output-last-message") + 1]
+    sys.stdin.read()
+    print(json.dumps({"type": "thread.started", "thread_id": "th-large"}))
+    print(json.dumps({"type": "item.completed", "payload": "x" * 70_000}))
+    print(json.dumps({"type": "turn.completed"}))
+    with open(last_message_path, "w") as handle:
+        handle.write("large event consumed")
+"""
+
 
 class TestExecute:
     async def test_success_collects_the_thread_and_the_last_message(self, tmp_path: Path) -> None:
@@ -393,6 +405,22 @@ class TestExecute:
 
         assert outcome.changed_files == ()
         assert outcome.write_telemetry is WriteTelemetryStatus.INCOMPLETE
+
+    async def test_an_event_larger_than_asyncio_default_line_limit_is_consumed(
+        self, tmp_path: Path
+    ) -> None:
+        """text와 같은 transport guard가 Execute에도 적용된다 (ADR-0033 §4)."""
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        runtime = CodexExecutionRuntime(
+            cli_path=_write_stub(tmp_path, "codex-large-event", LARGE_EVENT_STUB)
+        )
+
+        outcome = await runtime.execute(_request(workspace=str(workspace)))
+
+        assert outcome.succeeded is True
+        assert outcome.native_session_id == "th-large"
+        assert outcome.result_summary == "large event consumed"
 
 
 PROGRESS_STUB = """

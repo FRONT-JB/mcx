@@ -178,6 +178,13 @@ Mission Control은 질문을 직접 답하거나, 사용자 결정을 추측하�
 read-only fact resolution 결과로 제공한다. 질문 생성기는 자신의 질문이 충분한지,
 Brief가 완료되었는지, 다음 Stage로 갈지를 결정할 수 없다.
 
+**실행 경계 (2026-08-11 실물 정정):** workspace를 받지 않는 질문·clarity·
+closure text lane은 부모 프로세스 cwd를 상속하지 않는다. Codex backend는 빈
+임시 cwd를 `-C`로 받아 프롬프트에 투영된 context만 판단한다. 그렇지 않으면
+현재 `mcx` 저장소를 mission workspace로 오인해 존재하지 않는 brownfield blocker를
+만드는 실패가 실제 closure 감사에서 재현되었다
+([RUNTIME_UPSTREAM_FINDINGS §8.2](./research/RUNTIME_UPSTREAM_FINDINGS.md#82-workspace-없는-text-lane의-cwd-누출-2026-08-11)).
+
 ### 4.4 Read-only Fact Resolver — **폐기 (2026-08-09 사용자 결정)**
 
 > **별도 역할로 두지 않는다.** [ADR-0011](./adr/0011-brief-deliberate-divergences.md)

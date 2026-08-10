@@ -22,6 +22,10 @@ import signal
 import tempfile
 from typing import Any
 
+from mission_control.adapters.codex_stream import (
+    BoundedCodexJsonlReader,
+    CodexJsonlLineTooLong,
+)
 from mission_control.adapters.text.completion_engine import (
     MAX_ATTEMPTS,
     CompletionError,
@@ -122,7 +126,15 @@ class CodexCompletion:
         message_path, schema_path = Path(message_name), Path(schema_name)
         try:
             schema_path.write_text(json.dumps(schema), encoding="utf-8")
-            return await self._invoke(prompt, message_path, schema_path, workspace)
+            if workspace is not None:
+                return await self._invoke(prompt, message_path, schema_path, workspace)
+            # ``None``은 부모 cwd 상속이 아니라 작업물 관찰 권한 없음이다.
+            # Codex에는 도구 allowlist가 없으므로 빈 cwd로 capability를 실제로
+            # 좁힌다 (ADR-0034 §2, dogfood 2026-08-11).
+            with tempfile.TemporaryDirectory(prefix="mcx-codex-context-") as neutral_workspace:
+                return await self._invoke(
+                    prompt, message_path, schema_path, neutral_workspace
+                )
         finally:
             message_path.unlink(missing_ok=True)
             schema_path.unlink(missing_ok=True)
@@ -148,10 +160,11 @@ class CodexCompletion:
         process.stdin.close()
 
         output_tail = ""
+        stdout = BoundedCodexJsonlReader(process.stdout)
         while True:
             try:
                 line = await asyncio.wait_for(
-                    process.stdout.readline(), timeout=self._silence_timeout_seconds
+                    stdout.readline(), timeout=self._silence_timeout_seconds
                 )
             except TimeoutError:
                 await self._terminate(process)
@@ -161,6 +174,9 @@ class CodexCompletion:
                         "process group을 정리했다"
                     )
                 ) from None
+            except CodexJsonlLineTooLong as error:
+                await self._terminate(process)
+                raise CodexCompletionError(reason=str(error)) from error
             if not line:
                 break
             output_tail = (output_tail + line.decode("utf-8", errors="replace"))[

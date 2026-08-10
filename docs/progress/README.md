@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | **v1 release CLEAR — ready for user-approved release** — FRONT-JB LICENSE와 adapted Ouroboros portion의 Q00 MIT notice를 metadata·wheel·sdist에 포함해 검증 완료 ([progress 0012](./0012_V1_RELEASE_READINESS.md), [provenance audit](../research/UPSTREAM_PROVENANCE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, immutable plan, grouped stage run, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (Codex worker+Coordinator), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 11종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 26 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 33종 — CLI 파서 파생 26 + 비동기 5 + job 2, stdio, entry point `mcx-mcp`) |
-| Automated tests | **1060 passed** (unit + integration, 2026-08-11 release audit 실측) |
+| Automated tests | **1065 passed** (unit + integration, 2026-08-11 Codex-only dogfood 결함 2건 회귀 포함) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-11 |
 
@@ -48,6 +48,12 @@
   재검증을 함께 구현했다. 실제 worker 3개가 공통 `retry_policy.py`를 수정한
   brownfield 도그푸딩이 conflict→Coordinator→Verify 3/3→`MISSION COMPLETE`를
   통과했다 ([DOGFOODING_0007](../research/DOGFOODING_0007.md)).
+- Codex text+execution 단독 lifecycle 도그푸딩이 진행 중이다. Brief 실경로에서
+  asyncio 기본 64 KiB를 넘는 Codex JSONL event와 workspace 없는 text lane의
+  부모 cwd 누출을 발견해 pinned upstream 대조·문서·회귀 테스트와 함께 수정했다.
+  현재는 required 성공 조건과 exact Brief revision의 실제 사용자 승인을 기다리는
+  의도된 `HOLD`이며 이후 Stage 성공은 아직 주장하지 않는다
+  ([DOGFOODING_0008](../research/DOGFOODING_0008.md)).
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
 - v1 release candidate는 host별 plugin 설치, MCP 33종 handshake, simulated
@@ -73,7 +79,7 @@
 | `08_VERIFY.md` | Draft | 진입·mechanical·semantic·`changed_files`·MISSION COMPLETE 계약을 Phase 4·9에서 검증 |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도·rollback 계약을 Phase 4·9에서 검증; spec-gap classifier는 ADR-0051에서 미도입 확정 |
 | `adr/` | 53 Accepted ADRs | ADR-0001~0053. Phase 11 병렬 Coordinator 실행 계약까지 확정 |
-| `research/` | Phase 11 complete | upstream baseline·도그푸딩 0001~0007·Evolve 연결·backend A/B·병렬 shared-worktree 안전 조사와 실측 보존 |
+| `research/` | Phase 11 complete + dogfood 0008 진행 중 | upstream baseline·도그푸딩 0001~0008·Evolve 연결·backend A/B·병렬 shared-worktree 안전 조사와 실측 보존 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
 작성되었지만 사용자가 검토하고 구현 evidence로 검증하기 전이라는 뜻이다.

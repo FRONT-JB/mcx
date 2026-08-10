@@ -30,6 +30,10 @@ import signal
 import tempfile
 
 from mission_control import progress
+from mission_control.adapters.codex_stream import (
+    BoundedCodexJsonlReader,
+    CodexJsonlLineTooLong,
+)
 from mission_control.adapters.runtime import codex_events
 from mission_control.application.ports import (
     CoordinatorOutcome,
@@ -303,9 +307,10 @@ class CodexExecutionRuntime:
         # 그대로라 기존 동작이 한 글자도 바뀌지 않는다 (ADR-0041 §5).
         poll = self._cancel_poll_seconds if observed() else self._silence_timeout_seconds
         silent = 0.0
+        stdout = BoundedCodexJsonlReader(process.stdout)
         while True:
             try:
-                line = await asyncio.wait_for(process.stdout.readline(), timeout=poll)
+                line = await asyncio.wait_for(stdout.readline(), timeout=poll)
             except TimeoutError:
                 if is_cancelled():
                     await self._terminate(process)
@@ -327,6 +332,14 @@ class CodexExecutionRuntime:
                         f"codex exec went silent for {self._silence_timeout_seconds:.0f}s; "
                         "the process group was terminated"
                     ),
+                )
+            except CodexJsonlLineTooLong as error:
+                await self._terminate(process)
+                return ExecutionOutcome(
+                    succeeded=False,
+                    native_session_id=native_session_id,
+                    write_telemetry=WriteTelemetryStatus.INCOMPLETE,
+                    error=str(error),
                 )
             silent = 0.0
             if not line:

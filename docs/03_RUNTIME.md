@@ -717,6 +717,17 @@ adapter를 별도 Coordinator authority로 한 번 호출한다. 취소 시 proc
 [parallel findings](./research/PARALLEL_EXECUTION_UPSTREAM_FINDINGS.md), 대표 실경로는
 [DOGFOODING_0007](./research/DOGFOODING_0007.md)이 소유한다.
 
+#### 13.1.2 Codex JSONL line boundary — VERIFIED
+
+Codex 0.147.0은 asyncio 기본 64 KiB보다 큰 단일 JSONL event를 실제로 냈다.
+text·execution adapter는 `readline()` 대신 16 KiB bounded chunk reader를
+공유한다. newline 없는 한 줄은 pinned Ouroboros와 같은 50 MiB에서 실패로
+닫는다. 이 경계가 없으면 내용상 정상인 closure audit도 전송 크기 하나 때문에
+중단된다. 근거와 실패 재현은
+[RUNTIME_UPSTREAM_FINDINGS §8.1](./research/RUNTIME_UPSTREAM_FINDINGS.md#81-codex-only-도그푸딩에서-확인한-긴-jsonl-경계-2026-08-11),
+계약은 [ADR-0033 §4](./adr/0033-first-runtime-adapter-contract.md#4-codex-실행-adapter의-호출-계약)와
+[ADR-0034 §4](./adr/0034-codex-text-backend-contract.md#4-구조화-출력-실패는-성공으로-해석하지-않는다)가 소유한다.
+
 ### 13.2 OpenCode Adapter 방향
 
 OpenCode adapter도 동일한 공통 계약과 conformance suite를 따라야 한다. 다음 차이를
