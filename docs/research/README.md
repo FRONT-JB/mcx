@@ -21,9 +21,18 @@
 - [SECURITY_UPSTREAM_FINDINGS.md](./SECURITY_UPSTREAM_FINDINGS.md) — secret redaction의 네 지점(입력 한도·로깅·저장 거부·MCP 출력 마스킹), replay-unsafe 키 목록, 우리 노출 표면 실측 (Phase 7 진입 조건)
 - [RUNTIME_UPSTREAM_FINDINGS.md](./RUNTIME_UPSTREAM_FINDINGS.md) — LLMAdapter/AgentRuntime 분리, codex·claude·opencode 실행 계약 조사 (§10 Claude, §11 OpenCode 사용 시점, §12 runtime×backend 두 축과 MCP 구동 worker — §6 정정)
 - [CLI_UPSTREAM_FINDINGS.md](./CLI_UPSTREAM_FINDINGS.md) — CLI 표면 두께·품질 루프의 거처·canonical phase 저장 조사 (Open Questions §8 선행 항목)
+- [WORKTREE_UPSTREAM_FINDINGS.md](./WORKTREE_UPSTREAM_FINDINGS.md) — 미션 단위 worktree 격리·복원·정리 경계 조사
+- [CHECKPOINT_UPSTREAM_FINDINGS.md](./CHECKPOINT_UPSTREAM_FINDINGS.md) — 평가 이후 authoritative checkpoint 정책 조사
+- [ROLLBACK_UPSTREAM_FINDINGS.md](./ROLLBACK_UPSTREAM_FINDINGS.md) — 세대 lineage rewind와 작업 트리 rollback의 두 층 조사
+- [CHANGED_FILES_UPSTREAM_FINDINGS.md](./CHANGED_FILES_UPSTREAM_FINDINGS.md) — 변경 파일 수집 기준점·시점·파서 조사
+- [EVENT_LAYER_UPSTREAM_FINDINGS.md](./EVENT_LAYER_UPSTREAM_FINDINGS.md) — Runtime 정규화와 canonical event store의 소비자·경계 조사
+- [REDACTION_FIELD_TRIAL.md](./REDACTION_FIELD_TRIAL.md) — 실제 입력 형태로 secret redaction 누락·과잉을 대조한 실물 기록
+- [EVOLVE_UPSTREAM_FINDINGS.md](./EVOLVE_UPSTREAM_FINDINGS.md) — Reflect가 Gen 2+에서 Brief를 대체하는 방식과 다음 Seed 생성 충돌 조사
 - [DOGFOODING_0001.md](./DOGFOODING_0001.md) — 실 AI 도그푸딩 1차 (전부 codex) 관측 기록
 - [DOGFOODING_0002.md](./DOGFOODING_0002.md) — 실 AI 도그푸딩 2차 (claude+codex, Recover 경로) 관측 기록
 - [DOGFOODING_0003.md](./DOGFOODING_0003.md) — 실 AI 도그푸딩 3차 (설치된 mcx CLI 실물, QA EXHAUSTED·자연 Recover 첫 관측) 기록
+- [DOGFOODING_0004.md](./DOGFOODING_0004.md) — Phase 9 첫 실물 관측, Brief에서 중단하고 과제 선정 오류·빈 handoff 결함을 처분한 기록
+- [DOGFOODING_0005.md](./DOGFOODING_0005.md) — Phase 9 다섯 층과 rollback·checkpoint를 검증하고 `MISSION COMPLETE`까지 완주한 기록
 
 ## Evidence levels
 

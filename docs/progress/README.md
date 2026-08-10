@@ -4,31 +4,28 @@
 
 | 항목 | 현재 값 |
 |---|---|
-| Project phase | **Phase 7 COMPLETE (2026-08-09)** — MCP control surface (ADR-0041), 종료 검토 포함 ([progress 0007](./0007_MCP_CONTROL_SURFACE.md)). 다음은 Phase 8 (plugin = 합성 계층), 선행은 skill/Core 경계 ADR |
+| Project phase | **Phase 9 COMPLETE (2026-08-10)** — 실사용 진입·되돌리기·관측 층, 종료 검토 포함 ([progress 0009](./0009_RECOVERY_LAYERS.md)). **Phase 10 Reflect/Evolve upstream 조사 진행 중** |
 | Mission status | ACTIVE |
-| Gate | Phase 0~2 COMPLETE; Phase 3 COMPLETE (2026-08-08, [종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)); Phase 4 COMPLETE (2026-08-08, [종료 검토](./0004_VERIFY_RECOVER_VERTICAL_SLICE.md)); Phase 5 COMPLETE (2026-08-08, [종료 검토](./0005_RUNTIME_ADAPTERS.md) — 잔여 3항목은 사용자 결정으로 실수요 시점 이연); Phase 6 COMPLETE (2026-08-09, [종료 검토](./0006_MCX_CLI.md)); Phase 7 COMPLETE (2026-08-09, [종료 검토](./0007_MCP_CONTROL_SURFACE.md) — 미이행 2항목은 Phase 8·9로 재지정); **Phase 9 COMPLETE (2026-08-10, [종료 검토](./0009_RECOVERY_LAYERS.md) — 미결 11건 전부 처분, 무처분 통과 0)** |
+| Gate | **Phase 0~9 COMPLETE.** Phase 10 진입 조건 없음([progress 0009 §4](./0009_RECOVERY_LAYERS.md)); 구현 전 upstream Gen 2+ 연결 경로 조사와 설계 ADR 필요 |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate), `domain/execute/` (state, plan, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (codex), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 7종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 24 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 29종 — CLI 파서 파생, 원장 유도 job, stdio, entry point `mcx-mcp`) |
-| Automated tests | 731 passed (unit + integration) |
+| Automated tests | 967 passed (unit + integration, 2026-08-10 실측) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
-| Updated | 2026-08-09 |
+| Updated | 2026-08-10 |
 
 ## Current facts
 
 - Git 저장소는 문서 작업 전에 비어 있었다.
 - Python 3.12 + uv + pydantic + pytest, layered layout으로 확정했다 (ADR-0012).
-- Brief Stage와 Blueprint Stage의 domain/application/adapter가 구현되었고
-  331개 테스트가 통과한다. Blueprint는 생성 → QA 반복 → 수정 → 승인 →
-  Execute 진입 Gate가 파일 저장소를 거쳐 end-to-end로 돈다 (결정적 fake
-  생성기·채점자 기준).
+- 다섯 Stage의 domain/application/adapter와 `mcx` CLI·MCP·plugin 합성 계층이
+  구현되었다. Phase 9의 brownfield 진입, worktree 격리, checkpoint, rollback,
+  `changed_files`, 진행 관측도 실 AI 도그푸딩으로 검증되었다.
 - Mission Control의 Constitution과 설계 문서 초안이 작성되었다.
 - upstream `Q00/ouroboros`의 기준 commit을 기록했다.
 - 사용자 용어와 내부/upstream 용어 mapping을 확정했다.
 - Runtime은 Codex/OpenCode 방향이며 Gemini는 v1 범위에서 제외했다.
-- Brief의 threshold와 durable state, Blueprint의 QA 정책은 확정했다
-  (ADR-0009, ADR-0013, ADR-0019). 이후 Stage의 수치와 exact API는 아직
-  결정하지 않았다.
-- 25개 Markdown 문서의 link, navigation, fence, parser, whitespace, terminology와
-  lifecycle consistency 통합 검사가 통과했다.
+- Phase 1~9의 결정은 ADR-0009~0050과 각 Phase 종료 기록에 연결되어 있다.
+- 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
+  테스트가 통과한다.
 - 사용자가 2026-08-07 세션에서 방향과 v1 boundary를 검토·승인했다
   ([progress 0000](./0000_DOCUMENTATION_FOUNDATION.md) Gate 참조).
 - 루트에 에이전트 온보딩 지침 `AGENTS.md`와 `CLAUDE.md` symlink가 추가되었다.
@@ -38,17 +35,17 @@
 | 문서 | 상태 | 다음 Gate |
 |---|---|---|
 | `00_MISSION_CONTROL.md` | Active Draft | 구현 evidence로 검증 (사용자 검토 완료) |
-| `01_ARCHITECTURE.md` | Draft | persistence/application boundary 결정 검토 |
-| `02_MISSION_LIFECYCLE.md` | Draft | exact state/Recover open decisions 검토 |
-| `03_RUNTIME.md` | Draft | protocol examples로 contract tests 정의 |
-| `04_MCP.md` | Draft | tool schema·transport는 [ADR-0041](../adr/0041-mcp-control-surface-contract.md)로 확정 (Phase 7 구현으로 검증). 재귀 경계와 서버→사용자 질의는 미결 ([Open Questions §8](../research/OPEN_QUESTIONS.md)) |
+| `01_ARCHITECTURE.md` | Draft | Phase 1~9 경계는 구현 evidence로 검증; Phase 10 세대 루프 경계 갱신 대기 |
+| `02_MISSION_LIFECYCLE.md` | Draft | 다섯 Stage 전이는 구현으로 검증; Phase 10의 세대 간 연결과 upstream 내부 국면 대조 대기 |
+| `03_RUNTIME.md` | Draft | Codex 실행·Claude/Codex 텍스트 계약 검증; OpenCode 실물 이연, Hermes는 Phase 10 실측 후 결정 |
+| `04_MCP.md` | Draft | tool 29종·stdio·job/cancel은 ADR-0041로 검증; worker 재귀 경계와 host 합성 책임은 ADR-0042로 검증 |
 | `05_BRIEF.md` | Verified contract | Phase 1 구현으로 검증, §11.6·B-040~043은 ADR-0020 소급 (미착수 행은 progress 0001 참조) |
-| `06_BLUEPRINT.md` | Draft | schema·QA·revision policy는 ADR-0017~0019·0021로 확정, Phase 2 종료 검토에서 구현 evidence 대조 |
-| `07_EXECUTE.md` | Draft | v1 계약(§6·§7·§13·§14)은 Phase 3 구현으로 검증 ([종료 검토](./0003_EXECUTE_VERTICAL_SLICE.md)). telemetry schema·runtime contract·timeout·병렬 Gate는 미정 |
-| `08_VERIFY.md` | Draft | 진입(ADR-0026)·mechanical 계약(ADR-0028)·증거 필드(ADR-0027 §1) 확정 — 구현으로 검증. semantic verdict schema는 후속 slice |
-| `09_RECOVER.md` | Draft | 실패 packet·재시도 예산·정체 중단 계약 확정 (ADR-0031·0032) — 구현으로 검증. rollback·oscillation 탐지는 보류 |
-| `adr/` | 41 Accepted ADRs | 구현으로 검증 (0009~0016은 Phase 1과 후속 감사로, 0017~0019·0021~0022는 Phase 2로, 0020은 Phase 1 소급, 0023~0025는 Phase 3, 0026~0032는 Phase 4, 0033~0036은 Phase 5, 0037~0039는 Phase 6, 0040~0041은 Phase 7) |
-| `research/` | Baseline created | Open Questions를 evidence로 해소 |
+| `06_BLUEPRINT.md` | Draft | schema·QA·revision·결정적 품질 하한을 Phase 2·8·9에서 검증; Gen 2+ Brief 없는 생성 경로 결정 대기 |
+| `07_EXECUTE.md` | Draft | v1 실행·Runtime·worktree·checkpoint 계약을 Phase 3·5·9에서 검증; 병렬 실행은 Phase 11 |
+| `08_VERIFY.md` | Draft | 진입·mechanical·semantic·`changed_files`·MISSION COMPLETE 계약을 Phase 4·9에서 검증 |
+| `09_RECOVER.md` | Draft | 실패 packet·재시도·rollback 계약을 Phase 4·9에서 검증; spec-gap 자동 분류는 Phase 10 설계 후 재평가 |
+| `adr/` | 50 Accepted ADRs | ADR-0001~0050. Phase 9 종료 검토에서 upstream 원문 대조 규칙까지 추가 |
+| `research/` | Phase 10 baseline in progress | upstream baseline·도그푸딩 0001~0005·Evolve 선행 조사 보존 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
 작성되었지만 사용자가 검토하고 구현 evidence로 검증하기 전이라는 뜻이다.
@@ -64,6 +61,7 @@
 - [0006 — `mcx` CLI 종료 검토](./0006_MCX_CLI.md)
 - [0007 — MCP control surface 종료 검토](./0007_MCP_CONTROL_SURFACE.md)
 - [0008 — plugin 합성 계층 종료 검토](./0008_PLUGIN_COMPOSITION_LAYER.md)
+- [0009 — 되돌리기·관측 층 종료 검토](./0009_RECOVERY_LAYERS.md)
 
 ## Phase roadmap
 
@@ -256,7 +254,7 @@ Verify Gate 미검사 조건)을 잡았다.
 - [-] local model vs provided agent capability mapping — **OpenCode adapter와
   함께 이연** (실물 대상이 그때 생긴다 — 아래 "실수요 이연" 절)
 
-### Phase 6 — `mcx` CLI
+### Phase 6 — `mcx` CLI — COMPLETE
 
 목표: 다섯 Stage를 동일 application boundary로 조작한다. 표면 계약은
 [ADR-0038](../adr/0038-mcx-cli-surface-contract.md).
@@ -295,9 +293,9 @@ Verify Gate 미검사 조건)을 잡았다.
   **Execute의 backend 교체가 구조적으로 가능하다** — `EXECUTION_BACKENDS`에
   한 줄 추가가 교체 지점이고, 실물 OpenCode adapter는 이연이라 지금은 그
   이름이 로드에서 거부된다(등록된 이름만 통과)
-- [ ] Phase 6 종료 검토
+- [x] Phase 6 종료 검토 — [progress 0006](./0006_MCX_CLI.md)
 
-### Phase 7 — MCP control surface
+### Phase 7 — MCP control surface — COMPLETE
 
 목표: host가 CLI와 같은 Mission state/Gate 의미를 사용한다.
 
@@ -328,11 +326,11 @@ Verify Gate 미검사 조건)을 잡았다.
   직접 묻지 않는 결정을 Open Questions §8에 등록했다 (`upstream 미확인`)
 - [x] CLI/MCP parity tests — 파리티를 테스트로 쫓지 않는다. 같은 `dispatch`를
   지나므로 구조가 보장하고, 검사는 방향 셋이다 (ADR-0041 §8)
-- [ ] recursion/security tests — **미이행.** 텍스트 lane에는 격리가 있고
-  실행 lane(`codex exec`)에는 없다. 시한 **Phase 8**
-  ([Open Questions §8](../research/OPEN_QUESTIONS.md))
+- [x] recursion/security tests — Phase 8에서 실행 lane이
+  `codex exec --ignore-user-config`로 사용자 설정을 상속하지 않게 해 재귀 경계를
+  강제하고 실물 확인했다 ([ADR-0042 §6](../adr/0042-skill-and-core-ownership-boundary.md))
 
-### Phase 8 — plugin 패키징: 합성 계층 (사용자 결정 2026-08-09)
+### Phase 8 — plugin 패키징: 합성 계층 — COMPLETE (사용자 결정 2026-08-09)
 
 목표: host가 Stage 순서를 알고 스스로 이어 붙인다. 지금은 사람이 24개 명령의
 순서를 알아야 하며, 도그푸딩 0003은 그 순서를 아는 사람이 60콜을 손으로
@@ -362,11 +360,10 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   ([progress 0007](./0007_MCP_CONTROL_SURFACE.md) §3): worker 재귀 경계,
   stale write 재확인의 중계, tool description, QA revision 제시, 승인 actor.
   다섯 전부가 "Core가 재료를 주고 skill이 행위를 한다"의 경계에 걸린다
-- [ ] **worker 재귀 차단** — 이 Phase가 `mcx-mcp`를 host·worker 설정에 등록해
-  경로를 실제로 연다. 결정 대상은 profile 축 도입 vs
-  `codex exec --ignore-user-config` ([Open Questions §8](../research/OPEN_QUESTIONS.md))
-- [-] 결정적 품질 gate — **2026-08-09 조사·구현, §4 한 항목 결정 대기**
-  ([ADR-0043](../adr/0043-deterministic-blueprint-quality-floor.md), Proposed).
+- [x] **worker 재귀 차단** — `codex exec --ignore-user-config`를 채택·구현하고
+  실물 확인했다 ([ADR-0042 §6](../adr/0042-skill-and-core-ownership-boundary.md))
+- [x] 결정적 품질 gate — **2026-08-10 확정·구현**
+  ([ADR-0043](../adr/0043-deterministic-blueprint-quality-floor.md), Accepted).
   조사가 전제를 좁혔다: upstream의 결정적 층이 실제로 보는 것은 **섹션 단위로
   필수 칸이 채워졌는가**이고(`gap_detector.py`), 그것은 우리 `check_scope`가
   이미 하는 일이다. 따라서 **등급 A/B/C와 점수 사전은 이식하지 않았다** —
@@ -377,7 +374,8 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   없으면 mechanical 층이 공허하게 통과하고 `MISSION COMPLETE`가 semantic 판정
   하나에 얹힌다. 이 축은 **upstream 대응물 없는 발명**이며(upstream의
   `testability`는 섹션 단위) 그렇게 표시했다. 위치는 Core — 층 이동이다
-  (upstream은 `auto/`). 부분 커버리지는 막지 않고 세어서 드러낸다(§4 결정 대기)
+  (upstream은 `auto/`). 부분 커버리지는 막지 않고 세어서 드러내는 것으로
+  사용자 결정이 확정됐다(ADR-0043 §4)
 - [x] skill 작성 + plugin manifest (Claude·Codex 양쪽 MCP 클라이언트) —
   2026-08-09. skill 6종(`mcx` 우산 + Stage 5종), `.claude-plugin/plugin.json`·
   `.codex-plugin/plugin.json`이 **같은 `./skills/`와 같은 `./.mcp.json`**을
@@ -388,17 +386,16 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   이 검사가 유일한 강제다. 실제로 작성 중 오류 3건을 잡았다(QA 액션 어휘를
   upstream 것으로 씀, `revise`의 `--draft-file` 누락, 임계 미달 승인의
   `--accept-below-threshold` 누락)
-- [-] 설치·발견·설정 UX ([Open Questions §8](../research/OPEN_QUESTIONS.md)) —
-  **2026-08-09 확정·검증, 배포만 잔여.** 발견은 양쪽 매니페스트, 설정은
-  `config.toml` 하나. 설치 경로 셋을 [README](../../README.md)에 표로 적었고
+- [x] 설치·발견·설정 UX ([Open Questions §8](../research/OPEN_QUESTIONS.md)) —
+  **2026-08-09 확정·검증.** 발견은 양쪽 매니페스트, 설정은
+  `config.toml` 하나. 설치 경로를 [README](../../README.md)에 적었고
   **로컬 체크아웃 경로를 실물로 확인했다**: `uvx --from '<repo>[mcp]' mcx-mcp`가
   wheel 빌드→진입점 실행까지 통과하고(tool 29), `claude mcp add`로 등록하면
-  **`✔ Connected`** 다. 즉 포장·extras·진입점은 정상이며 남은 것은 **이름
-  해석**뿐이다. git·배포판 경로는 push/배포가 선행이고 **둘 다 사용자 승인
-  사항**이라 여기서 닫지 않는다 — `.mcp.json`의 배포판 명령은 현재 동작하지
-  않는 **목표 형태**임을 README가 명시한다
+  **`✔ Connected`** 다. 포장·extras·진입점이 정상임을 확인했고, plugin은
+  `${CLAUDE_PLUGIN_ROOT}`의 설치된 소스에서 직접 MCP 서버를 띄우므로 PyPI 배포를
+  요구하지 않는다
 
-### Phase 9 — 실사용 진입: brownfield + 되돌리기 (사용자 결정 2026-08-09)
+### Phase 9 — 실사용 진입: brownfield + 되돌리기 — COMPLETE (사용자 결정 2026-08-09)
 
 목표: 기존 코드베이스에 안전하게 적용한다. Evolve보다 먼저 — 실사용
 데이터가 쌓여야 진화 루프가 의미를 갖는다.
@@ -599,7 +596,7 @@ Phase는 manifest 작업이 아니라 **합성 계층 도입**이다 — 2026-08
   파라미터로 받아 예산이 상태가 아니다. 처분 후보 셋 다 ADR-0019 계약을
   건드리므로 **ADR이 먼저다**
 
-### Phase 10 — Reflect/Evolve: 자가개선 루프 (사용자 결정 2026-08-09)
+### Phase 10 — Reflect/Evolve: 자가개선 루프 — IN PROGRESS (사용자 결정 2026-08-09)
 
 목표: **미션이 배운 것을 다음 미션의 스펙으로 자동 전환한다.** 사용자 지시는
 "도입 여부 조사"가 아니라 **확실하게 구성**이다 — Hermes 사용 방식과 자가개선
@@ -989,10 +986,12 @@ worktree 격리(ADR-0045). 둘 다 **뒤 항목의 선행이었다는 점이 같
 `context` 공백을, 후자는 checkpoint·rollback·`changed_files`가 딛고 설 git
 경계를 열었다.
 
-다음 검증 가능한 목표 한 개: **AC별 checkpoint 커밋** (upstream
-`AutoCommitPolicy` 대조). 격리로 브랜치가 생겼으므로 *"무엇을 커밋하는가"* 를
-물을 수 있게 됐고, 그 답이 정해져야 rollback 범위(ADR-0032)와 `changed_files`
-수집(ADR-0029)의 기준점이 하나로 정해진다.
+다음 검증 가능한 목표 한 개: **upstream Gen 2+의 전체 연결 경로를 소스에서
+재구성한다.** Verify/Evaluate 결과 → Wonder → Reflect → 다음 Seed 생성 →
+`parent_seed_id` lineage → 다음 Execute/Evaluate 기록을 추적하고,
+`RALPH_HANDOFF`·`UNSTUCK_LATERAL`이 우리 다섯 Stage와 어떤 관계인지 같은 조사에서
+대조한다. 결과는 Phase 10 설계 ADR의 입력이며, 그 전에는 `Stage.REFLECT`나
+Hermes adapter를 구현하지 않는다.
 
 ### CLEAR 조건 중 강제되지 않는 것
 
@@ -1259,7 +1258,7 @@ progress record에 남긴다. 이 검토는 새 절차가 아니라 기존 관�
 | Phase 7 — MCP control surface | **충족 (2026-08-09)** — 로드맵 체크리스트 9항목이 이행 5·부분 2·미이행 2였음을 드러냈다. 미조립 부품 1건 수정(Recover 비동기 짝 — `recover dispatch`가 같은 `codex exec`를 돈다), 무처분 도과 3건 재지정(host 자기 도구 경로·승인 actor→Phase 8, cancelled 상태·resume→Phase 9), 미표시 보류 2건 등재(취소된 attempt, 재귀 경계), 미등록 이탈 1건 등록(서버가 사람에게 직접 묻지 않음, `upstream 미확인`) | [progress 0007](./0007_MCP_CONTROL_SURFACE.md) |
 | Phase 8 — plugin 패키징 (합성 계층) | **충족 (2026-08-09)** — tool description이 이름의 반복이던 것을 검토에서 이행(CLI `help=` 파생, 24명령). 미이행 2건 재지정(stale write 재확인·host 자기 도구 경로 → Phase 9, 전자는 **발동 조건과 종료 조건을 함께 걸어** 무한 연기를 끊었다), 표시 없던 보류 1건 등록(skill 6종의 근거), 산문 강제 1건 확인(질문 형태 규칙) | [progress 0008](./0008_PLUGIN_COMPOSITION_LAYER.md) |
 | Phase 9 — 실사용 진입 (brownfield·되돌리기) | **충족 (2026-08-10)** — 두 번의 도그푸딩이 결함 6건을 잡았고 전부 조사·테스트로는 드러나지 않았다. 가장 큰 소득은 개별 결함이 아니라 **셋이 같은 뿌리를 갖는다는 것** — *"upstream과 같다"고 적어 놓고 원문과 대조하지 않았다*(§1.3). ADR README에 절차 한 줄을 넣었다. 검토가 직접 잡은 것 1건 수정(`changed_files`를 만들어 놓고 표시하지 않았다), 미결 11건 처분(닫음 6·재지정 3·구현 1·해소 1, **무처분 통과 0**). Phase 5를 시한으로 쓴 마지막 항목(telemetry event 층)도 종결됐다 | [progress 0009](./0009_RECOVERY_LAYERS.md) |
-| Phase 10 — Reflect/Evolve | 대기 (조사 범위 확정: Hermes 사용 방식 + 다음 작업 연결 경로) | — |
+| Phase 10 — Reflect/Evolve | **진행 중** — Reflect가 Brief를 대체함을 확인; 다음은 Gen 2+ 전체 연결 경로와 Hermes 사용 방식 조사 | — |
 | Phase 11 — 병렬 실행 | 대기 | — |
 
 ## Update protocol

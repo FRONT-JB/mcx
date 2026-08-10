@@ -14,8 +14,9 @@ Brief → Blueprint → Execute → Verify
 
 ## 현재 상태
 
-Phase 7 (MCP control surface)까지 완료했고 Phase 8 (plugin = 합성 계층)을
-진행 중이다. 다섯 Stage 전부가 실제 AI로 구동되며 실 AI 도그푸딩 3회로
+Phase 9 (brownfield·worktree·checkpoint·rollback·진행 관측)까지 완료했고,
+Phase 10 (Reflect/Evolve)의 upstream 연결 경로를 조사하는 단계다. 다섯 Stage
+전부가 실제 AI로 구동되며 실 AI 도그푸딩 5회를 수행했다. 최신 도그푸딩 0005도
 `MISSION COMPLETE`까지 완주했다. 검증된 현재 상태와 알려진 한계는
 [docs/progress/README.md](docs/progress/README.md)에 있다 — 이 README가 아니라
 그 문서가 상태의 소유자다.
