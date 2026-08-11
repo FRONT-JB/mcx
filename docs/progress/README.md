@@ -52,9 +52,10 @@
   asyncio 기본 64 KiB를 넘는 Codex JSONL event와 workspace 없는 text lane의
   부모 cwd 누출, Blueprint 빈 목록의 `(none)` placeholder가 실제 Non-goal로
   승격되는 결함을 발견해 pinned upstream 대조·문서·회귀 테스트와 함께 수정했다.
-  Brief revision 11은 사용자 승인 뒤 `CLEAR`, 현재 Blueprint revision 1은 QA
-  0.62 `HOLD`이며 revision 2 수정안의 사용자 채택을 기다린다. 이후 Stage 성공은
-  아직 주장하지 않는다
+  Brief revision 11은 사용자 승인 뒤 `CLEAR`다. 사용자가 채택한 Blueprint
+  revision 2는 QA가 0.62→0.79로 개선됐지만 nullable ontology·공개 callable·
+  dependency 검증 4건이 남아 `HOLD`다. 이를 모두 반영한 revision 3 제안은 schema
+  load를 통과했고 사용자 채택을 기다린다. 이후 Stage 성공은 아직 주장하지 않는다
   ([DOGFOODING_0008](../research/DOGFOODING_0008.md)).
 - 설치된 plugin에서 bare `mcx brief`가 선택되지 않고 `@Mission Control`만
   선택된 사용자 실물 관측을 OpenAI host 계약과 pinned upstream의 bare `ooo`

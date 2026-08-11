@@ -5,7 +5,7 @@
 - Runtime: `default.text="codex"`, `default.execution="codex_cli"`,
   `gpt-5.6-sol` / `xhigh`
 - 형태: 기존 Python retry utility와 실패 unittest가 있는 작은 brownfield git 저장소
-- 현재 결과: **Blueprint revision 1 QA `HOLD` (0.62) — revision 2 수정안의
+- 현재 결과: **Blueprint revision 2 QA `HOLD` (0.79) — revision 3 수정안의
   사용자 채택 대기**
 
 ## 1. 관측 범위
@@ -122,3 +122,22 @@ AC를 한 결과 계약으로 합치고 `retry_policy.py`·`test_retry_policy.py
 **811.711초**다. Brief revision 8 뒤 남은 첫 mission을 9~13회로 예상했으나
 타입 계약 재감사와 Blueprint placeholder 실패로 이미 상한 13회를 사용했고
 Execute 전이다. 완료 시 이 초과를 최종 대조한다.
+
+사용자가 revision 2 수정안을 채택해 `blueprint revise`로 revision 2를 저장했다.
+두 번째 QA는 0.79로 올랐지만 아래 네 모순을 남겼다.
+
+1. `retry_after` ontology가 `string`인데 계약은 `str | None`이다.
+2. `delay_result`가 `number`인데 비-429 반환은 `None`이다.
+3. 공개 함수 `retry_delay`와 정확한 시그니처가 ontology에 없다.
+4. “표준 라이브러리만” 제약을 unittest가 검증하지 않는다.
+
+이를 반영한 revision 3 제안은 nullable 타입을 `str | None`·`int | None`로
+명시하고, `retry_delay` callable과 `stdlib-only` dependency policy를 ontology에
+추가했다. 수용 기준은 `test_retry_policy.py`가 `retry_policy.py`의 import AST를
+검사해 모든 import root가 `sys.stdlib_module_names`에 속하는지 검증하도록 한다.
+제안 파일은
+`/tmp/mcx-codex-only.i5eTeb/a-blueprint-revision-3-proposal.json`이며 schema load를
+통과했지만, 사용자 채택 전이라 mission state에는 적용하지 않았다.
+
+현재 journal은 Codex text **44회**, 46 commands, 누적 command wall time
+**890.890초**다. revision 3 재QA부터는 기존 9~13회 추정의 초과 구간이다.
