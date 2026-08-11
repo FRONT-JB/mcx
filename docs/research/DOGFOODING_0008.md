@@ -211,5 +211,7 @@ observation으로 답할 수 있지만 문자열 문법은 사용자 결정이�
 그대로 포맷하는 권장안을 확정했다. 세 번째 질문은 첫 mission에서 승인한 계약을
 재사용해 ASCII 숫자열 1~4,300자와 현재 interpreter `int()` ValueError→default로
 기록했다. clarity는 goal 1.00, constraint 0.98, success criteria 0.86이며 stability
-1이다. 현재 질문은 `default`의 0·음수 허용 여부이고, 현재 실측은 Codex text
-5회다.
+1이었다. 사용자는 `default`도 0·음수를 포함해 검증 없이 그대로 반환하는
+권장안을 확정했다. 재평가 clarity는 1.00/0.98/0.90, stability 1이다. 현재 질문은
+두 함수의 `status_code: int` 밖 runtime type을 범위 밖으로 둘지이며, 현재 실측은
+Codex text 7회다.
