@@ -204,5 +204,8 @@ Verify 2 + Recover text/worker 1~2로 **Codex text 13~20회 × 1회 순환**, �
 기존 fixture의 `__pycache__` 4개를 확인·제거해 committed baseline을 복구한 뒤
 mission `dogfood-codex-b`를 시작했다. 첫 Brief 질문은 `retry_after`의 whitespace,
 부호, 선행 0, 계약 밖 runtime type 경계를 묻는다. 이 중 공개 타입은 repository
-observation으로 답할 수 있지만 문자열 문법은 사용자 결정이므로 아직 답하지 않았다.
-현재 실측은 Codex text 1회다.
+observation으로 답할 수 있지만 문자열 문법은 사용자 결정이다. 사용자는 권장안을
+채택해 앞뒤 ASCII whitespace 6종 제거, 나머지 ASCII `[0-9]+`, 선행 0 허용,
+`str | None` 밖 runtime type은 범위 밖으로 확정했다. 두 번째 질문은
+`format_attempt`가 0·음수·`current > total`을 검증할지 묻는다. 현재 실측은 Codex
+text 2회다.
