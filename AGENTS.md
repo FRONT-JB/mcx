@@ -171,6 +171,9 @@ Stage Guide/승인된 Blueprint > 테스트·인터페이스 계약 > 구현 > �
 
 - 커밋 메시지는 `type(scope): 한국어 설명` 형식. 본문도 한국어를 기본으로 한다.
 - `Co-Authored-By:` 등 AI attribution 트레일러를 붙이지 않는다.
+- plugin의 사용자-visible 동작·호출·계약이 바뀌면 `.claude-plugin/plugin.json`,
+  `.codex-plugin/plugin.json`, marketplace의 version을 같은 커밋에서 함께 올리고
+  일치 검사를 통과시킨다. 문서·progress·dogfood 상태만 바뀌면 올리지 않는다.
 - 커밋을 만들면 같은 작업에서 diff와 자격증명 포함 여부를 확인한 뒤 현재 브랜치를
   `origin`에 push한다. 매번 별도 승인을 묻지 않는다.
 - tag와 release는 여전히 사용자 승인 없이 만들지 않는다.

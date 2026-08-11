@@ -5,14 +5,15 @@
 - Runtime: `default.text="codex"`, `default.execution="codex_cli"`,
   `gpt-5.6-sol` / `xhigh`
 - 형태: 기존 Python retry utility와 실패 unittest가 있는 작은 brownfield git 저장소
-- 현재 결과: **Blueprint revision 3 QA `PASS` (0.98) — exact revision 사용자
-  승인 대기**
+- 현재 결과: **첫 mission `MISSION COMPLETE` — Recover를 관측할 두 번째 mission
+  준비 중**
 
 ## 1. 관측 범위
 
 Codex 하나로 Brief → Blueprint → Execute → Verify → Recover가 이어지는지
-실제로 확인하는 것이 목표다. 첫 mission은 순차 lifecycle과 실패 복구를,
-후속 mission은 generation 후속 경로와 병렬 Coordinator를 관찰하도록 나눴다.
+실제로 확인하는 것이 목표다. 첫 mission은 순차 lifecycle을, 두 번째 mission은
+제어된 실행 후 drift로 Verify HOLD→Recover를, 후속 mission은 generation 후속
+경로와 병렬 Coordinator를 관찰하도록 나눴다.
 임시 workspace·state·routing config는 모두 `/tmp/mcx-codex-only.i5eTeb` 아래에
 두었고 사용자 plugin/MCP 설정은 바꾸지 않았다.
 
@@ -151,3 +152,57 @@ Blueprint 승인이 아니므로 `blueprint approve`는 아직 호출하지 않�
 현재 journal은 Codex text **45회**, 49 commands, 누적 command wall time
 **953.298초**다. 다음 단계는 사용자가 Blueprint revision 3의 정확한 내용을
 승인한 뒤 Gate `CLEAR`를 확인하는 것이다. 승인 전에는 Execute하지 않는다.
+
+## 8. 첫 mission 완료와 비용 대조
+
+사용자의 “진행해줘”를 exact Blueprint revision 3 승인 statement로 기록했고
+Blueprint Gate는 `CLEAR`였다. 첫 Execute 진입은 fixture가 만든 `__pycache__/`
+때문에 workspace cleanliness에서 호출 전 차단됐다. 두 `.pyc`만 확인해 제거한 뒤
+같은 명령을 재실행했다. 이는 committed baseline 외 파일을 거부하는 의도된
+worktree 방어이며 제품 결함으로 분류하지 않는다.
+
+Codex worker 1회는 승인 AC 범위의 `retry_policy.py`·`test_retry_policy.py`만
+바꾸고 자체 unittest 9건을 통과했다. Execute Gate는 `CLEAR`, 독립 mechanical은
+1/1(exit 0, missing artifact 0), Codex semantic은 1/1(score 1.0, uncertainty 0.01,
+reward-hacking risk 0.01)이었다. Verify Gate가 `CLEAR`를 선언해 첫 mission은
+**`MISSION COMPLETE`**다. checkpoint는 `aa9461c`다.
+
+최종 journal은 **57 commands**, command wall time **1,146.136초**, Codex text
+**46회** + Codex execution **1회**다. Brief revision 8 뒤 남은 구간은 9~13회로
+예상했지만 실제는 text 16회 + worker 1회 = **17회**, 상한보다 4회 많았다. 초과
+원인은 closure의 타입 계약 재감사, Blueprint empty placeholder 실패 재생성,
+nullable/callable/dependency ontology를 닫기 위한 QA revision 2회다.
+
+이 성공 경로는 Recover를 호출하지 않았다. 따라서 이 시점에도 “Codex-only로 모든
+Phase를 검증했다”고 주장하지 않는다.
+
+## 9. 두 번째 mission — 병렬 Coordinator + 제어된 Verify HOLD→Recover 계획
+
+도그푸딩 시작 때 이미 만든 committed `b-workspace` fixture를 그대로 사용한다.
+서로 독립인 `metrics.py`와 `retry_policy.py`에 실패 unittest 3건이 있다.
+
+1. `is_retryable`은 429·503만 true여야 한다.
+2. `retry_delay`는 429 numeric header를 정수로, invalid는 default로, 그 밖의
+   status는 None으로 처리해야 한다.
+3. `format_attempt(2, 3)`은 `"attempt 2/3"`이어야 한다.
+
+첫 두 계약은 같은 `retry_policy.py`, 세 번째는 `metrics.py`를 수정한다. 이를 AC
+3개와 dependency stage로 고정해 `execute stage --max-workers 3`의 shared-worktree
+fan-out과 exact overlap→Coordinator를 관찰한다. unrelated boundary는 단순 정수·
+문자열에 한정한다.
+
+settled Execute 뒤 Verify 전에 fixture에 **제어된 외부 drift** 한 줄을 주입해
+한 승인 계약을 깨뜨린다. mechanical Verify가 실제 실패를 기록하면 그 evidence로
+Recover plan→Codex dispatch→Verify 재실행을 관찰한다. drift는 임시 fixture에만
+적용하며 mcx 저장소나 사용자 환경은 바꾸지 않는다.
+
+사전 비용 추정: Brief 질문·closure 10~14 text calls + Blueprint 2~4 + semantic
+Verify 2 + Recover text/worker 1~2로 **Codex text 13~20회 × 1회 순환**, 병렬 worker
+3회 + Coordinator 1회 + Recover worker 1회로 **Codex execution 4~5회**를 예상한다.
+실제 호출 수와 차이는 완료 뒤 대조한다.
+
+기존 fixture의 `__pycache__` 4개를 확인·제거해 committed baseline을 복구한 뒤
+mission `dogfood-codex-b`를 시작했다. 첫 Brief 질문은 `retry_after`의 whitespace,
+부호, 선행 0, 계약 밖 runtime type 경계를 묻는다. 이 중 공개 타입은 repository
+observation으로 답할 수 있지만 문자열 문법은 사용자 결정이므로 아직 답하지 않았다.
+현재 실측은 Codex text 1회다.

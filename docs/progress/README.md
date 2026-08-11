@@ -52,10 +52,12 @@
   asyncio 기본 64 KiB를 넘는 Codex JSONL event와 workspace 없는 text lane의
   부모 cwd 누출, Blueprint 빈 목록의 `(none)` placeholder가 실제 Non-goal로
   승격되는 결함을 발견해 pinned upstream 대조·문서·회귀 테스트와 함께 수정했다.
-  Brief revision 11은 사용자 승인 뒤 `CLEAR`다. 사용자가 채택한 Blueprint
-  revision 3은 nullable ontology·공개 callable·dependency 검증을 보강한 뒤 QA가
-  0.62→0.79→**0.98 PASS**로 올랐고 findings는 0건이다. Gate의 유일한 blocker는
-  exact revision 사용자 승인이다. 이후 Stage 성공은 아직 주장하지 않는다
+  첫 mission은 Brief revision 11·Blueprint revision 3(QA 0.98) 승인 뒤 Codex
+  worker 1회, mechanical 1/1, semantic 1/1(score 1.0), checkpoint `aa9461c`, Verify
+  Gate `CLEAR`로 **MISSION COMPLETE**다. 총 Codex text 46회 + execution 1회다.
+  Recover는 지나지 않았으므로 모든 Phase 성공은 아직 주장하지 않으며, 제어된
+  Verify HOLD→Recover와 병렬 Coordinator를 함께 관찰할 두 번째 mission
+  `dogfood-codex-b`를 시작했다. 현재 Brief 첫 사용자 결정 질문 대기다
   ([DOGFOODING_0008](../research/DOGFOODING_0008.md)).
 - 설치된 plugin에서 bare `mcx brief`가 선택되지 않고 `@Mission Control`만
   선택된 사용자 실물 관측을 OpenAI host 계약과 pinned upstream의 bare `ooo`
