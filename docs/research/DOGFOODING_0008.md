@@ -5,8 +5,8 @@
 - Runtime: `default.text="codex"`, `default.execution="codex_cli"`,
   `gpt-5.6-sol` / `xhigh`
 - 형태: 기존 Python retry utility와 실패 unittest가 있는 작은 brownfield git 저장소
-- 현재 결과: **Blueprint revision 2 QA `HOLD` (0.79) — revision 3 수정안의
-  사용자 채택 대기**
+- 현재 결과: **Blueprint revision 3 QA `PASS` (0.98) — exact revision 사용자
+  승인 대기**
 
 ## 1. 관측 범위
 
@@ -141,3 +141,13 @@ Execute 전이다. 완료 시 이 초과를 최종 대조한다.
 
 현재 journal은 Codex text **44회**, 46 commands, 누적 command wall time
 **890.890초**다. revision 3 재QA부터는 기존 9~13회 추정의 초과 구간이다.
+
+사용자의 “진행해줘”를 revision 3 수정안 채택으로 기록해 revision 3을 저장했다.
+세 번째 QA는 **0.98**, 전 dimension 0.97 이상, findings 0건, action `done`으로
+통과했다. Blueprint Gate를 실제 호출한 결과 유일한 blocker는
+`approval_missing`이며, verifiable criterion은 1/1이다. 수정안 채택은 exact
+Blueprint 승인이 아니므로 `blueprint approve`는 아직 호출하지 않았다.
+
+현재 journal은 Codex text **45회**, 49 commands, 누적 command wall time
+**953.298초**다. 다음 단계는 사용자가 Blueprint revision 3의 정확한 내용을
+승인한 뒤 Gate `CLEAR`를 확인하는 것이다. 승인 전에는 Execute하지 않는다.
