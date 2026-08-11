@@ -207,5 +207,9 @@ mission `dogfood-codex-b`를 시작했다. 첫 Brief 질문은 `retry_after`의 
 observation으로 답할 수 있지만 문자열 문법은 사용자 결정이다. 사용자는 권장안을
 채택해 앞뒤 ASCII whitespace 6종 제거, 나머지 ASCII `[0-9]+`, 선행 0 허용,
 `str | None` 밖 runtime type은 범위 밖으로 확정했다. 두 번째 질문은
-`format_attempt`가 0·음수·`current > total`을 검증할지 묻는다. 현재 실측은 Codex
-text 2회다.
+`format_attempt`가 0·음수·`current > total`을 검증할지 물었고, 사용자는 검증 없이
+그대로 포맷하는 권장안을 확정했다. 세 번째 질문은 첫 mission에서 승인한 계약을
+재사용해 ASCII 숫자열 1~4,300자와 현재 interpreter `int()` ValueError→default로
+기록했다. clarity는 goal 1.00, constraint 0.98, success criteria 0.86이며 stability
+1이다. 현재 질문은 `default`의 0·음수 허용 여부이고, 현재 실측은 Codex text
+5회다.

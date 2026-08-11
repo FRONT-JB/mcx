@@ -58,7 +58,8 @@
   Recover는 지나지 않았으므로 모든 Phase 성공은 아직 주장하지 않으며, 제어된
   Verify HOLD→Recover와 병렬 Coordinator를 함께 관찰할 두 번째 mission
   `dogfood-codex-b`를 시작했다. `retry_after` 문자열 문법은 사용자 확정됐고,
-  현재 Brief는 `format_attempt`의 입력 범위 결정 대기다
+  `format_attempt` 무검증 포맷과 기존 1~4,300자 retry contract도 확정됐다. 현재
+  Brief는 `default` 정수 범위 결정 대기다
   ([DOGFOODING_0008](../research/DOGFOODING_0008.md)).
 - 설치된 plugin에서 bare `mcx brief`가 선택되지 않고 `@Mission Control`만
   선택된 사용자 실물 관측을 OpenAI host 계약과 pinned upstream의 bare `ooo`
