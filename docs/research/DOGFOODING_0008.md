@@ -213,5 +213,12 @@ observation으로 답할 수 있지만 문자열 문법은 사용자 결정이�
 기록했다. clarity는 goal 1.00, constraint 0.98, success criteria 0.86이며 stability
 1이었다. 사용자는 `default`도 0·음수를 포함해 검증 없이 그대로 반환하는
 권장안을 확정했다. 재평가 clarity는 1.00/0.98/0.90, stability 1이다. 현재 질문은
-두 함수의 `status_code: int` 밖 runtime type을 범위 밖으로 둘지이며, 현재 실측은
-Codex text 7회다.
+두 함수의 `status_code: int` 밖 runtime type을 범위 밖으로 둘지였고 사용자는
+권장안을 확정했다. 기존 unittest 3개는 현재 계약과 충돌하지 않는다는 repository
+observation도 두 파일 경로와 함께 기록했다. 현재 질문은 공개 시그니처 보존에 타입
+주석·반환 타입까지 포함할지다. 현재 실측은 Codex text 12회다.
+
+observation 제출 때 존재하지 않는 `--source` 플래그를 잘못 붙여 파서가 거부했다.
+같은 shell 묶음의 후속 `assess`는 중단되지 않아 text 1회를 추가 소비했고, 근거
+경로를 answer 본문에 넣어 재제출했다. 이는 Core 결함이 아니라 지원되지 않는
+플래그를 호출하고 command chain을 fail-fast로 묶지 않은 dogfood 조작 오류다.
