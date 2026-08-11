@@ -44,6 +44,30 @@ codex plugin marketplace add FRONT-JB/mcx
 codex plugin add mcx@mcx
 ```
 
+설치·업데이트 뒤에는 **새 대화**를 시작한다. ChatGPT/Codex 대화 입력창에서는
+플러그인을 확실히 고르려면 `@`로 명시 호출한다.
+
+```text
+@Mission Control mcx brief "작업할 내용"
+```
+
+`mcx brief "작업할 내용"`만 입력하는 방식도 skill description과 일치하면 암시
+호출되지만, host가 플러그인을 자동 선택하는 경로라 명시 호출만큼 결정적이지 않다.
+반면 터미널에서 실행하는 아래 구문은 plugin 호출이 아니라 실제 CLI 명령이므로
+`@Mission Control`을 붙이지 않는다.
+
+```bash
+mcx brief "작업할 내용"
+```
+
+기존 설치를 이 hotfix(`0.1.1`)로 갱신하려면 marketplace를 새로고침하고 플러그인을
+다시 설치한 뒤 새 대화를 시작한다.
+
+```bash
+codex plugin marketplace upgrade mcx
+codex plugin add mcx@mcx
+```
+
 **실물 확인 (2026-08-11)**: Claude와 Codex에 각각 로컬 경로로 새로 등록·설치해
 skill 6종을 인식했다. Claude는 `plugin:mcx:mcx ... ✔ Connected`, Codex는 MCP
 protocol handshake에서 tool 33종과 실제 `mcx_status` routing event를 확인했다.

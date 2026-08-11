@@ -174,9 +174,7 @@ class TestCompleteJson:
 
         assert result == {"answer": "큰 event 뒤의 응답"}
 
-    async def test_an_unspecified_workspace_uses_an_empty_neutral_cwd(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_an_unspecified_workspace_uses_an_empty_neutral_cwd(self, tmp_path: Path) -> None:
         """Brief lane은 mcx 부모 cwd를 mission 사실로 읽지 않는다 (ADR-0034 §2)."""
         engine = CodexCompletion(
             cli_path=_write_stub(tmp_path, "codex-neutral-workspace", NEUTRAL_WORKSPACE_STUB)

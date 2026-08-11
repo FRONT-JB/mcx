@@ -1,7 +1,6 @@
 ---
 name: mcx-blueprint
-description: "Blueprint — turn an approved Brief into an approved, immutable specification"
-aliases: [blueprint]
+description: "Use for `mcx blueprint` or a request to generate, revise, or approve a Mission Control Blueprint; turn an approved Brief into an approved immutable specification."
 ---
 
 # mcx blueprint

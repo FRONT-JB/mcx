@@ -957,6 +957,11 @@ host별 정확한 설정 예시는 현재 공식 문서를 확인한 뒤 작성�
 - `./skills/`와 MCP server 구현은 공유한다. host별 차이는 bootstrap 경로뿐이다.
 - 설치 검증은 inventory만으로 끝내지 않는다. 새 host session에서 skill 6종과
   `mcx_*` tool을 모두 관측해야 한다.
+- 대화 입력의 `@Mission Control ...`은 plugin/skill 명시 호출이다. bare
+  `mcx <stage>`는 skill description을 근거로 host가 고르는 암시 호출이고,
+  터미널의 `mcx <stage>`는 plugin 선택을 거치지 않는 CLI 호출이다. 공유 skill
+  description은 각 정확한 호출어를 포함해야 하며, 설치·업데이트 뒤 검증은 새
+  대화에서 한다(ADR-0042 §1.1 hotfix).
 
 실패 장면은 구체적이다. Codex에 plugin `0.1.0`을 설치해도 Claude 전용 root
 placeholder가 인자에 그대로 남으면 skill은 보이지만 MCP tool은 `NONE`이 된다.

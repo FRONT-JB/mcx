@@ -182,3 +182,33 @@ under the hood."* 세 모드(대화형 목록 선택 / 명시적 id / `--all`).
 
 한 문장으로: **Core는 "한 번의 판정"을 주고, skill은 "그 판정을 몇 번 어떤
 순서로 부르고 사용자에게 무엇을 묻는가"를 소유한다.**
+
+## 11. 호출 메타데이터 — 본문의 Usage는 암시 호출 전에 보이지 않는다
+
+> 추가 확인: 2026-08-11. Pinned upstream + OpenAI 공식 host 문서 + 사용자 실물
+> 관측을 대조했다.
+
+- pinned Ouroboros의 `skills/ooo/SKILL.md:2`는 description에 bare `ooo`와
+  “start Ouroboros”를 직접 넣는다. 반면 `interview`의 `ooo interview`는 Usage
+  본문에만 있고 description은 자연어 목적만 담는다. 즉 upstream도 명시적인 첫
+  진입점은 **description에 호출어를 올린다**.
+- OpenAI의 현재 skill 계약은 host가 처음에는 name+description만 읽고, 암시 호출은
+  task와 description의 일치로 선택한다고 명시한다. 본문은 선택 후에야 읽힌다.
+  명시 호출은 ChatGPT/Codex app의 `@`, Codex CLI의 `$`/`/skills`다.
+- 사용자 실물 관측에서는 설치된 mcx plugin에 `mcx brief "작업할 내용"`만 입력했을
+  때 선택되지 않았고, `@Mission Control mcx brief ...`는 선택됐다. 기존
+  `mcx-brief` description에는 `mcx brief`가 없고 그 문자열은 Usage 본문에만
+  있었다. 이는 위 host 계약으로 설명된다.
+
+처분: workflow/Core 동작은 바꾸지 않는다. 여섯 skill description에 각
+`mcx <stage>` 호출어와 자연어 범위를 앞세우고, plugin starter prompt에도
+`mcx brief`를 둔다. `@Mission Control`은 결정적인 명시 호출로 문서화한다.
+암시 호출은 개선하되 모델 선택이므로 성공을 보장한다고 쓰지 않는다. 이 변경은
+upstream의 bare `ooo` 진입점과 같은 층이며 별도 workflow divergence가 아니다.
+upstream skill의 `aliases` frontmatter는 현재 Codex validator가 거부하므로 공유
+skill에서는 제거한다. 실제 `mcx-*` skill 이름과 workflow는 바뀌지 않는다.
+
+수정 뒤 격리된 새 Codex 0.147.0 session에 repo skill 6종만 노출하고
+`mcx brief "Python CLI에 --dry-run 옵션 추가"`를 입력했다. 도구 실행은 금지하고
+선택한 이름만 답하게 한 결과는 **`mcx:mcx-brief`**였다. 이는 description 기반
+암시 선택의 forward test이며, 설치 cache·MCP handshake 재검증을 대신하지는 않는다.

@@ -1,7 +1,6 @@
 ---
 name: mcx-execute
-description: "Execute — run the approved specification, one acceptance criterion at a time"
-aliases: [execute]
+description: "Use for `mcx execute` or a request to continue Mission Control execution; run the approved specification one acceptance criterion at a time."
 ---
 
 # mcx execute

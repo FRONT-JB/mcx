@@ -1,7 +1,6 @@
 ---
 name: mcx-verify
-description: "Verify — decide on evidence whether the mission is actually done"
-aliases: [verify]
+description: "Use for `mcx verify` or a request to verify Mission Control work; decide from recorded evidence whether the mission is actually done."
 ---
 
 # mcx verify

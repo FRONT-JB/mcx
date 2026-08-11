@@ -58,6 +58,21 @@ class TestSkillsExist:
 
         assert len(names) == len(set(names))
 
+    def test_each_skill_description_frontloads_its_chat_trigger(self) -> None:
+        """암시 호출은 본문이 아니라 description만 보고 결정된다."""
+        expected = {
+            "blueprint": "mcx blueprint",
+            "brief": "mcx brief",
+            "execute": "mcx execute",
+            "mcx": "mcx brief",
+            "recover": "mcx recover",
+            "verify": "mcx verify",
+        }
+
+        for path in _skill_files():
+            description = _frontmatter(path.read_text(encoding="utf-8"))["description"].lower()
+            assert expected[path.parent.name] in description, path
+
     @pytest.mark.parametrize("path", _skill_files(), ids=lambda p: p.parent.name)
     def test_each_skill_declares_the_capabilities_it_needs(self, path: Path) -> None:
         """무엇을 host에게 요구하는지가 skill 자신에 적혀 있어야 한다 (ADR-0042 §1)."""
@@ -187,7 +202,19 @@ class TestManifests:
         """`claude plugin validate`가 없으면 경고한다."""
         for directory in (".claude-plugin", ".codex-plugin"):
             manifest = json.loads((REPO / directory / "plugin.json").read_text(encoding="utf-8"))
-            assert manifest["version"] == "0.1.0", directory
+            assert manifest["version"] == "0.1.1", directory
+
+    def test_marketplace_and_host_manifests_share_the_hotfix_version(self) -> None:
+        versions = {
+            json.loads((REPO / directory / "plugin.json").read_text(encoding="utf-8"))["version"]
+            for directory in (".claude-plugin", ".codex-plugin")
+        }
+        marketplace = json.loads(
+            (REPO / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8")
+        )
+        versions.add(marketplace["plugins"][0]["version"])
+
+        assert versions == {"0.1.1"}
 
     def test_the_registered_entry_point_is_the_one_we_ship(self) -> None:
         """``mcx-mcp``는 별도 실행 파일이다 — CLI에 붙이면 순환이다 (ADR-0041 §1)."""

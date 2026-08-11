@@ -1,7 +1,7 @@
 {
   "name": "mcx",
-  "description": "Mission Control — coordinates AI coding missions. Executed is not verified.",
-  "version": "0.1.0",
+  "description": "Mission Control workflow for mcx brief, blueprint, execute, verify, and recover.",
+  "version": "0.1.1",
   "author": {
     "name": "FRONT-JB"
   },

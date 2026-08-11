@@ -1,7 +1,6 @@
 ---
 name: mcx
-description: "Run a coding mission through Mission Control — Brief, Blueprint, Execute, Verify, Recover"
-aliases: [mission]
+description: "Use Mission Control when a prompt says `mcx`, `mcx brief`, `mcx blueprint`, `mcx execute`, `mcx verify`, or `mcx recover`; coordinate a coding mission through Brief, Blueprint, Execute, Verify, and Recover."
 ---
 
 # mcx

@@ -8,8 +8,8 @@
   "plugins": [
     {
       "name": "mcx",
-      "description": "Remove ambiguity from an intent, freeze it as an approved specification, execute under it, and let evidence decide whether it is done",
-      "version": "0.1.0",
+      "description": "Run mcx brief, blueprint, execute, verify, and recover as one evidence-gated coding mission",
+      "version": "0.1.1",
       "author": {
         "name": "FRONT-JB"
       },

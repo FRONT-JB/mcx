@@ -132,9 +132,7 @@ class CodexCompletion:
             # Codex에는 도구 allowlist가 없으므로 빈 cwd로 capability를 실제로
             # 좁힌다 (ADR-0034 §2, dogfood 2026-08-11).
             with tempfile.TemporaryDirectory(prefix="mcx-codex-context-") as neutral_workspace:
-                return await self._invoke(
-                    prompt, message_path, schema_path, neutral_workspace
-                )
+                return await self._invoke(prompt, message_path, schema_path, neutral_workspace)
         finally:
             message_path.unlink(missing_ok=True)
             schema_path.unlink(missing_ok=True)

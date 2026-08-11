@@ -64,9 +64,7 @@ class TestGenerator:
         )
         assert '## Constraints (copy verbatim) (JSON array)\n["로그인 사용자만"]' in prompt
 
-    def test_empty_collections_are_json_arrays_not_prose_placeholders(
-        self, tmp_path: Path
-    ) -> None:
+    def test_empty_collections_are_json_arrays_not_prose_placeholders(self, tmp_path: Path) -> None:
         """실물 회귀 — `(none)`이 실제 Non-goal로 복사되면 scope가 거부한다."""
         generator = PromptedBlueprintGenerator(completion=_engine(tmp_path, "empty", "{}"))
         prompt = generator.render_prompt(

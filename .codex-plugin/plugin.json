@@ -1,7 +1,7 @@
 {
   "name": "mcx",
-  "description": "Mission Control — coordinates AI coding missions. Executed is not verified.",
-  "version": "0.1.0",
+  "description": "Mission Control workflow for mcx brief, blueprint, execute, verify, and recover.",
+  "version": "0.1.1",
   "author": {
     "name": "FRONT-JB"
   },
@@ -17,7 +17,7 @@
   "mcpServers": "./.mcp.codex.json",
   "interface": {
     "displayName": "Mission Control",
-    "shortDescription": "Coordinates AI coding missions. Executed is not verified.",
+    "shortDescription": "Run verified coding missions with mcx.",
     "longDescription": "Remove ambiguity from an intent, freeze it as an approved specification, execute it under that specification, and let evidence decide whether it is done.",
     "developerName": "FRONT-JB",
     "category": "Development",
@@ -26,7 +26,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Start a mission for this idea.",
+      "mcx brief \"Describe the work you want done\"",
       "Show me where my mission is stuck.",
       "Verify the work against the approved specification."
     ]

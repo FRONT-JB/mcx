@@ -1,7 +1,6 @@
 ---
 name: mcx-brief
-description: "Brief — remove ambiguity from an intent until it can be specified"
-aliases: [brief]
+description: "Use for `mcx brief \"work to do\"` or a request to start or continue a Mission Control Brief; remove ambiguity from a coding intent until it can be specified."
 ---
 
 # mcx brief

@@ -63,6 +63,4 @@ class BoundedCodexJsonlReader:
                 self._eof = True
 
     def _raise_too_long(self) -> None:
-        raise CodexJsonlLineTooLong(
-            f"Codex JSONL line exceeded {self._max_line_bytes} bytes"
-        )
+        raise CodexJsonlLineTooLong(f"Codex JSONL line exceeded {self._max_line_bytes} bytes")

@@ -67,6 +67,25 @@ Claude/Codex 등록 파일을 나누며, OpenAI의 현재 plugin 계약도 상�
 plugin-root 기준 bundled MCP를 허용한다. 검증은 manifest 정적 검사로 끝내지 않고
 각 host의 새 세션에서 skill과 MCP tool을 함께 관측해야 한다.
 
+#### 2026-08-11 hotfix — 대화 입력과 CLI 호출은 같은 문자열이어도 다른 경로다
+
+설치된 plugin에서 사용자가 `mcx brief "작업할 내용"`을 대화 입력창에 썼을 때
+skill이 선택되지 않았고, `@Mission Control mcx brief ...`는 선택됐다. OpenAI의
+host 계약상 `@`는 명시 호출이고, 일반 문장은 skill `description`과 맞을 때 host가
+암시 호출한다. 본문 Usage는 skill 선택 뒤에야 읽히므로 기존처럼 호출어를 본문에만
+두면 발견에 쓰이지 않는다
+([공식 plugin 사용 문서](https://learn.chatgpt.com/docs/plugins),
+[공식 skill 작성 문서](https://learn.chatgpt.com/docs/build-skills)).
+
+**결정:** 여섯 공유 skill의 description에 `mcx <stage>`와 자연어 사용 범위를
+앞세운다. starter prompt도 `mcx brief`를 보여준다. `@Mission Control`은 확실한
+대화 입력 경로, bare `mcx brief`는 암시 호출 경로, 터미널의 `mcx brief`는 실제
+CLI 경로로 구분해 문서화한다. 암시 호출은 host의 선택이므로 보장하지 않는다.
+Core·MCP·Stage 계약은 바꾸지 않는다. pinned upstream도 bare `ooo` 진입어를
+description에 둔다. upstream의 optional `aliases` frontmatter는 현재 Codex
+validator가 거부하므로 공유 skill에서 제거한다
+([SKILLS findings §11](../research/SKILLS_UPSTREAM_FINDINGS.md)).
+
 ### 2. Core는 반복을 소유하지 않는다 — 단, 지금 있는 루프는 옮기지 않는다
 
 upstream은 QA 반복(threshold 0.90·최대 5회·최선 시도 추적)을 **skill 텍스트**에

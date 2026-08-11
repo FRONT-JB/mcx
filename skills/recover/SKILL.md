@@ -1,7 +1,6 @@
 ---
 name: mcx-recover
-description: "Recover — bounded correction from recorded failure evidence"
-aliases: [recover]
+description: "Use for `mcx recover` or a request to recover a Mission Control mission after Verify HOLD; perform bounded correction from recorded failure evidence."
 ---
 
 # mcx recover
