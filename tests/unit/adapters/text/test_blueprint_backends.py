@@ -62,7 +62,26 @@ class TestGenerator:
             "An acceptance criterion names a state of the finished work that a "
             "user can see is true." in prompt
         )
-        assert "## Constraints (copy verbatim)\n- 로그인 사용자만" in prompt
+        assert '## Constraints (copy verbatim) (JSON array)\n["로그인 사용자만"]' in prompt
+
+    def test_empty_collections_are_json_arrays_not_prose_placeholders(
+        self, tmp_path: Path
+    ) -> None:
+        """실물 회귀 — `(none)`이 실제 Non-goal로 복사되면 scope가 거부한다."""
+        generator = PromptedBlueprintGenerator(completion=_engine(tmp_path, "empty", "{}"))
+        prompt = generator.render_prompt(
+            BlueprintGenerationRequest(
+                goals=("목표",),
+                constraints=(),
+                non_goals=(),
+                success_criteria=("검증된다",),
+                context=(),
+            )
+        )
+
+        assert "## Constraints (copy verbatim) (JSON array)\n[]" in prompt
+        assert "## Non-goals (copy verbatim) (JSON array)\n[]" in prompt
+        assert "(none)" not in prompt
 
     async def test_the_draft_round_trips_with_empty_string_sentinels(self, tmp_path: Path) -> None:
         generator = PromptedBlueprintGenerator(

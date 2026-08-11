@@ -1,7 +1,8 @@
 # Seed Upstream Findings — Blueprint 대응 조사
 
 > Baseline: `Q00/ouroboros@9486c78575a0332e9b84d93ef5832985291d7943` (v0.50.8)<br>
-> Checked: 2026-08-07 (local clone, 해당 commit checkout)<br>
+> Checked: 2026-08-07; empty-list encoding 재확인: 2026-08-11
+> (local clone, 해당 commit checkout)<br>
 > Scope: [Open Questions §3](./OPEN_QUESTIONS.md#3-blueprint-decisions)<br>
 > Evidence level: 별도 표기 없으면 **Verified**
 
@@ -189,6 +190,22 @@ Mission Control은 생성기에 대화를 넘기지 않고 이미 칸이 나뉜 
 ([ADR-0018](../adr/0018-blueprint-generation-contract.md) §2) 이 규칙들이 프롬프트
 지시가 아니라 **입력 형태로 해소된다.** 다만 upstream이 이 세 문장을 명시적으로
 쓴 이유가 실제 결함(#1755 계열)이라는 점은 우리 선택의 근거를 강화한다.
+
+## 3.5 empty collection은 placeholder가 아니라 구조로 전달한다 (2026-08-11)
+
+> Evidence level: **Observed + Verified** — Codex-only Blueprint generation
+> 실물 실패와 pinned `agents/seed-architect.md:38-48,93-109` 직접 대조.
+
+pinned Seed architect는 constraints·acceptance criteria 등 collection을
+**single-line JSON array**로 주고받으며 empty collection도 `[]`라는 구조로
+표현한다. generic prose placeholder를 collection 원소로 쓰지 않는다.
+
+mcx generator prompt는 빈 handoff section을 `(none)`으로 렌더링했다. 실제 Codex가
+이를 `non_goals: ["(none)"]`로 복사했고, 결정적 scope 검사는 승인되지 않은
+Non-goal 추가로 정확히 거부했다. 처분은 scope 검사를 약화하거나 sentinel을
+사후 삭제하는 것이 아니다. generator 입력 collection을 JSON array로 직렬화해
+빈 값의 유일한 표현을 `[]`로 만든다. 모델이 그 뒤에도 항목을 발명하면 기존
+scope error가 그대로 막는다.
 
 ## 4. 조사했으나 v1에서 다루지 않기로 한 것
 

@@ -54,6 +54,15 @@ context만 담는다. **대화 원문, 관찰 사실 본문, revision 이력을 
 가능하게 만드는 재료**다 — 어떤 명령으로 무엇을 확인할지 정하려면 지금 무엇이
 있는지 알아야 한다.
 
+> **2026-08-11 Codex-only 도그푸딩 정정 — collection은 JSON array로
+> 전달한다.** 빈 constraints·Non-goals·context를 `(none)` 같은 prose로
+> 렌더링하면 모델이 그것을 실제 항목으로 복사해 scope 위반이 된다. pinned
+> Seed architect의 collection 형식과 같이 모든 목록 입력을 single-line JSON
+> array로 직렬화하고, 빈 목록은 정확히 `[]`로 보낸다
+> ([SEED_UPSTREAM_FINDINGS §3.5](../research/SEED_UPSTREAM_FINDINGS.md#35-empty-collection은-placeholder가-아니라-구조로-전달한다-2026-08-11)).
+> 출력에서 `(none)`을 지우는 보정은 하지 않는다 — 진짜 발명인지 구분할 수
+> 없고 hard scope 검사를 약화하기 때문이다.
+
 ### 3. 초안은 lineage를 담지 않는다
 
 `BlueprintDraft`에는 mission_id도 revision도 brief_revision도 없다. 조립 단계가
@@ -128,6 +137,8 @@ Phase 2의 이 단계에서 재시도를 도입하지 않는다 — 범위 위�
 ## Verification
 
 - 초안이 handoff에 없는 제약이나 Non-goal을 담으면 거부된다.
+- 빈 handoff collection은 prompt에 `[]`로 전달되며 placeholder가 초안 항목으로
+  승격되지 않는다.
 - 승인된 Non-goal을 빠뜨린 초안이 거부된다.
 - 수용 기준이 없는 초안이 거부된다.
 - lineage가 초안이 아니라 handoff에서 온다.

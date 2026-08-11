@@ -5,8 +5,8 @@
 - Runtime: `default.text="codex"`, `default.execution="codex_cli"`,
   `gpt-5.6-sol` / `xhigh`
 - 형태: 기존 Python retry utility와 실패 unittest가 있는 작은 brownfield git 저장소
-- 현재 결과: **Brief revision 8 `HOLD` — required 후보 확정과 exact user
-  approval 대기**
+- 현재 결과: **Blueprint revision 1 QA `HOLD` (0.62) — revision 2 수정안의
+  사용자 채택 대기**
 
 ## 1. 관측 범위
 
@@ -70,10 +70,11 @@ workspace 없음의 의미를 “부모 cwd”가 아니라 “작업물 관찰 
 사전 정량 호출 추정을 기록하지 않고 실행을 시작했다. 이는 ADR-0035 비용 규칙을
 지키지 못한 절차 결함이며 사후 숫자를 “예상”으로 소급하지 않는다.
 
-현재 command journal은 Codex text **30회**, 29 commands, 누적 command wall
-time **552.952초**를 기록한다. 이 중 6회는 긴-line 수정 전 실패한 closure audit
-두 번이며, 나머지 증가는 closure가 찾은 경계를 세 차례 보정하고 재감사한 비용이다.
-코드 변경 후 전체 자동 테스트는 **1065 passed**다.
+Brief revision 8 시점 command journal은 Codex text **30회**, 29 commands,
+누적 command wall time **552.952초**를 기록했다. 이 중 6회는 긴-line 수정 전
+실패한 closure audit 두 번이며, 나머지 증가는 closure가 찾은 경계를 세 차례
+보정하고 재감사한 비용이다. 당시 코드 변경 후 전체 자동 테스트는
+**1065 passed**였다.
 
 사용자 확인 뒤 첫 mission을 재개하기 전에 남은 호출을 별도로 추정하고, 완료 시
 실측과 비교한다. 아직 Blueprint·Execute·Verify·Recover를 지나지 않았으므로
@@ -90,3 +91,34 @@ revision의 clarity·closure를 다시 통과시켜 Blueprint로 간다.
 > default, 비-429는 None이다. 기존 4개 unittest를 유지하고 ASCII whitespace,
 > 비ASCII 숫자 거부, 1/4,300/4,301자, `int()` ValueError, 비-429 경계를 추가
 > unittest로 검증하며 전체 discover 명령이 exit 0이어야 한다.
+
+위 항목은 사용자가 확정했고, 기존 공개 타입 `str | None`을 repository evidence
+기반 existing constraint로 추가한 revision 11이 closure `ready`를 받았다.
+사용자의 “계속진행해”를 exact revision 11 승인 statement로 기록한 뒤 Brief Gate는
+`CLEAR`였다.
+
+## 7. Blueprint 진입과 결함 3 — `(none)`이 실제 Non-goal이 됐다
+
+첫 `blueprint generate`는 실패했다. handoff의 Non-goals가 비어 있었고 prompt는
+이를 `(none)`으로 표시했는데, 실제 Codex가 `non_goals: ["(none)"]`로 반환했다.
+결정적 scope 검사는 `non_goal_not_in_handoff`로 정확히 거부해 revision을 저장하지
+않았다.
+
+pinned `agents/seed-architect.md`는 collection을 single-line JSON array로
+주고받는다. 생성기 입력의 다섯 목록을 같은 방식으로 바꾸고 empty를 `[]`로
+고정했다. `(none)`을 출력에서 사후 삭제하지 않아, 모델이 정말 항목을 발명하면
+scope 검사가 계속 막는다. 수정 전 실패와 수정 후 JSON-array 렌더링을 회귀
+테스트로 고정했다.
+
+같은 Brief에서 재시도한 generation은 Blueprint revision 1을 정상 생성했다.
+Codex QA는 0.62로 `continue`를 반환하며 빈 ontology, 테스트 artifact 누락,
+중복 검증 명령, 측정 불가능한 범위 AC를 지적했다. 같은 초안을 재채점하지 않고,
+AC를 한 결과 계약으로 합치고 `retry_policy.py`·`test_retry_policy.py`를 artifact로
+명시하며 ontology 6 fields를 채운 revision 2 제안을
+`/tmp/mcx-codex-only.i5eTeb/a-blueprint-revision-2-proposal.json`에 만들었다.
+`blueprint revise`는 사용자 채택을 뜻하므로 아직 호출하지 않았다.
+
+현재 journal은 Codex text **43회**, 44 commands, 누적 command wall time
+**811.711초**다. Brief revision 8 뒤 남은 첫 mission을 9~13회로 예상했으나
+타입 계약 재감사와 Blueprint placeholder 실패로 이미 상한 13회를 사용했고
+Execute 전이다. 완료 시 이 초과를 최종 대조한다.

@@ -8,7 +8,7 @@
 | Mission status | ACTIVE |
 | Gate | **v1 release CLEAR — ready for user-approved release** — FRONT-JB LICENSE와 adapted Ouroboros portion의 Q00 MIT notice를 metadata·wheel·sdist에 포함해 검증 완료 ([progress 0012](./0012_V1_RELEASE_READINESS.md), [provenance audit](../research/UPSTREAM_PROVENANCE.md)) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, immutable plan, grouped stage run, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (Codex worker+Coordinator), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 11종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 26 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 33종 — CLI 파서 파생 26 + 비동기 5 + job 2, stdio, entry point `mcx-mcp`) |
-| Automated tests | **1065 passed** (unit + integration, 2026-08-11 Codex-only dogfood 결함 2건 회귀 포함) |
+| Automated tests | **1066 passed** (unit + integration, 2026-08-11 Codex-only dogfood 결함 3건 회귀 포함) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-11 |
 
@@ -50,9 +50,11 @@
   통과했다 ([DOGFOODING_0007](../research/DOGFOODING_0007.md)).
 - Codex text+execution 단독 lifecycle 도그푸딩이 진행 중이다. Brief 실경로에서
   asyncio 기본 64 KiB를 넘는 Codex JSONL event와 workspace 없는 text lane의
-  부모 cwd 누출을 발견해 pinned upstream 대조·문서·회귀 테스트와 함께 수정했다.
-  현재는 required 성공 조건과 exact Brief revision의 실제 사용자 승인을 기다리는
-  의도된 `HOLD`이며 이후 Stage 성공은 아직 주장하지 않는다
+  부모 cwd 누출, Blueprint 빈 목록의 `(none)` placeholder가 실제 Non-goal로
+  승격되는 결함을 발견해 pinned upstream 대조·문서·회귀 테스트와 함께 수정했다.
+  Brief revision 11은 사용자 승인 뒤 `CLEAR`, 현재 Blueprint revision 1은 QA
+  0.62 `HOLD`이며 revision 2 수정안의 사용자 채택을 기다린다. 이후 Stage 성공은
+  아직 주장하지 않는다
   ([DOGFOODING_0008](../research/DOGFOODING_0008.md)).
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.

@@ -15,6 +15,8 @@
 
 from __future__ import annotations
 
+import json
+
 from mission_control.adapters.text.completion_engine import CompletionEngine, strict_schema
 from mission_control.application.ports import BlueprintGenerationRequest, QaRequest
 from mission_control.domain.blueprint.assembly import BlueprintDraft
@@ -39,6 +41,8 @@ Rules:
 - Copy every constraint and non-goal EXACTLY as given, word for word. Any \
 rewording is rejected by a deterministic scope check.
 - Do not invent requirements that are not in the inputs.
+- Input collections are JSON arrays. `[]` means there are no items; never turn
+it into a prose placeholder or copy a placeholder into an output array.
 - For each acceptance criterion, attach a success contract when possible: \
 verify_command is exactly one single-line shell command; expected_artifacts \
 are exact workspace-relative paths (never descriptive labels); \
@@ -79,8 +83,8 @@ class PromptedBlueprintGenerator:
 
     def render_prompt(self, request: BlueprintGenerationRequest) -> str:
         def block(title: str, items: tuple[str, ...]) -> str:
-            body = "\n".join(f"- {item}" for item in items) if items else "(none)"
-            return f"## {title}\n{body}"
+            body = json.dumps(items, ensure_ascii=False, separators=(",", ":"))
+            return f"## {title} (JSON array)\n{body}"
 
         return "\n\n".join(
             [

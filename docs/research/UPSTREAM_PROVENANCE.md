@@ -42,6 +42,7 @@ mcx와 pinned source의 `src/`·`skills/`·`tests/`에서 공백을 정규화해
 | `domain/brief/derivation.py` | `bigbang/requirement_distillation.py` | 다국어 요구사항·constraint 정규식 |
 | `domain/brief/closure.py` | `mcp/tools/subagent.py`, `agents/seed-closer.md` | closure lane prompt와 합성 계약 |
 | `adapters/text/brief_backends.py` | `agents/socratic-interviewer.md` | interviewer 역할·질문 계약 문구 |
+| `adapters/text/blueprint_backends.py` | `agents/seed-architect.md` | granularity 원문과 collection JSON-array 형식 |
 | `adapters/text/semantic_evaluator.py` | `evaluation/semantic.py` | semantic 판정 schema·지시 문구 |
 | `adapters/codex_stream.py` | `providers/codex_cli_stream.py` | 16 KiB bounded chunk JSONL reader와 50 MiB line 상한 |
 | `domain/recover/packet.py` | `orchestrator/failure_taxonomy.py` | hard-precondition 정규식과 retry 분류 축 |

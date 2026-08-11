@@ -160,6 +160,12 @@ Blueprint generator와 QA evaluator의 기본 권한:
 - Seed draft/review 구조화 출력
 - 필요할 때 read-only project facts 참조
 
+Generator에 전달하는 Goals·Constraints·Non-goals·Success criteria·Context 목록은
+single-line JSON array다. 빈 목록은 정확히 `[]`이며 `(none)` 같은 표시용 문장을
+데이터 자리에 넣지 않는다. 2026-08-11 Codex-only 실물 실행에서 `(none)`이 실제
+Non-goal로 복사되어 scope Gate가 거부한 뒤 고정한 경계다
+([SEED_UPSTREAM_FINDINGS §3.5](./research/SEED_UPSTREAM_FINDINGS.md#35-empty-collection은-placeholder가-아니라-구조로-전달한다-2026-08-11)).
+
 기본 금지:
 
 - 파일 수정과 코드 구현
