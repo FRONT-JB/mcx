@@ -9,7 +9,7 @@
     {
       "name": "mcx",
       "description": "Run mcx brief, blueprint, execute, verify, and recover as one evidence-gated coding mission",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "FRONT-JB"
       },

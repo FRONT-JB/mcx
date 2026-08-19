@@ -1,7 +1,7 @@
 {
   "name": "mcx",
   "description": "Mission Control workflow for mcx brief, blueprint, execute, verify, and recover.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": {
     "name": "FRONT-JB"
   },

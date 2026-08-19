@@ -28,6 +28,9 @@ source = "vcs"
 [tool.hatch.version.raw-options]
 version_scheme = "guess-next-dev"
 local_scheme = "no-local-version"
+# .git 없는 소스 복사본(플러그인 설치 캐시)의 빌드 버전 — plugin manifest와
+# 항상 같아야 하며 tests/unit/skills/test_skill_artifacts.py가 강제한다 (ADR-0054).
+fallback_version = "0.1.2"
 
 [tool.hatch.build.hooks.vcs]
 version-file = "src/mission_control/_version.py"

@@ -202,9 +202,11 @@ class TestManifests:
         """`claude plugin validate`가 없으면 경고한다."""
         for directory in (".claude-plugin", ".codex-plugin"):
             manifest = json.loads((REPO / directory / "plugin.json").read_text(encoding="utf-8"))
-            assert manifest["version"] == "0.1.1", directory
+            assert manifest["version"] == "0.1.2", directory
 
     def test_marketplace_and_host_manifests_share_the_hotfix_version(self) -> None:
+        """fallback_version은 .git 없는 설치 캐시 빌드의 버전이다 — manifest와
+        갈리면 캐시 설치본이 다른 버전을 자칭한다 (ADR-0054)."""
         versions = {
             json.loads((REPO / directory / "plugin.json").read_text(encoding="utf-8"))["version"]
             for directory in (".claude-plugin", ".codex-plugin")
@@ -213,8 +215,10 @@ class TestManifests:
             (REPO / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8")
         )
         versions.add(marketplace["plugins"][0]["version"])
+        pyproject = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
+        versions.add(pyproject["tool"]["hatch"]["version"]["raw-options"]["fallback_version"])
 
-        assert versions == {"0.1.1"}
+        assert versions == {"0.1.2"}
 
     def test_the_registered_entry_point_is_the_one_we_ship(self) -> None:
         """``mcx-mcp``는 별도 실행 파일이다 — CLI에 붙이면 순환이다 (ADR-0041 §1)."""
