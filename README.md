@@ -61,7 +61,13 @@ mcx brief "작업할 내용"
 ```
 
 기존 설치를 이 hotfix(`0.1.2`)로 갱신하려면 marketplace를 새로고침하고 플러그인을
-다시 설치한 뒤 새 대화를 시작한다.
+다시 설치한 뒤 새 대화를 시작한다. `0.1.1` 이하의 Claude marketplace 설치 캐시는
+`.git` 부재로 MCP 서버가 기동하지 못하므로(이슈 #1) 갱신이 필요하다.
+
+```bash
+claude plugin marketplace update mcx
+claude plugin update mcx@mcx
+```
 
 ```bash
 codex plugin marketplace upgrade mcx
