@@ -94,6 +94,28 @@ fallback_version = "0.1.2"
 (`tests/unit/skills/test_skill_artifacts.py`)를 확장해 기계적으로 강제한다 —
 테스트가 `pyproject.toml`을 파싱해 fallback을 같은 집합에 넣는다.
 
+### 3.1 checkout package 버전과 plugin release 버전의 분리 — issue #7
+
+2026-08-23 현재 두 버전 축은 **의도적으로 분리**한다.
+
+| 축 | 원천 | 현재 실측 | 계약 |
+|---|---|---|---|
+| plugin release version | 두 host manifest·marketplace·`fallback_version` | `0.1.2` | 네 값이 항상 같다 |
+| checkout package version | `[project].dynamic = ["version"]` + hatch-vcs `source = "vcs"` | `0.1.3.dev179` | git checkout의 commit 거리로 산출되며 release version과 같을 필요가 없다 |
+
+따라서 untagged checkout에서 `importlib.metadata.version("mission-control")`와
+plugin manifest를 항상 같게 비교하는 계약 테스트는 추가하지 않는다. 그런
+비교는 현재 개발 산출물의 dev distance와 설치 캐시의 fallback 산출물을
+혼동하고, plugin 버전을 올리지 않은 채 checkout commit만 늘어날 때 거짓
+실패를 만든다. 이 결정은 issue #7의 선택지 (a)이며, manifest 네 값의
+동기화 테스트와 `[project]`의 VCS 동적 버전 설정 검사는 유지·강화한다.
+
+향후 사용자가 tag/release를 승인하면 [progress 0012](../progress/0012_V1_RELEASE_READINESS.md)
+§1의 release artifact 재감사에서 **그 release 산출물**의 Python package
+version과 plugin release version을 함께 확인한다. 이 문서는 tag/release를
+생성할 권한을 부여하지 않으며, release 산출물까지 현재 checkout 계약을
+바꾸는 결정은 별도 ADR로 한다.
+
 ## Consequences
 
 ### Positive
@@ -146,3 +168,6 @@ guess-next-dev가 "최신 태그 다음의 dev"를 산출하는 것과 같은 �
   기준점은 fallback — `0.1.3.devN`)로 성공한다.
 - manifest 버전 일치 테스트가 `fallback_version`을 포함해 네 값의 동일성을
   검사한다.
+- plugin version 테스트 docstring이 checkout package의 VCS dev version과
+  release manifest version을 비교하지 않는 이유를 issue #7 및 이 ADR에
+  연결한다. `[project].dynamic`/hatch-vcs source 계약도 테스트로 고정한다.

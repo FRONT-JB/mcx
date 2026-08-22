@@ -199,14 +199,24 @@ class TestManifests:
         assert entry["source"] == "./"
 
     def test_the_plugin_declares_a_version(self) -> None:
-        """`claude plugin validate`가 없으면 경고한다."""
+        """plugin release version을 선언한다.
+
+        ``0.1.2``는 checkout의 Python package version과 다른 plugin release
+        version이다. checkout package는 hatch-vcs가 commit 거리로 만드는
+        ``0.1.3.devN``을 사용하므로 둘을 직접 같다고 비교하지 않는다
+        (ADR-0054 §3.1, issue #7).
+        """
         for directory in (".claude-plugin", ".codex-plugin"):
             manifest = json.loads((REPO / directory / "plugin.json").read_text(encoding="utf-8"))
             assert manifest["version"] == "0.1.2", directory
 
-    def test_marketplace_and_host_manifests_share_the_hotfix_version(self) -> None:
-        """fallback_version은 .git 없는 설치 캐시 빌드의 버전이다 — manifest와
-        갈리면 캐시 설치본이 다른 버전을 자칭한다 (ADR-0054)."""
+    def test_marketplace_and_host_manifests_share_the_release_version(self) -> None:
+        """네 plugin release version 선언은 fallback과 같아야 한다.
+
+        이 테스트가 검증하는 축은 manifest↔fallback 동기화다. checkout의
+        dynamic Python package version과의 equality는 의도된 계약이 아니다
+        (ADR-0054 §3.1, issue #7).
+        """
         versions = {
             json.loads((REPO / directory / "plugin.json").read_text(encoding="utf-8"))["version"]
             for directory in (".claude-plugin", ".codex-plugin")
@@ -219,6 +229,13 @@ class TestManifests:
         versions.add(pyproject["tool"]["hatch"]["version"]["raw-options"]["fallback_version"])
 
         assert versions == {"0.1.2"}
+
+    def test_python_package_version_source_is_dynamic_vcs(self) -> None:
+        """checkout package와 plugin release가 다른 원천을 쓰는 계약을 고정한다."""
+        pyproject = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
+
+        assert pyproject["project"]["dynamic"] == ["version"]
+        assert pyproject["tool"]["hatch"]["version"]["source"] == "vcs"
 
     def test_the_registered_entry_point_is_the_one_we_ship(self) -> None:
         """``mcx-mcp``는 별도 실행 파일이다 — CLI에 붙이면 순환이다 (ADR-0041 §1)."""
