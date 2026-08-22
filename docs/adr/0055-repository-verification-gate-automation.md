@@ -72,4 +72,8 @@ coverage를 조금만 낮춰도 즉시 불필요하게 막힐 수 있으므로, 
 - 로컬 기준: `uv run mypy src` → no issues found in 93 source files.
 - 로컬 기준: `uv run ruff check .` → All checks passed.
 - 로컬 기준: `uv run ruff format --check src tests` → 173 files already formatted.
-- 다음 단계: 기본 브랜치에 push한 뒤 GitHub Actions의 green run을 확인한다.
+- GitHub 기준: [`main` CI run 32567434695](https://github.com/FRONT-JB/mcx/actions/runs/32567434695)
+  → 모든 단계 성공(38초).
+- 초기 run [`32567404888`](https://github.com/FRONT-JB/mcx/actions/runs/32567404888)은
+  `astral-sh/setup-uv@v9` tag를 해석하지 못해 job 초기화에서 실패했다. 공식
+  `v9.0.0` commit SHA를 사용하도록 고쳐 후속 run을 통과시켰다.
