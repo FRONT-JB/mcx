@@ -36,6 +36,8 @@ generation만 새 예산을 갖는다 (ADR-0051 §7).
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from mission_control.domain.blueprint.qa import (
@@ -184,9 +186,10 @@ class BlueprintState(BaseModel):
     Verify가 참조하는 명세가 흔들리지 않는다.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     mission_id: str
+    schema_version: Literal[1] = 1
     #: 쓰기 순서. 상태가 바뀌는 모든 경우에 올라간다. 저장소는 이 값으로
     #: 덮어쓰기를 판정한다 (ADR-0014와 같은 두 축 구분).
     sequence: int = 1

@@ -19,7 +19,7 @@ Stage와 Gate가 어긋나면 Gate가 이긴다 (``docs/adr/0037``).
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Final
+from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -95,9 +95,10 @@ class MissionRecord(BaseModel):
     status 표시가 조합한다 (ADR-0038 §5).
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     mission_id: str
+    schema_version: Literal[1] = 1
     workspace: str
     current_stage: Stage = Stage.BRIEF
     status: MissionStatus = MissionStatus.ACTIVE

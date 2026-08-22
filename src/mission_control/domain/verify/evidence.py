@@ -14,6 +14,8 @@ so a failing check cannot be self-reported away")와 같다
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from mission_control.domain.blueprint.spec import AcceptanceCriterion
@@ -218,9 +220,10 @@ class VerifyState(BaseModel):
     packet을 설계하는 Recover와 함께 결정한다 (progress README 알려진 한계).
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     mission_id: str
+    schema_version: Literal[1] = 1
     #: 쓰기 순서. 저장소는 이 값으로 덮어쓰기를 판정한다 (ADR-0014와 같은 축).
     sequence: int = 1
     evidence: VerificationEvidence | None = None

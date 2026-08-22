@@ -26,6 +26,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -258,9 +259,10 @@ class StageRun(BaseModel):
 class ExecuteState(BaseModel):
     """하나의 Mission에 대한 Execute 상태."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     mission_id: str
+    schema_version: Literal[1] = 1
     #: 쓰기 순서. 저장소는 이 값으로 덮어쓰기를 판정한다 (ADR-0014와 같은 축).
     sequence: int = 1
     attempts: tuple[ExecutionAttempt, ...] = ()

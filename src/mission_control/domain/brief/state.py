@@ -20,6 +20,8 @@ revision 스냅샷이 나중 변경에 오염되지 않아야 감사가 성립�
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from mission_control.domain.brief.clarity import ClarityAssessment, ClarityPolicy
@@ -84,9 +86,10 @@ class BriefRevisionSnapshot(BaseModel):
 class BriefState(BaseModel):
     """하나의 Mission에 대한 Brief 상태."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     mission_id: str
+    schema_version: Literal[1] = 1
     initial_intent: str
     #: 내용 버전. 요구사항에 영향을 주는 변경에서만 올라가며, 승인이 여전히
     #: 유효한지 판정하는 기준이다.
