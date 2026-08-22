@@ -6,11 +6,11 @@
 |---|---|
 | Project phase | **Phase 0~11 COMPLETE (2026-08-10)** — upstream Coordinator 경로의 병렬 Execute와 대표 brownfield dogfood 완료 ([progress 0011](./0011_PARALLEL_EXECUTION_GATE.md), [ADR-0053](../adr/0053-parallel-coordinator-execution-contract.md), [DOGFOODING_0007](../research/DOGFOODING_0007.md)). 순차 Execute도 정상 경로로 유지 |
 | Mission status | ACTIVE |
-| Gate | **plugin 0.1.2 verified; repository CI verified; release artifact re-audit pending** — `.git` 없는 설치 캐시 빌드 실패([이슈 #1](https://github.com/FRONT-JB/mcx/issues/1))를 ADR-0054 fallback_version으로 복구하고, 저장소 검증 게이트 자동화([이슈 #2](https://github.com/FRONT-JB/mcx/issues/2), [ADR-0055](../adr/0055-repository-verification-gate-automation.md))를 추가했다. 로컬 게이트와 [GitHub Actions run 32567434695](https://github.com/FRONT-JB/mcx/actions/runs/32567434695)가 모두 통과했다. tag·release는 만들지 않음. 기존 0.1.0 release-readiness 근거는 [progress 0012](./0012_V1_RELEASE_READINESS.md) |
+| Gate | **plugin 0.1.2 verified; repository CI·durable state schema guard verified; release artifact re-audit pending** — `.git` 없는 설치 캐시 빌드 실패([이슈 #1](https://github.com/FRONT-JB/mcx/issues/1))를 ADR-0054 fallback_version으로 복구하고, 저장소 검증 게이트 자동화([이슈 #2](https://github.com/FRONT-JB/mcx/issues/2), [ADR-0055](../adr/0055-repository-verification-gate-automation.md))와 durable JSON 문서의 v1 schema/unknown-field 거부([이슈 #3](https://github.com/FRONT-JB/mcx/issues/3), [ADR-0056](../adr/0056-durable-state-schema-versioning.md))를 추가했다. 로컬 전체 게이트와 [GitHub Actions run 32583922951](https://github.com/FRONT-JB/mcx/actions/runs/32583922951)가 모두 통과했다. tag·release는 만들지 않음. 기존 0.1.0 release-readiness 근거는 [progress 0012](./0012_V1_RELEASE_READINESS.md) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, immutable plan, grouped stage run, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (Codex worker+Coordinator), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 11종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 26 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 33종 — CLI 파서 파생 26 + 비동기 5 + job 2, stdio, entry point `mcx-mcp`) |
-| Automated tests | **1068 passed, coverage 92.67%** (unit + integration, 2026-08-22; coverage 하한 90%는 ADR-0055로 고정) |
+| Automated tests | **1088 passed, coverage 92.68%** (unit + integration, 2026-08-23; coverage 하한 90%는 ADR-0055로 고정) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
-| Updated | 2026-08-22 |
+| Updated | 2026-08-23 |
 
 ## Current facts
 
@@ -82,6 +82,12 @@
   vcs 산출(`0.1.3.dev167` — 태그 없는 저장소에서 fallback이 기준점이 되는 실측
   부수 효과 포함)을 확인했다. upstream은 설치 경로가 PyPI 배포물이라 이 문제가
   없다(pinned `9486c78` `.mcp.json` 대조). plugin/marketplace 버전은 `0.1.2`.
+- 다섯 durable JSON 최상위 문서(`BriefState`, `BlueprintState`, `ExecuteState`,
+  `VerifyState`, `MissionRecord`)는 `schema_version: 1`을 기록하고 최상위 미지
+  필드·미지원 version을 `ValidationError`로 거부한다. 기존 versionless 문서는
+  암묵적 v1로 읽으며, 5개 repository 경로에 대한 legacy·unknown·unsupported
+  회귀 테스트가 있다 ([ADR-0056](../adr/0056-durable-state-schema-versioning.md),
+  [이슈 #3](https://github.com/FRONT-JB/mcx/issues/3)).
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
 - 이전 v1 `0.1.0` release candidate는 host별 plugin 설치, MCP 33종 handshake,
@@ -107,7 +113,7 @@
 | `07_EXECUTE.md` | Verified contract | 순차 실행과 Phase 11 immutable plan·grouped fan-out·Coordinator·settled revalidation·대표 실경로 검증 |
 | `08_VERIFY.md` | Draft | 진입·mechanical·semantic·`changed_files`·MISSION COMPLETE 계약을 Phase 4·9에서 검증 |
 | `09_RECOVER.md` | Draft | 실패 packet·재시도·rollback 계약을 Phase 4·9에서 검증; spec-gap classifier는 ADR-0051에서 미도입 확정 |
-| `adr/` | 55 Accepted ADRs | ADR-0001~0055. Phase 11 병렬 Coordinator 실행과 저장소 CI 검증 게이트까지 확정 |
+| `adr/` | 56 Accepted ADRs | ADR-0001~0056. Phase 11 병렬 Coordinator 실행, 저장소 CI 검증 게이트, durable state schema guard까지 확정 |
 | `research/` | Phase 11 complete + dogfood 0008 진행 중 | upstream baseline·도그푸딩 0001~0008·Evolve 연결·backend A/B·병렬 shared-worktree 안전 조사와 실측 보존 |
 
 `Draft`는 빈 placeholder라는 뜻이 아니다. self-contained 설계와 체크리스트가
