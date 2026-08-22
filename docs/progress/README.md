@@ -6,9 +6,9 @@
 |---|---|
 | Project phase | **Phase 0~11 COMPLETE (2026-08-10)** — upstream Coordinator 경로의 병렬 Execute와 대표 brownfield dogfood 완료 ([progress 0011](./0011_PARALLEL_EXECUTION_GATE.md), [ADR-0053](../adr/0053-parallel-coordinator-execution-contract.md), [DOGFOODING_0007](../research/DOGFOODING_0007.md)). 순차 Execute도 정상 경로로 유지 |
 | Mission status | ACTIVE |
-| Gate | **plugin 0.1.2 verified; repository CI·durable state schema·runtime spawn·POSIX platform guard·CLI version flag verified; release artifact re-audit pending** — `.git` 없는 설치 캐시 빌드 실패([이슈 #1](https://github.com/FRONT-JB/mcx/issues/1))를 ADR-0054 fallback_version으로 복구하고, 저장소 검증 게이트 자동화([이슈 #2](https://github.com/FRONT-JB/mcx/issues/2), [ADR-0055](../adr/0055-repository-verification-gate-automation.md)), durable JSON 문서의 v1 schema/unknown-field 거부([이슈 #3](https://github.com/FRONT-JB/mcx/issues/3), [ADR-0056](../adr/0056-durable-state-schema-versioning.md)), Codex spawn 환경 오류의 exit 1·`DISPATCHED` 보존([이슈 #5](https://github.com/FRONT-JB/mcx/issues/5), [ADR-0057](../adr/0057-runtime-spawn-failure-boundary.md)), file persistence의 POSIX 전용 범위와 package classifier([이슈 #4](https://github.com/FRONT-JB/mcx/issues/4), [ADR-0013](../adr/0013-brief-durable-state-baseline.md)), `mcx --version`의 package version 일치·exit 0([이슈 #6](https://github.com/FRONT-JB/mcx/issues/6), [ADR-0038](../adr/0038-mcx-cli-surface-contract.md) 개정 3)를 검증했다. 로컬 전체 게이트와 [GitHub Actions run 32587841868](https://github.com/FRONT-JB/mcx/actions/runs/32587841868)가 모두 통과했다. tag·release는 만들지 않음. 기존 0.1.0 release-readiness 근거는 [progress 0012](./0012_V1_RELEASE_READINESS.md) |
+| Gate | **plugin 0.1.2 verified; repository CI·durable state schema·runtime spawn·POSIX platform guard·CLI version flag·release version contract verified; release artifact re-audit pending** — `.git` 없는 설치 캐시 빌드 실패([이슈 #1](https://github.com/FRONT-JB/mcx/issues/1))를 ADR-0054 fallback_version으로 복구하고, 저장소 검증 게이트 자동화([이슈 #2](https://github.com/FRONT-JB/mcx/issues/2), [ADR-0055](../adr/0055-repository-verification-gate-automation.md)), durable JSON 문서의 v1 schema/unknown-field 거부([이슈 #3](https://github.com/FRONT-JB/mcx/issues/3), [ADR-0056](../adr/0056-durable-state-schema-versioning.md)), Codex spawn 환경 오류의 exit 1·`DISPATCHED` 보존([이슈 #5](https://github.com/FRONT-JB/mcx/issues/5), [ADR-0057](../adr/0057-runtime-spawn-failure-boundary.md)), file persistence의 POSIX 전용 범위와 package classifier([이슈 #4](https://github.com/FRONT-JB/mcx/issues/4), [ADR-0013](../adr/0013-brief-durable-state-baseline.md)), `mcx --version`의 package version 일치·exit 0([이슈 #6](https://github.com/FRONT-JB/mcx/issues/6), [ADR-0038](../adr/0038-mcx-cli-surface-contract.md) 개정 3), plugin release/fallback과 checkout package version의 의도적 분리 계약([이슈 #7](https://github.com/FRONT-JB/mcx/issues/7), [ADR-0054](../adr/0054-gitless-source-build-version-fallback.md) §3.1)을 검증했다. 로컬 전체 게이트와 [GitHub Actions run 32589049073](https://github.com/FRONT-JB/mcx/actions/runs/32589049073)가 모두 통과했다. tag·release는 만들지 않음. 기존 0.1.0 release-readiness 근거는 [progress 0012](./0012_V1_RELEASE_READINESS.md) |
 | Source code | `domain/brief/` (state, provenance, clarity, requirement, closure, gate, handoff), `domain/blueprint/` (spec, assembly, qa, state, gate, evolution assembly), `domain/evolve/` (vendor-neutral source·Wonder·Reflect·checkpoint), `domain/execute/` (state, immutable plan, grouped stage run, gate), `domain/verify/` (evidence, verdict, gate), `domain/recover/` (packet, gate), `domain/stage.py`, `domain/errors.py`, `application/` (brief·blueprint·evolve·execute·verify·recover service, ports), `adapters/persistence/` (brief·blueprint·execute·verify), `adapters/verification/` (local runner), `adapters/runtime/` (Codex worker+Coordinator), `adapters/text/` (완성 엔진 codex·claude + vendor 중립 위임 어댑터 11종), `domain/mission.py` (mission record), `adapters/persistence/file_mission_repository.py`, `cli/` (composition root + 26 명령, entry point `mcx`, 명령 원장·status 렌더, Stage→backend 라우팅), `security.py`·`cancellation.py`, `mcp/` (tool 33종 — CLI 파서 파생 26 + 비동기 5 + job 2, stdio, entry point `mcx-mcp`) |
-| Automated tests | **1094 passed, coverage 92.87%** (unit + integration, 2026-08-23; coverage 하한 90%는 ADR-0055로 고정) |
+| Automated tests | **1095 passed, coverage 92.87%** (unit + integration, 2026-08-23; coverage 하한 90%는 ADR-0055로 고정) |
 | First implementation target | Brief domain/state/Gate vertical slice — 완료 |
 | Updated | 2026-08-23 |
 
@@ -105,6 +105,12 @@
   표면 변경과 upstream `ouroboros mcp doctor` 대조를 기록했으며, `doctor`/
   preflight는 구현하지 않았다 ([이슈 #6](https://github.com/FRONT-JB/mcx/issues/6),
   [CLI findings §7](../research/CLI_UPSTREAM_FINDINGS.md)).
+- plugin release version(`.claude-plugin`·`.codex-plugin`·marketplace·
+  `fallback_version`)은 `0.1.2`로 동기화하고, checkout Python package는
+  hatch-vcs의 `0.1.3.devN`으로 산출하는 의도적 분리 계약을 ADR-0054 §3.1에
+  기록했다. manifest↔fallback 동기화와 VCS 동적 원천을 테스트로 고정했으며,
+  release artifact의 package↔plugin 비교는 향후 사용자 승인 release audit에서
+  수행한다 ([이슈 #7](https://github.com/FRONT-JB/mcx/issues/7)).
 - 문서 link·navigation·terminology·lifecycle consistency 검사를 포함한 전체
   테스트가 통과한다.
 - 이전 v1 `0.1.0` release candidate는 host별 plugin 설치, MCP 33종 handshake,
@@ -1133,8 +1139,14 @@ P2 이슈 #6의 `mcx --version` 표면 계약은 ADR-0038 개정 3에 기록하�
 32587841868](https://github.com/FRONT-JB/mcx/actions/runs/32587841868)로
 검증했다. doctor 진단 명령은 upstream 대조 후 범위 밖으로 분리했다.
 
-다음 검증 가능한 목표 한 개: **P2 이슈 #7의 plugin manifest와 package version
-계약 테스트 부재를 조사·보강한다.**
+P2 이슈 #7은 ADR-0054 §3.1에 (a) 의도적 분리 결정을 기록하고,
+manifest↔fallback 동기화·hatch-vcs 동적 원천 테스트와 전체 게이트·[GitHub
+Actions run 32589049073](https://github.com/FRONT-JB/mcx/actions/runs/32589049073)로
+검증했다. release artifact의 package↔plugin 비교는 사용자 승인 이후의 별도
+release audit으로 남겼다.
+
+다음 검증 가능한 목표 한 개: **P2 이슈 #8의 문서 최종 갱신일 드리프트와
+`OPEN_QUESTIONS` §0 제목 stale을 조사·정비한다.**
 
 ### CLEAR 조건 중 강제되지 않는 것
 
