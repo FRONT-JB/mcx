@@ -22,6 +22,7 @@ from mission_control.adapters.runtime.codex_execution_runtime import (
 from mission_control.application.ports import (
     CoordinatorRequest,
     ExecutionRequest,
+    RuntimeUnavailableError,
     WorkerExecutionSummary,
 )
 from mission_control.cancellation import cancel_when
@@ -373,12 +374,14 @@ class TestExecute:
         assert outcome.error is not None
         assert "silent" in outcome.error
 
-    async def test_an_unstartable_cli_raises_for_the_caller_to_normalize(
+    async def test_an_unstartable_cli_raises_a_runtime_unavailable_error(
         self, tmp_path: Path
     ) -> None:
         runtime = CodexExecutionRuntime(cli_path=str(tmp_path / "missing-codex"))
-        with pytest.raises(FileNotFoundError):
+        with pytest.raises(RuntimeUnavailableError, match="codex") as raised:
             await runtime.execute(_request(workspace=str(tmp_path)))
+        assert raised.value.executable.endswith("missing-codex")
+        assert isinstance(raised.value.__cause__, FileNotFoundError)
 
     async def test_completed_file_changes_are_workspace_relative_and_complete(
         self, tmp_path: Path

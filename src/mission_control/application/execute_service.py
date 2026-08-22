@@ -37,6 +37,7 @@ from mission_control.application.ports import (
     ExecutionRequest,
     ExecutionRuntime,
     MechanicalRunner,
+    RuntimeUnavailableError,
     WorkerExecutionSummary,
 )
 from mission_control.domain.blueprint.gate import evaluate_blueprint_gate
@@ -151,10 +152,10 @@ class ExecuteService:
     async def dispatch_next(self, *, mission_id: str) -> ExecuteState:
         """다음 AC 하나를 실행하고 결과까지 기록한 상태를 반환한다.
 
-        Runtime이 예외를 올리면 그것은 실행 실패다 — attempt는 이미 저장돼
-        있으므로 ``EXECUTION_FAILED``로 기록한다. 삼키는 것이 아니라 상태로
-        옮기는 것이다. 결과 저장 자체가 실패하면 attempt는 ``DISPATCHED``로
-        남고, 그 상태가 곧 "결과 불명"이다 (ADR-0024 §4).
+        일반 Runtime 예외는 실행 실패로 정규화하지만, process spawn 자체가
+        불가능한 ``RuntimeUnavailableError``는 표면화한다. attempt는 이미
+        저장돼 있으므로 이 경우 ``DISPATCHED``로 남고, 그 상태가 곧
+        "결과 불명"이다 (ADR-0024 §4, ADR-0057).
         """
         blueprint = (await self._cleared_blueprint(mission_id)).current
         state = await self._state(mission_id)
@@ -303,6 +304,8 @@ class ExecuteService:
                     returned = await self.runtime.execute(
                         self._request(blueprint, by_key[ac_key], previous_failure=None)
                     )
+                except RuntimeUnavailableError:
+                    raise
                 except Exception as error:
                     failure = f"runtime raised before returning an outcome: {error}"
                 else:
@@ -330,14 +333,22 @@ class ExecuteService:
                     raise _QuotaPause(failure)
 
         quota_paused = False
+        unavailable: RuntimeUnavailableError | None = None
         try:
             async with asyncio.TaskGroup() as group:
                 for execution_id, ac_key in zip(
                     run.attempt_execution_ids, run.ac_keys, strict=True
                 ):
                     group.create_task(_worker(execution_id, ac_key))
+        except* RuntimeUnavailableError as errors:
+            unavailable = next(
+                error for error in errors.exceptions if isinstance(error, RuntimeUnavailableError)
+            )
         except* _QuotaPause:
             quota_paused = True
+
+        if unavailable is not None:
+            raise unavailable
 
         state = await self._state(mission_id)
         if quota_paused:
@@ -372,6 +383,8 @@ class ExecuteService:
             outcome = await self.runtime.execute(
                 self._request(blueprint, criterion, previous_failure=previous_failure)
             )
+        except RuntimeUnavailableError:
+            raise
         except Exception as error:
             failed = dispatched.record_result(
                 succeeded=False, error=f"runtime raised before returning an outcome: {error}"
@@ -457,6 +470,8 @@ class ExecuteService:
                     allowed_tools=self.envelope.allowed_tools,
                 )
             )
+        except RuntimeUnavailableError:
+            raise
         except Exception as error:
             failure = f"Coordinator runtime raised before returning an outcome: {error}"
         else:

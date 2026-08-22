@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from mission_control.application.ports import RuntimeUnavailableError
 from mission_control.cli import composition
 from mission_control.cli.composition import default_adapters
 from mission_control.cli.main import _load_draft, amain, build_parser
@@ -143,6 +144,25 @@ async def test_execute_without_mission_record_exits_one(tmp_path: Path) -> None:
     """workspace는 mission record가 나른다 — record 없는 Execute는 오류다 (§5)."""
     argv = ["--mission", "m2", "--state-dir", str(tmp_path)]
     assert await amain(["execute", "next", *argv], default_adapters()) == 1
+
+
+async def test_execute_next_runtime_unavailable_exits_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    class StubService:
+        async def dispatch_next(self, *, mission_id: str) -> object:
+            raise RuntimeUnavailableError(executable="codex")
+
+    monkeypatch.setattr(
+        composition, "execute_service", lambda layout, adapters, *, workspace: StubService()
+    )
+    argv = ["--mission", "spawn-missing", "--state-dir", str(tmp_path)]
+    adapters = default_adapters()
+
+    assert await amain(["brief", "start", "g", "--workspace", str(tmp_path), *argv], adapters) == 0
+
+    assert await amain(["execute", "next", *argv], adapters) == 1
+    assert "codex" in capsys.readouterr().err
 
 
 async def test_gate_clear_exits_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

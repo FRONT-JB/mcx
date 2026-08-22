@@ -49,6 +49,21 @@ from mission_control.domain.verify.verdict import CriterionVerdict
 from mission_control.domain.workspace import WorkspaceChanges
 
 
+class RuntimeUnavailableError(RuntimeError):
+    """Runtime process를 시작할 수 없는 환경 오류.
+
+    adapter는 원래 ``OSError``를 cause로 연결하고, application은 이 예외를
+    실행된 worker의 실패 outcome으로 바꾸지 않는다 (ADR-0057).
+    """
+
+    def __init__(self, *, executable: str) -> None:
+        self.executable = executable
+        display_name = executable.replace("\\", "/").rsplit("/", 1)[-1] or executable
+        super().__init__(
+            f"runtime executable {display_name!r} is unavailable; install it or configure its path"
+        )
+
+
 class BriefRepository(Protocol):
     """Brief 상태의 durable 저장소.
 
@@ -250,7 +265,9 @@ class ExecutionRuntime(Protocol):
     adapter는 use case가 구성한 요청만 실행하며 **스스로 작업을 만들지
     않는다** (ADR-0023 §1). Mission Control 재귀 호출 수단이 없다
     (ADR-0004). 실행 실패는 예외 또는 ``succeeded=False`` outcome으로
-    드러나며, 어느 쪽도 결과를 지어내지 않는다.
+    드러나며, 어느 쪽도 결과를 지어내지 않는다. process spawn 자체가 불가능한
+    환경은 ``RuntimeUnavailableError``로 표면화되며 Execute가 worker 실패로
+    기록하지 않는다 (ADR-0057).
 
     ``backend``는 provenance의 실행 주체 항목에 그대로 기록된다.
     """

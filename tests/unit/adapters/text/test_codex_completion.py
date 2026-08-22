@@ -16,6 +16,7 @@ from mission_control.adapters.text.codex_completion import (
     CodexCompletionError,
 )
 from mission_control.adapters.text.completion_engine import strict_schema
+from mission_control.application.ports import RuntimeUnavailableError
 
 SCHEMA = strict_schema({"answer": {"type": "string"}})
 
@@ -131,6 +132,15 @@ NEUTRAL_WORKSPACE_STUB = """
 
 
 class TestCompleteJson:
+    async def test_an_unstartable_cli_raises_without_transient_retry(self, tmp_path: Path) -> None:
+        engine = CodexCompletion(cli_path=str(tmp_path / "missing-codex"))
+
+        with pytest.raises(RuntimeUnavailableError, match="codex") as raised:
+            await engine.complete_json(prompt="질문", schema=SCHEMA)
+
+        assert raised.value.executable.endswith("missing-codex")
+        assert isinstance(raised.value.__cause__, FileNotFoundError)
+
     async def test_a_structured_response_round_trips(self, tmp_path: Path) -> None:
         engine = CodexCompletion(cli_path=_write_stub(tmp_path, "codex-ok", SUCCESS_STUB))
         result = await engine.complete_json(prompt="질문", schema=SCHEMA)

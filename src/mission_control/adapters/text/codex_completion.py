@@ -31,6 +31,7 @@ from mission_control.adapters.text.completion_engine import (
     CompletionError,
     is_transient,
 )
+from mission_control.application.ports import RuntimeUnavailableError
 
 #: upstream stall 기준 채택 — 침묵이지 총 시간이 아니다 (ADR-0033 §4).
 SILENCE_TIMEOUT_SECONDS = 900.0
@@ -145,13 +146,16 @@ class CodexCompletion:
             schema_path=str(schema_path),
             workspace=workspace,
         )
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-            start_new_session=os.name != "nt",
-        )
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                start_new_session=os.name != "nt",
+            )
+        except OSError as error:
+            raise RuntimeUnavailableError(executable=self._cli_path) from error
         assert process.stdin is not None and process.stdout is not None
         process.stdin.write(prompt.encode("utf-8"))
         await process.stdin.drain()

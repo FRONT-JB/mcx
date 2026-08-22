@@ -24,6 +24,7 @@ from mission_control.application.ports import (
     DependencyAnalysisRequest,
     ExecutionOutcome,
     ExecutionRequest,
+    RuntimeUnavailableError,
 )
 from mission_control.domain.blueprint.qa import QaAssessment, QaPolicy
 from mission_control.domain.blueprint.spec import AcceptanceCriterion, Blueprint
@@ -307,6 +308,17 @@ class TestFailure:
         assert "process would not start" in attempt.error
         assert executes.states["m-1"] == state
 
+    async def test_runtime_unavailable_is_raised_with_a_dispatched_attempt(self) -> None:
+        service, _, _, executes, runtime = _service()
+        runtime.raise_next = RuntimeUnavailableError(executable="codex")
+
+        with pytest.raises(RuntimeUnavailableError, match="codex"):
+            await service.dispatch_next(mission_id="m-1")
+
+        attempt = executes.states["m-1"].attempts[-1]
+        assert attempt.status is AttemptStatus.DISPATCHED
+        assert attempt.error is None
+
     async def test_a_failure_retries_the_same_criterion_next(self) -> None:
         service, _, _, _, runtime = _service(
             ExecutionOutcome(succeeded=False, error="tests exploded"),
@@ -425,11 +437,16 @@ class ConcurrentRuntime:
         self.active = 0
         self.max_active = 0
         self.persisted_open_counts: list[int] = []
+        self.raise_next: Exception | None = None
 
     async def execute(self, request: ExecutionRequest) -> ExecutionOutcome:
         self.requests.append(request)
         stored = self.repository.states["m-1"]
         self.persisted_open_counts.append(len(stored.open_attempts))
+        if self.raise_next is not None:
+            error = self.raise_next
+            self.raise_next = None
+            raise error
         self.active += 1
         self.max_active = max(self.max_active, self.active)
         await asyncio.sleep(0.02)
@@ -465,9 +482,14 @@ class RecordingCoordinator:
         self.requests: list[CoordinatorRequest] = []
         self.observed_durable_dispatch = False
         self.outcome = CoordinatorOutcome(succeeded=True, result_summary="reconciled")
+        self.raise_next: Exception | None = None
 
     async def coordinate(self, request: CoordinatorRequest) -> CoordinatorOutcome:
         self.requests.append(request)
+        if self.raise_next is not None:
+            error = self.raise_next
+            self.raise_next = None
+            raise error
         stored = self.repository.states["m-1"]
         self.observed_durable_dispatch = (
             stored.stage_runs[-1].status is StageRunStatus.COORDINATOR_DISPATCHED
@@ -524,6 +546,47 @@ def _parallel_service(
 
 
 class TestParallelStage:
+    async def test_runtime_unavailable_is_not_recorded_as_a_worker_failure(self) -> None:
+        service, repository, runtime, _, _, _ = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(succeeded=True),
+                SECOND.key: ExecutionOutcome(succeeded=True),
+            }
+        )
+        runtime.raise_next = RuntimeUnavailableError(executable="codex")
+
+        with pytest.raises(RuntimeUnavailableError, match="codex"):
+            await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        state = repository.states["m-1"]
+        assert all(item.status is AttemptStatus.DISPATCHED for item in state.attempts)
+
+    async def test_coordinator_unavailable_is_not_recorded_as_a_coordination_failure(
+        self,
+    ) -> None:
+        service, repository, _, coordinator, _, _ = _parallel_service(
+            {
+                FIRST.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/shared.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+                SECOND.key: ExecutionOutcome(
+                    succeeded=True,
+                    changed_files=("src/shared.py",),
+                    write_telemetry=WriteTelemetryStatus.COMPLETE,
+                ),
+            }
+        )
+        coordinator.raise_next = RuntimeUnavailableError(executable="codex")
+
+        with pytest.raises(RuntimeUnavailableError, match="codex"):
+            await service.dispatch_stage(mission_id="m-1", max_workers=2)
+
+        run = repository.states["m-1"].stage_runs[-1]
+        assert run.status is StageRunStatus.COORDINATOR_DISPATCHED
+        assert run.coordinator_error is None
+
     async def test_grouped_attempts_precede_real_fanout_and_results_bind_by_id(self) -> None:
         service, _, runtime, coordinator, runner, analyzer = _parallel_service(
             {

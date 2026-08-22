@@ -40,6 +40,7 @@ from mission_control.application.ports import (
     CoordinatorRequest,
     ExecutionOutcome,
     ExecutionRequest,
+    RuntimeUnavailableError,
 )
 from mission_control.cancellation import is_cancelled, observed
 from mission_control.domain.execute.state import WriteTelemetryStatus
@@ -264,13 +265,16 @@ class CodexExecutionRuntime:
         self, *, prompt: str, workspace: str, last_message_path: Path
     ) -> ExecutionOutcome:
         command = self.build_command(workspace=workspace, last_message_path=str(last_message_path))
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-            start_new_session=os.name != "nt",
-        )
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                start_new_session=os.name != "nt",
+            )
+        except OSError as error:
+            raise RuntimeUnavailableError(executable=self._cli_path) from error
         try:
             return await self._consume_process(
                 process=process,
