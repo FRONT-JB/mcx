@@ -31,6 +31,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel
 
+from mission_control._version import __version__
 from mission_control.adapters.workspace import worktree
 from mission_control.application.execute_service import ParallelExecutionHoldError
 from mission_control.cancellation import cancel_when
@@ -220,6 +221,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mcx",
         description="mcx — coordinates AI coding missions. Executed is not verified.",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="버전을 출력하고 종료한다",
     )
     stage_sub = parser.add_subparsers(dest="stage", required=True)
 

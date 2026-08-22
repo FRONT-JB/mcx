@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from mission_control._version import __version__
 from mission_control.application.ports import RuntimeUnavailableError
 from mission_control.cli import composition
 from mission_control.cli.composition import default_adapters
@@ -51,6 +52,16 @@ def test_surface_is_fixed(argv: list[str], stage: str, verb: str) -> None:
     args = build_parser().parse_args([*argv, *_COMMON])
     assert args.stage == stage
     assert args.verb == verb
+
+
+def test_version_flag_exits_zero_and_matches_generated_version(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as raised:
+        build_parser().parse_args(["--version"])
+
+    assert raised.value.code == 0
+    assert capsys.readouterr().out.strip() == f"mcx {__version__}"
 
 
 def test_blueprint_revision_draft_loads_a_complete_ontology(tmp_path: Path) -> None:
