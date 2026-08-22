@@ -77,6 +77,27 @@ Phase 7 MCP도 같은 service를 공유해 표면 파리티를 구현 공유로 
 mission. 원문이 근거로 든 upstream `ooo seed`의 명시 요구는 사실이며, 그
 차이가 개정 1의 등록된 divergence다.
 
+#### 1.1 최상위 메타데이터 옵션 — 개정 3 (2026-08-23, issue #6)
+
+`mcx --version`은 stage/verb service를 호출하지 않는 최상위 argparse
+metadata option으로 등록한다. `--version`은 required subparser 검증보다 먼저
+실행되어 stdout에 `mcx <version>`을 출력하고 exit code 0으로 종료한다.
+버전의 단일 원천은 빌드 시 생성되는
+`mission_control._version.__version__`이며, mission record·journal·adapter를
+초기화하거나 쓰지 않는다.
+
+따라서 ADR-0038의 `SURFACE` conformance 목록은 계속 workflow stage/verb만
+열거하고, 이 옵션은 별도 parser 회귀 테스트로 고정한다. 이는 새 stage/verb
+명령을 추가하는 변경이 아니라 CLI 표면 계약의 개정이며, 이 ADR의 개정 3으로
+기록한다.
+
+upstream의 `ouroboros mcp doctor`는 Python·MCP·backend 의존성·OAuth·EventStore
+등을 점검하는 **별도 환경 진단 명령**이다
+(`src/ouroboros/cli/commands/mcp_doctor.py:1-5,542-547`). 현재 `mcx status`는
+durable mission/stage 상태를 표시할 뿐 doctor가 아니므로, 이번 issue에서는
+`doctor`/preflight를 구현하지 않는다. 실행 환경 진단이 필요해지는 시점에
+검사 항목·exit code·권한 경계를 별도 결정하고 ADR을 추가한다.
+
 ### 2. 대화형 지점 — v1은 전부 비대화형 단발이다
 
 명령 안에서 프롬프트를 띄우지 않는다. 사용자 결정(답변, 후보 확정, 승인,
@@ -318,6 +339,15 @@ generation의 attempt를 더하면 revision 4의 AC가 3개인데 "AC 5개"로 �
 - import 방향: Stage service·domain(mission 제외)이 `domain/mission.py`와
   CLI 패키지에 의존하지 않는다 (ADR-0037 Verification).
 - 조립 기본값: 텍스트 lane Claude + 실행 Codex.
+
+개정 3 (§1.1):
+
+- `uv run mcx --version`은 exit 0이고 `mission_control._version.__version__`과
+  같은 버전 문자열을 `mcx <version>` 형식으로 stdout에 출력한다.
+- `--version`은 stage/verb surface 목록과 별도로 parser 테스트로 고정하며,
+  mission state나 service dispatch를 만들지 않는다.
+- `doctor`/preflight는 구현하지 않는다. `status`는 상태 요약이며 환경 진단
+  명령이 아니다.
 
 개정 2 (§6.1):
 

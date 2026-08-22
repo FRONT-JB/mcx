@@ -396,6 +396,13 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       **호출 수는 실측이다** — 명령 수 근사가 아니라 port 호출을 센다
       (upstream `tui/events.py:594-599` "never a character proxy"). 토큰·비용
       계측은 port 반환형 변경이 선행이라 ADR-0038 §7 보류로 등록했다.
+- [x] **`mcx --version`과 환경 진단 명령의 범위를 결정한다 (issue #6,
+      2026-08-23).** → [ADR-0038](../adr/0038-mcx-cli-surface-contract.md)
+      개정 3: `--version`은 `mission_control._version.__version__`에서 읽는
+      최상위 metadata option으로 추가하고, `doctor`/preflight는 구현하지
+      않는다. pinned upstream의 `ouroboros mcp doctor`는 backend·MCP·OAuth·
+      EventStore 등을 검사하는 별도 환경 진단 명령이므로 현재 `status`와
+      합치지 않는다 ([CLI_UPSTREAM_FINDINGS §7](./CLI_UPSTREAM_FINDINGS.md)).
 - [-] plugin 설치·발견·설정 UX를 결정한다. → **2026-08-09 확정, 배포만
       잔여.** 발견은 양쪽 host 매니페스트(`.claude-plugin/`·`.codex-plugin/`)가
       같은 `./skills/`와 같은 `./.mcp.json`을 가리키는 형태로 확정했고, 설정은

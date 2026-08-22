@@ -145,3 +145,30 @@ Lifecycle §3.1이 요구하는 Mission의 current Stage는 upstream 정렬로 *
 | §8 "upstream이 CLI를 얇게 둔 이유" | **닫힘** — 의도다: 표면은 공유 핸들러 위임(명문 근거 2곳), 품질 루프는 합성 계층 소유. 전제 정정: `ooo seed`도 전제 gate와 ambiguity gate는 갖는다. `mcx blueprint`의 QA 상시 포함은 upstream use case를 부수지 않는다 |
 | record 0004 질문 4 "canonical Stage 저장" | **닫힘** — ADR-0037: 합성 계층 소유 mission 문서에 Phase 6 도입, enforcement는 Gate 재계산 유지 |
 | §8 "`mcx` CLI의 대화형 지점" | **열림 유지** — Phase 6 설계 본문. §5의 전례를 대조 재료로 사용 |
+
+## 7. 최상위 버전 옵션과 doctor 범위 (2026-08-23)
+
+issue #6에서 `mcx --version`의 upstream 대응물과 진단 명령의 범위를
+대조했다. 기준은 위와 같은 pinned snapshot `Q00/ouroboros` @ `9486c78`
+(v0.50.8)이다.
+
+- upstream은 `src/ouroboros/cli/main.py:141-158`에서 eager `--version`/`-V`
+  callback을 등록하고, `tests/e2e/test_cli_commands.py:58-62`에서 exit 0과
+  버전 출력의 존재를 검증한다.
+- 버전은 upstream package `__version__`을 통해 제공된다. 우리 쪽은 이미
+  hatch-vcs가 생성하는 `mission_control._version.__version__`이 패키지 버전의
+  원천이므로, 별도의 버전 상수나 CLI 전용 값을 만들지 않는다.
+- upstream의 `src/ouroboros/cli/commands/mcp_doctor.py:1-5,532-547`는
+  `mcp` 아래의 별도 read-only 환경 진단 명령이다. Python 버전, MCP import,
+  backend 의존성, Codex OAuth, EventStore, PID 상태 등 여러 check를 수행하고
+  사람용/JSON 출력을 제공한다. 이것은 단순한 `--version`의 전제 점검이나
+  현재 상태 요약과 같은 기능이 아니다.
+
+### mcx 처분
+
+`mcx --version`만 최상위 argparse metadata option으로 추가한다. 출력은
+`mcx <version>`이며 mission record·journal·adapter를 건드리지 않는다. 기존
+stage/verb 목록은 workflow surface로 유지하고, version flag는 별도 parser
+회귀 테스트로 고정한다. `mcx status`를 doctor로 확장하거나 `mcx doctor`를
+추가하는 것은 이번 issue의 범위 밖이며, 실제 preflight 요구가 생길 때
+검사 항목과 실패 의미를 별도 ADR로 결정한다.
