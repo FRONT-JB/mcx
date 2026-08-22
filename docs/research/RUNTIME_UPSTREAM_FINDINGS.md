@@ -423,6 +423,37 @@ EventStore)는 둘 다에서 그대로다.
   [ADR-0039](../adr/0039-stage-runtime-routing-table.md)의 backend 키 공간은 이
   근거 위에 선다.
 
+## 13. Spawn/transport 실패의 표면 — upstream error event와 v1 예외 경계 (2026-08-23)
+
+Issue #5의 재현 조건은 Codex 실행 파일이 없는 상태에서 subprocess spawn이
+`FileNotFoundError`를 내는 것이다. 다음은 pinned baseline
+`Q00/ouroboros@9486c78575a0332e9b84d93ef5832985291d7943`의 확인 결과다.
+
+- `src/ouroboros/orchestrator/worker_runtime.py:283-325`는 worker turn의
+  transport 예외를 정상 `result`와 구별되는 `data.subtype = "error"`와
+  `error_type`을 가진 `AgentMessage(type="result")`로 내보낸다. 즉 예외를
+  성공으로 합치지 않고 worker 경계의 terminal error로 바꾼다.
+- `src/ouroboros/cli/commands/dispatch.py:179-187`는 result의
+  `tool_error` 또는 `subtype == "error"`를 관찰하면 CLI exit code를 1로
+  바꾼다.
+- upstream에는 우리 `AttemptStatus`와 동일한 durable `DISPATCHED` 모델이 이
+  호출 경로에 없다. 따라서 **error event/exit 1 경계는 채택**하되, 실행 전
+  durable-first와 Recover 자동 재시도 차단은 우리 ADR-0024 상태 모델로
+  표현한다.
+
+우리의 deliberate mapping은 다음과 같다.
+
+1. Codex execution/text adapter가 실제 `create_subprocess_exec`의 `OSError`를
+   `RuntimeUnavailableError`로 감싼다. `which` 선행 검사는 하지 않는다.
+2. ExecuteService는 이 예외를 `EXECUTION_FAILED` 또는 Coordinator 실패로
+   저장하지 않고 다시 올린다. 이미 저장한 attempt는 `DISPATCHED`로 남으므로
+   Gate는 `HOLD`하고 Recover packet은 생성하지 않는다.
+3. process가 시작된 뒤의 non-zero exit와 timeout은 upstream의 worker/runtime
+   failure와 같은 별도 관찰 경로이므로 기존 outcome 계약을 유지한다.
+
+Evidence level: **Verified** (pinned source); 우리 mapping은
+[ADR-0057](../adr/0057-runtime-spawn-failure-boundary.md)의 Accepted decision.
+
 ## Mission Control 함의
 
 결정은 [ADR-0033](../adr/0033-first-runtime-adapter-contract.md)(port 분리

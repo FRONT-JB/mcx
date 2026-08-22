@@ -39,6 +39,9 @@ v1 Runtime 설계의 기준은 다음과 같다.
    잃지 않고 반환한다.
 9. 초기 adapter 방향은 Codex와 OpenCode다. Gemini는 v1 범위 밖이다.
 10. adapter는 공통 conformance suite를 통과해야 Core에 연결할 수 있다.
+11. process spawn 자체가 불가능한 환경 오류는 `RuntimeUnavailableError`로
+    표면화하고, application이 실행 실패 outcome으로 가장하지 않는다
+    ([ADR-0057](./adr/0057-runtime-spawn-failure-boundary.md)).
 
 ---
 
@@ -197,6 +200,8 @@ ExecutionRuntime의 결과도 미션 완료 선언이 아니다. 실행 결과�
 - provider token, authorization header, transport credential의 canonicalization 전
   redaction과 허용되지 않은 output 제한
 - capability discovery 결과와 실제 동작의 불일치 보고
+- 실제 process spawn의 `OSError`를 `RuntimeUnavailableError`로 정규화하고 원인
+  예외를 보존
 
 ### 5.3 Runtime Adapter가 결정해서는 안 되는 것
 
@@ -404,6 +409,13 @@ indeterminate            실행 여부나 side effect를 안전하게 판단할 
 
 adapter의 retry hint는 Core의 Recover 결정을 대신하지 않는다.
 
+필수 실행 파일이 실제 spawn 시점에 없거나 실행 권한이 없으면 adapter는
+`RuntimeUnavailableError`를 발생시킨다. application은 이를 worker의
+`EXECUTION_FAILED` outcome으로 바꾸지 않는다. dispatch 전 durable 기록이 이미
+있다면 attempt는 `DISPATCHED`로 남아 Execute Gate를 `HOLD`로 만들며, Recover가
+같은 환경을 자동 재시도하지 않게 한다. 구체적인 Codex 경계는
+[ADR-0057](./adr/0057-runtime-spawn-failure-boundary.md)에 있다.
+
 ### 7.6 Telemetry envelope — 잠정 예시
 
 ```python
@@ -581,7 +593,7 @@ Core가 새 attempt를 시작하기 전에 이전 worker가 실제로 종료되�
 |---|---|---|
 | request | 필수 identity나 scope 누락 | application/adapter validation |
 | capability | required sandbox를 제공하지 못함 | Core policy, dispatch 전 중단 |
-| adapter | executable, auth, config, parsing 문제 | adapter가 정규화 |
+| adapter | executable spawn, auth, config, parsing 문제 | adapter가 정규화; spawn 불가 executable은 `RuntimeUnavailableError` |
 | runtime | worker/tool/command 실행 실패 | adapter가 관찰, Core가 후속 판단 |
 | verification | AC 또는 Non-goal 위반 | Verify Gate |
 | persistence | result/Telemetry 저장 실패 | application transaction; 전이 금지 |

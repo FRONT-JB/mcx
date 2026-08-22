@@ -342,6 +342,10 @@ Stage별 findings 문서에 조사가 기록된 항목들이 `[ ]`(조사 전)�
       로컬 모델 성능이 실 하네스 검증 수준이 아니다). 구조는 Phase 6
       라우팅 테이블이 열어 두고, 실물 대상이 생길 때 결정한다.
       [RUNTIME_UPSTREAM_FINDINGS §6](./RUNTIME_UPSTREAM_FINDINGS.md) 미조사
+- [x] Runtime process spawn 실패를 worker 실패와 어떻게 구분할지 결정한다. →
+      실제 spawn의 `OSError`를 `RuntimeUnavailableError`로 정규화하고, Execute의
+      durable attempt는 `DISPATCHED`에 남긴 채 CLI를 exit 1로 끝낸다. 별도 상태와
+      preflight는 도입하지 않는다 ([ADR-0057](../adr/0057-runtime-spawn-failure-boundary.md)).
 - [ ] **leader-driven 실행 모델(재개 가능한 worker 세션)을 채택할지 결정한다.**
       (2026-08-09 등록) upstream은 단발 실행(`codex exec`, INTERNAL)과 나란히
       **코어가 leader가 되어 addressable·resumable worker 세션을 직접 구동하는**

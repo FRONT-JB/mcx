@@ -267,6 +267,9 @@ key이고, 실행 기록은 그 key에 대한 attempt이며, attempt 상태는
 provenance 네 항목(생성 경로·실행 주체·lineage·시도)이 선언 필드다
 ([ADR-0023](./adr/0023-execute-entry-and-provenance.md) §3,
 [ADR-0024](./adr/0024-execute-v1-execution-model.md) §1·§4·§5).
+process spawn 자체가 불가능한 경우에는 `RuntimeUnavailableError`를 별도
+환경 오류로 표면화하고, 이미 durable한 attempt를 `EXECUTION_FAILED`로 바꾸지
+않는다 ([ADR-0057](./adr/0057-runtime-spawn-failure-boundary.md)).
 
 Execute start처럼 side effect가 있는 application command는 application-command
 boundary에서 idempotency key를 반드시 검증한다. application/Core가 기존 결과 반환,
@@ -311,6 +314,9 @@ class ExecutionResult:
 - Runtime 결과를 잃어 상태를 알 수 없음
 
 “실행됨, 미검증”과 “Verify 통과”는 절대 같은 상태가 아니다.
+실행 파일을 시작하지 못한 경우도 결과가 관찰되지 않은 것이므로
+`DISPATCHED`를 유지한다. 이 상태는 Execute Gate의 `HOLD`를 만들며 Recover의
+실패 packet으로 자동 파생되지 않는다.
 
 ---
 
@@ -418,7 +424,7 @@ domain-sensitive field를 durable storage 전에 다시 redaction한다. 인증 
 | 관찰 | 기본 처리 |
 |---|---|
 | Seed 또는 AC가 모호함 | Execute 중단, Blueprint 또는 Brief로 돌아갈 근거 기록 |
-| Runtime executable 없음 | HOLD, Runtime configuration 보완 |
+| Runtime executable 없음 | `RuntimeUnavailableError`를 표면화하고 exit 1; durable attempt는 `DISPATCHED`, Execute Gate는 HOLD, Runtime configuration 보완 |
 | 권한 부족 | HOLD, 사용자 승인 또는 scope 조정 요청 |
 | 구현 명령 실패 | 결과를 보존하고 Verify/Recover가 판정할 수 있게 전달 |
 | Runtime timeout | handle과 partial evidence 보존, side effect가 불명확하면 retry 없이 outcome 반환 |
@@ -485,7 +491,7 @@ Next action:
 | Capability | 필요한 write capability 없음 | Runtime 호출 전 HOLD |
 | Scope | 허용 범위 밖 파일 변경 | drift Telemetry와 HOLD |
 | Dispatch | 정상 Runtime 결과 | executed-unverified 상태와 Telemetry |
-| Runtime | process 시작 실패 | system failure로 분류, CLEAR 금지 |
+| Runtime | process spawn 실패 | `RuntimeUnavailableError`, exit 1, attempt `DISPATCHED`, CLEAR 금지 |
 | Runtime | timeout 후 handle 존재 | resume/cancel 가능한 상태 보존 |
 | Telemetry | command result 누락 | Clear for Verify 금지 |
 | Dependency | 선행 artifact 없음 | 후속 작업 dispatch 금지 |
@@ -498,6 +504,7 @@ Next action:
 | Sequence | 직전 attempt가 `EXECUTION_FAILED` (`upstream 대응물 없음` — upstream은 dependency graph로 판단, v1 최소 규칙은 [ADR-0024](./adr/0024-execute-v1-execution-model.md) §3) | 후속 AC dispatch 거부 |
 | Attempt | dispatch 전 저장 실패 (`upstream 미확인`, [ADR-0024](./adr/0024-execute-v1-execution-model.md) §4) | dispatch가 일어나지 않는다 |
 | Attempt | 결과 수신 전 프로세스 종료 후 재개 (`upstream 대응물 없음` — upstream은 stall/resume, 우리 v1은 상태 자체가 의미, [ADR-0024](./adr/0024-execute-v1-execution-model.md) §4) | `DISPATCHED`로 남은 attempt가 "결과 불명"으로 드러난다 |
+| Attempt | process spawn의 `OSError` (`upstream은 terminal error event + exit 1, [RUNTIME_UPSTREAM_FINDINGS §13](./research/RUNTIME_UPSTREAM_FINDINGS.md)`) | `RuntimeUnavailableError`를 기록하지 않고 표면화; attempt는 `DISPATCHED`, Recover 자동 재시도 없음 |
 | Attempt | 열린 attempt가 있는 상태의 새 dispatch (`upstream 대응물 없음`, [ADR-0024](./adr/0024-execute-v1-execution-model.md) §7) | 거부 |
 | Telemetry | provenance 네 항목 중 누락 (`upstream 대응물 없음` — upstream은 payload 관례, [ADR-0023](./adr/0023-execute-entry-and-provenance.md) §3) | 기록 생성 거부 |
 | Parallel plan | AC 누락·중복·unknown dependency·cycle | Runtime effect 없이 HOLD |
