@@ -88,6 +88,10 @@ Phase 1 테스트는 인메모리 구현과 실패를 재현하는 구현으로 
   그런 조회가 없다.
 - revision을 누적하므로 문서가 단조 증가한다.
 - 동시성 보장이 file lock 수준이며 다중 프로세스 환경에서 한계가 있다.
+- file persistence가 Python 표준 모듈 `fcntl.flock`에 의존하므로 v1 지원 플랫폼은
+  POSIX로 제한된다. Windows용 잠금 대체 구현과 Windows CI는 이 ADR의 범위 밖이며,
+  현재 CLI는 Windows에서 persistence adapter import 단계에 실패할 수 있다.
+  지원을 넓히려면 file-lock 계약과 검증 범위를 별도 ADR로 결정해야 한다.
 
 ## Rejected alternatives
 

@@ -217,3 +217,23 @@ version을 기록하며, 미지원 version과 최상위 미지 필드는 validat
 - 다중 프로세스 worker가 DB를 공유할 때의 실제 제약
 
 위 항목은 Phase 3(Execute) 설계 직전에 조사한다.
+
+## 12. Mission Control의 플랫폼 경계 — upstream 잠금과 우리 지원 범위
+
+upstream baseline의 `core/file_lock.py:17-46`도 POSIX `flock`을 사용하는
+advisory file lock이다. 그러나 upstream 조사 결과를 우리 패키지가 Windows까지
+지원한다는 근거로 확대하지 않는다. Mission Control의 현재 구현은 다음 다섯
+adapter가 모듈 import 단계에서 `fcntl`을 직접 사용한다.
+
+- `file_brief_repository.py`
+- `file_blueprint_repository.py`
+- `file_execute_repository.py`
+- `file_verify_repository.py`
+- `file_mission_repository.py`
+
+이들은 모두 같은 `LOCK_SH`/`LOCK_EX`/`LOCK_UN` 계약과 원자적 교체를 사용한다.
+따라서 v1 플랫폼 범위는 POSIX이며 CI는 Ubuntu runner만 검증한다
+([ADR-0055](../adr/0055-repository-verification-gate-automation.md)). Windows
+잠금 대체 구현은 upstream에서 확인한 사실이 아니라 새 compatibility contract이므로,
+필요성이 생길 때 별도 ADR·실행 검증으로 결정한다. 현재 이슈 #4의 처분은 코드
+변경이 아닌 README·package metadata·ADR의 명시화다.

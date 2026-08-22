@@ -25,6 +25,19 @@ v1 release candidate는 기술 검증과 FRONT-JB·Q00 MIT 고지의 배포물 �
 통과해 Release Gate가 CLEAR다. tag·release는 별도 사용자 승인 전까지 만들지
 않는다.
 
+## 지원 플랫폼
+
+현재 v1은 **POSIX 플랫폼만 지원**한다. 다섯 file persistence adapter가 Python
+표준 모듈 `fcntl`의 `flock`으로 durable JSON 문서의 동시 접근을 직렬화하기
+때문이다. Linux와 macOS 같은 POSIX 환경을 대상으로 하며, Windows용 잠금
+대체 구현은 아직 제공하지 않는다.
+
+따라서 Windows에서는 `mcx` CLI가 persistence adapter import 단계에서 동작하지
+않을 수 있다. 이는 숨겨진 호환성 버그가 아니라 현재 v1의 명시된 플랫폼 범위다.
+Windows 지원을 추가하려면 file-lock 계약과 검증 범위를 별도 결정해야 한다.
+CI는 이 계약에 맞춰 Ubuntu runner에서만 실행된다
+([ADR-0055](docs/adr/0055-repository-verification-gate-automation.md)).
+
 ## 설치
 
 **PyPI 배포가 필요 없다.** 플러그인이 자기 소스로 자기 MCP 서버를 띄운다.
