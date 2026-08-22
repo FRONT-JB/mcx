@@ -189,7 +189,26 @@ checkpoint를 **함께** 커밋한다. 이벤트만 저장되고 checkpoint가 �
 **upstream에 없는 stale write 거부를 도입했기 때문**이며, 그 결정과 대응은
 [ADR-0014](../adr/0014-brief-concurrent-write-protection.md)에 기록되어 있다.
 
-## 10. 아직 조사하지 않은 것
+## 10. JSON durable state의 schema versioning — upstream 대응물 없음
+
+> 2026-08-23 이슈 #3 조사·처분. Evidence level: Verified (pinned source) +
+> Implementation decision ([ADR-0056](../adr/0056-durable-state-schema-versioning.md)).
+
+upstream의 JSON Interview state는 파일을 읽은 뒤
+`InterviewState.model_validate_json(content)`를 직접 호출한다
+(`bigbang/interview.py`, baseline `9486c78`). 해당 경로에는 문서
+`schema_version` 필드나 최상위 unknown-field 거부 정책이 없다. Checkpoint의
+`hash`는 SHA-256 무결성 값이며 schema compatibility version이 아니다. SQL
+`_migrations` runner는 SQLite event store의 migration 기록만 담당한다.
+
+따라서 Mission Control은 다섯 최상위 durable model에만 `schema_version: Literal[1]`
+과 `extra="forbid"`를 도입한다. versionless 기존 문서는 v1로 읽고 다음 저장 때
+version을 기록하며, 미지원 version과 최상위 미지 필드는 validation error로
+중단한다. 이는 upstream을 조사하지 않고 재발명한 것이 아니라, upstream JSON
+경로에 대응물이 없는 위험을 우리 durable-state 경계에서 명시적으로 다루는
+등록된 divergence다. 중첩 model과 자동 v2 migration은 범위 밖이다.
+
+## 11. 아직 조사하지 않은 것
 
 - 이벤트 타입 전체 목록과 aggregate 경계 설계
 - `events/` 패키지의 이벤트 정의와 versioning 전략

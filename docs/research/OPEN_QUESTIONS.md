@@ -533,6 +533,14 @@ Phase 3에서 확정되었다(mission당 단일 JSON 문서, 지속이 dispatch�
 ([progress 0003](../progress/0003_EXECUTE_VERTICAL_SLICE.md) 종료 검토에서
 시점 정정. 원래 문구는 "Phase 3 설계 직전"이었다).
 
+- [x] durable JSON document의 format compatibility와 schema version 정책을
+      결정한다. → versionless 기존 문서는 암묵적 v1로 읽고, 다섯 최상위 durable
+      model은 `schema_version: Literal[1]` + `extra="forbid"`로 미지원 version과
+      미지 필드를 거부한다. upstream JSON state에는 직접 대응물이 없고 SQLite
+      migration runner는 별도 event store용이다
+      ([ADR-0056](../adr/0056-durable-state-schema-versioning.md),
+      [PERSISTENCE findings §10](./PERSISTENCE_UPSTREAM_FINDINGS.md#10-json-durable-state의-schema-versioning--upstream-대응물-없음)).
+
 - [-] file store, SQLite, event sourcing 중 v1 baseline을 결정한다. (Brief
       범위는 ADR-0013, 실행 상태는 같은 형태의 파일 문서로 구현 — 실행
       이벤트의 저장은 event schema와 함께)

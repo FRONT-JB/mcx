@@ -86,6 +86,7 @@ ADR은 Mission Control의 중요한 결정을 “무엇을 선택했는가”뿐
 | [0053](./0053-parallel-coordinator-execution-contract.md) | 병렬 Execute는 별도 `execute stage` 표면에서 durable plan·grouped attempt·worker write Telemetry·bounded Coordinator·settled revalidation을 한 묶음으로 실행한다. Codex 셸 write가 `file_change`에 나타나지 않는 실측 때문에 attribution 불완전도 full-stage Coordinator trigger다. | Accepted |
 | [0054](./0054-gitless-source-build-version-fallback.md) | `.git` 없는 소스 복사본(플러그인 설치 캐시) 빌드는 plugin manifest와 동기화된 `fallback_version`으로 산출한다 (ADR-0012 보완). upstream 대응물 없음 — upstream 설치 경로는 PyPI 배포물이라 소스 복사본을 빌드하지 않는다. 동기화는 manifest 버전 일치 테스트가 강제한다. | Accepted |
 | [0055](./0055-repository-verification-gate-automation.md) | 저장소의 push·pull request마다 Ubuntu에서 pytest(90% coverage 하한)·mypy·ruff·format을 자동 실행하고, 로컬 `uv run pytest`에도 같은 coverage 하한을 적용한다. Windows runner는 `fcntl` 제약으로 제외한다. | Accepted |
+| [0056](./0056-durable-state-schema-versioning.md) | 다섯 durable JSON 최상위 문서에 `schema_version: 1`과 `extra="forbid"`를 적용하고, versionless 기존 문서는 암묵적 v1로 읽는다. | Accepted |
 
 ## Template
 
