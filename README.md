@@ -153,3 +153,6 @@ uv run mypy src
 uv run ruff check .
 uv run ruff format --check src tests
 ```
+
+`uv run pytest`는 `src` coverage를 함께 수집하며, 총 coverage 90% 미만이면
+실패한다. CI도 같은 명령과 하한을 사용한다([ADR-0055](docs/adr/0055-repository-verification-gate-automation.md)).
